@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e6b5b">
+<meta name="robots" content="noindex, nofollow">
+<title>Proposta: Monitor de atendimento do WhatsApp — Vitamed</title>
+<meta name="description" content="Plataforma que registra e mede o atendimento do WhatsApp da Farmácia Vitamed pela API oficial da Meta: R$ 6.000,00 em 35 dias úteis.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:title" content="Proposta: Monitor de atendimento do WhatsApp — Vitamed">
+<meta property="og:description" content="Plataforma que registra e mede o atendimento do WhatsApp da Farmácia Vitamed pela API oficial da Meta: R$ 6.000,00 em 35 dias úteis.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ===== Tokens (troque --brand / --brand-soft para a cor da marca do cliente) ===== */
+:root{
+  --bg:#f2f5f4; --surface:#ffffff; --surface-2:#e8eeec;
+  --ink:#10222a; --ink-2:#3f545c; --rule:#cfdad6; --rule-2:#8aa39b;
+  --brand:#0e6b5b; --brand-ink:#ffffff; --brand-soft:#dcefe9;
+  --ok:#17683d; --ok-soft:#dff3e7; --warn:#8a5200; --warn-soft:#fbeccb; --bad:#a4221a; --bad-soft:#fbe1de;
+  --wa:#128c4b;
+  --top-h:56px; --nav-h:46px; --cta-h:0px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b171b; --surface:#12232a; --surface-2:#182d35; --ink:#e6efed; --ink-2:#a7bcc3; --rule:#274048; --rule-2:#5a7982;
+    --brand:#5ec9b0; --brand-ink:#06231d; --brand-soft:#143a34;
+    --ok:#5bd08a; --ok-soft:#12352a; --warn:#f0b85a; --warn-soft:#3a2c0d; --bad:#f28b82; --bad-soft:#3d1a18; --wa:#3fcf7f;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b171b; --surface:#12232a; --surface-2:#182d35; --ink:#e6efed; --ink-2:#a7bcc3; --rule:#274048; --rule-2:#5a7982;
+  --brand:#5ec9b0; --brand-ink:#06231d; --brand-soft:#143a34;
+  --ok:#5bd08a; --ok-soft:#12352a; --warn:#f0b85a; --warn-soft:#3a2c0d; --bad:#f28b82; --bad-soft:#3d1a18; --wa:#3fcf7f;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:calc(env(safe-area-inset-top,0px) + var(--top-h) + var(--nav-h) + 16px);-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Instrument Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.6;font-variant-numeric:tabular-nums;overflow-wrap:break-word;padding-bottom:calc(var(--cta-h) + env(safe-area-inset-bottom,0px));-webkit-tap-highlight-color:transparent}
+h1,h2,h3{font-family:"Bricolage Grotesque","Instrument Sans",system-ui,sans-serif;margin:0;letter-spacing:-.02em;line-height:1.1}
+h1{font-size:clamp(2.1rem,7vw,4rem);font-weight:700}
+h2{font-size:clamp(1.5rem,4.6vw,2.1rem);font-weight:700}
+h3{font-size:1.15rem;font-weight:600;letter-spacing:-.01em}
+p{margin:0 0 1rem;max-width:68ch}
+a{color:var(--brand)}
+code,.code{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.84em}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:4px}
+.skip{position:absolute;left:-999px;top:8px;z-index:100;background:var(--surface);padding:8px 12px;border-radius:8px}
+.skip:focus{left:8px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ===== Barra superior + navegação de seções ===== */
+.top{position:sticky;top:0;z-index:50;padding-top:env(safe-area-inset-top,0px);background:var(--bg);background:color-mix(in srgb,var(--bg) 88%,transparent);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid var(--rule)}
+.top__in{max-width:960px;margin:0 auto;height:var(--top-h);padding:0 16px;display:flex;align-items:center;gap:8px}
+.brand{display:flex;flex-direction:column;line-height:1.15;margin-right:auto;text-decoration:none;color:var(--ink);min-width:0}
+.brand b{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-size:1.12rem;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand span{font-size:.76rem;color:var(--ink-2)}
+.iconbtn{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;appearance:none;border:1px solid var(--rule);background:var(--surface);color:var(--ink);border-radius:10px;min-height:40px;padding:0 12px;font:inherit;font-size:.88rem;cursor:pointer;text-decoration:none}
+.iconbtn:hover{border-color:var(--rule-2)}
+.iconbtn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.secnav{border-top:1px solid var(--rule)}
+.secnav__in{max-width:960px;margin:0 auto;height:var(--nav-h);padding:0 12px;display:flex;align-items:center;gap:4px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 12px,#000 calc(100% - 24px),transparent);mask-image:linear-gradient(90deg,transparent 0,#000 12px,#000 calc(100% - 24px),transparent)}
+.secnav__in::-webkit-scrollbar{display:none}
+.secnav a{flex:none;scroll-snap-align:start;display:inline-flex;align-items:center;height:34px;padding:0 13px;border-radius:999px;font-size:.88rem;font-weight:500;color:var(--ink-2);text-decoration:none;white-space:nowrap;transition:background .15s,color .15s}
+.secnav a:hover{color:var(--ink)}
+.secnav a[aria-current="true"]{background:var(--brand);color:var(--brand-ink)}
+.top__progress{height:2px}
+.top__progress i{display:block;height:100%;width:0;background:var(--brand)}
+
+/* ===== Estrutura ===== */
+.wrap{max-width:960px;margin:0 auto;padding:0 16px}
+
+/* ===== Abertura ===== */
+.hero{padding:44px 0 40px}
+.eyebrow{margin:0 0 14px;font-size:.82rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--brand)}
+.hero h1{max-width:16ch}
+.hero__lede{font-size:1.12rem;color:var(--ink-2);margin:18px 0 28px;max-width:54ch}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 6px}
+.kpi{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:13px 15px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.kpi span{font-size:.8rem;color:var(--ink-2)}
+.kpi b{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-size:1.32rem;line-height:1.2;letter-spacing:-.01em}
+.kpi small{font-size:.8rem;color:var(--ink-2);line-height:1.35}
+.kpi--main{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.kpi--main span,.kpi--main small{color:inherit;opacity:.85}
+.hero__actions{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 0}
+.issued{margin:16px 0 0;font-size:.85rem;color:var(--ink-2)}
+
+/* ===== Botões ===== */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 20px;border-radius:12px;font:inherit;font-weight:600;font-size:.98rem;text-decoration:none;cursor:pointer;border:1px solid var(--rule);background:var(--surface);color:var(--ink)}
+.btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.btn--primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.btn--wa{background:var(--wa);border-color:var(--wa);color:#fff}
+.btn:hover{filter:brightness(1.06)}
+
+/* ===== Seções ===== */
+.sec{padding:52px 0 8px;border-top:1px solid var(--rule)}
+.sec__lead{color:var(--ink-2);margin:12px 0 24px;font-size:1.04rem}
+.sec h2{margin-bottom:6px}
+.sub{margin:32px 0 10px}
+
+/* ===== Cartões ===== */
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:16px 18px 18px}
+.card__head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.card__head h3{font-size:1.02rem;line-height:1.25}
+.card__icon{flex:none;width:42px;height:42px;border-radius:10px;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center}
+.card__icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.card p{margin:0;color:var(--ink-2);font-size:.94rem;line-height:1.55}
+
+/* ===== Acordeões ===== */
+.acc{border-top:1px solid var(--rule)}
+.acc:last-child{border-bottom:1px solid var(--rule)}
+.acc > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;min-height:52px;padding:12px 4px;font-weight:600}
+.acc > summary::-webkit-details-marker{display:none}
+.acc > summary::before{content:"";width:8px;height:8px;flex:none;border-right:2px solid var(--ink-2);border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);transition:transform .18s;margin:0 4px 0 2px}
+.acc[open] > summary::before{transform:rotate(45deg)}
+.acc > summary:hover{color:var(--brand)}
+.acc__meta{margin-left:auto;font-weight:400;font-size:.84rem;color:var(--ink-2);white-space:nowrap}
+.acc__body{padding:2px 4px 22px 30px;animation:reveal .2s ease}
+.acc__body p{color:var(--ink-2)}
+.acc .acc > summary{font-weight:500;font-size:.96rem;min-height:48px;padding:10px 4px}
+.acc .acc:last-child{border-bottom:0}
+.tech-note{margin:10px 0 0;padding:10px 14px;border-left:3px solid var(--brand);background:var(--brand-soft);border-radius:0 8px 8px 0;font-size:.92rem;color:var(--ink)}
+.tech-note b{font-weight:600}
+@keyframes reveal{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.toolbar{display:flex;gap:8px;margin:0 0 12px;flex-wrap:wrap}
+.toolbar .iconbtn{min-height:36px;font-size:.82rem}
+
+/* ===== Tabelas (viram cartões no celular) ===== */
+.tbl{overflow-x:auto;margin:6px 0 10px;-webkit-overflow-scrolling:touch}
+.tbl table{border-collapse:collapse;width:100%;min-width:520px;font-size:.9rem}
+.tbl th{text-align:left;font-weight:600;color:var(--ink-2);padding:8px 14px 8px 0;border-bottom:1px solid var(--ink);white-space:nowrap}
+.tbl td{padding:9px 14px 9px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+.tbl td.code{white-space:nowrap}
+.req{font-weight:600}
+.req--no{color:var(--ink-2);font-weight:400}
+.req--cond{color:var(--warn)}
+.subtable-title{font-size:.9rem;font-weight:600;margin:14px 0 2px}
+.chk{margin:0;padding:0;list-style:none}
+.chk li{position:relative;padding:6px 0 6px 28px;color:var(--ink-2)}
+.chk li::before{content:"";position:absolute;left:4px;top:13px;width:12px;height:7px;border-left:2px solid var(--brand);border-bottom:2px solid var(--brand);transform:rotate(-45deg)}
+.chk b{color:var(--ink);font-weight:600}
+
+/* ===== Diagramas ===== */
+.diagram{position:relative;overflow-x:auto;padding:8px 0;-webkit-overflow-scrolling:touch}
+.diagram > svg{display:block;margin:0 auto;height:auto}
+.diagram--er > svg{min-width:640px}
+.zoombtn{position:absolute;right:4px;top:8px;z-index:2;min-height:36px;font-size:.82rem}
+.zoom{border:0;padding:0;margin:0;width:100vw;height:100dvh;max-width:none;max-height:none;background:var(--bg);color:var(--ink)}
+.zoom::backdrop{background:rgba(0,0,0,.5)}
+.zoom__bar{position:sticky;top:0;display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top,0px) + 8px) 12px 8px;background:var(--bg);border-bottom:1px solid var(--rule)}
+.zoom__bar b{margin-right:auto;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.zoom__body{overflow:auto;height:calc(100dvh - 58px - env(safe-area-inset-top,0px));padding:16px;-webkit-overflow-scrolling:touch}
+.zoom__body svg{display:block;height:auto;max-width:none}
+
+/* ===== Prazo ===== */
+.pfields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:22px 0 10px}
+.pfield{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:12px 16px 14px}
+.pfield label,.pfield__label{display:block;font-size:.85rem;color:var(--ink-2);margin-bottom:6px}
+.pfield__value{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-size:1.45rem;font-weight:700;letter-spacing:-.01em;line-height:1.2}
+.pfield__sub{margin:2px 0 0;font-size:.85rem;color:var(--ink-2)}
+.pfield--edit{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+.pfield input{width:100%;min-height:40px;font:inherit;font-family:"Bricolage Grotesque",system-ui,sans-serif;font-size:1.45rem;font-weight:700;line-height:1.2;color:var(--ink);background:transparent;border:0;padding:0;margin:0}
+.pnote{margin:0 0 24px;font-size:.9rem;color:var(--ink-2);max-width:none}
+.pnote:empty{display:none}
+.pnote b{color:var(--ink);font-weight:600}
+.g-w1{--wc:var(--brand)}
+.g-w2{--wc:color-mix(in srgb,var(--brand) 72%,var(--bg))}
+.g-w3{--wc:color-mix(in srgb,var(--brand) 50%,var(--bg))}
+.weeks{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:0 0 22px}
+.wkc{border-top:5px solid var(--wc);padding-top:12px}
+.wkc h3{font-size:1.25rem}
+.wkc__t{margin:2px 0 8px;color:var(--ink-2);font-size:.95rem}
+.wkc__d{margin:0;font-weight:600}
+.wkc__n{margin:0;color:var(--ink-2);font-size:.88rem}
+.gantt__scroll{overflow-x:auto;border:1px solid var(--rule);border-radius:14px;background:var(--surface)}
+.gantt__grid{display:grid;min-width:840px}
+.g-corner{grid-row:1 / 3;grid-column:1;position:sticky;left:0;z-index:3;background:var(--surface);padding:10px 14px;font-size:.82rem;color:var(--ink-2);border-bottom:1px solid var(--rule);display:flex;align-items:flex-end}
+.g-week{padding:8px 8px 6px;font-weight:600;font-size:.86rem;border-bottom:3px solid var(--wc);border-left:1px solid var(--rule-2);white-space:nowrap;overflow:hidden}
+.g-day{display:flex;flex-direction:column;align-items:center;padding:6px 0;font-size:.82rem;line-height:1.2;border-bottom:1px solid var(--rule)}
+.g-day small{color:var(--ink-2);font-size:.7rem}
+.g-name{grid-column:1;position:sticky;left:0;z-index:2;background:var(--surface);padding:10px 14px;border-bottom:1px solid var(--rule);display:flex;flex-direction:column;justify-content:center;gap:1px}
+.g-name span{font-size:.9rem;line-height:1.3}
+.g-name small{color:var(--ink-2);font-size:.78rem}
+.g-cell{border-bottom:1px solid var(--rule)}
+.g-ws{border-left:1px solid var(--rule-2)}
+.g-gap{border-left:1px dashed var(--rule-2)}
+.g-bar{position:relative;z-index:1;align-self:center;height:20px;border-radius:6px;background:var(--wc);margin:0 3px}
+.gnote{margin:12px 0 0;font-size:.85rem;color:var(--ink-2);max-width:none}
+/* linha do tempo (celular) */
+.tl{display:none;margin:0;padding:0;list-style:none}
+.tl__wk{margin:0 0 18px}
+.tl__wkh{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;padding:0 0 8px;border-bottom:3px solid var(--wc)}
+.tl__wkh b{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-size:1.1rem;white-space:nowrap}
+.tl__wkh em{margin-left:auto;font-style:normal;font-size:.84rem;font-weight:600;white-space:nowrap}
+.tl__wkh span{order:3;flex-basis:100%;color:var(--ink-2);font-size:.9rem}
+.tl__wkh span:empty{display:none}
+.tl__it{position:relative;display:grid;grid-template-columns:18px 1fr;gap:10px;padding:12px 0 0}
+.tl__it::before{content:"";grid-column:1;width:12px;height:12px;margin-top:5px;border-radius:50%;background:var(--wc);box-shadow:0 0 0 3px var(--brand-soft)}
+.tl__it p{margin:0;font-weight:500;line-height:1.35}
+.tl__it small{display:block;color:var(--ink-2);font-size:.84rem;margin-top:2px}
+
+/* ===== Investimento ===== */
+.inv{width:100%;border-collapse:collapse}
+.inv th{text-align:left;font-weight:600;color:var(--ink-2);font-size:.88rem;padding:0 12px 10px 0;border-bottom:1px solid var(--ink)}
+.inv th:last-child,.inv td:last-child{text-align:right;padding-right:0}
+.inv td{padding:13px 12px 13px 0;border-bottom:1px solid var(--rule);vertical-align:middle}
+.inv td.val{white-space:nowrap;font-weight:600;width:130px}
+.inv td.lv{width:120px;white-space:nowrap}
+.inv .nm{display:block;font-weight:500}
+.inv td small{display:block;margin-top:3px;max-width:60ch;font-size:.86rem;line-height:1.45;color:var(--ink-2)}
+.lvl{display:inline-block;padding:2px 10px;border-radius:999px;font-size:.78rem;font-weight:600;border:1px solid var(--rule-2);color:var(--ink-2)}
+.lvl--media{background:var(--brand-soft);border-color:transparent;color:var(--brand)}
+.lvl--alta{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.inv-legend{margin:14px 0 0;font-size:.88rem;color:var(--ink-2);max-width:none}
+.inv tfoot td{border-bottom:0;border-top:3px double var(--ink-2);padding-top:16px;font-size:1.25rem;font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:700}
+.inv tfoot td:last-child{white-space:nowrap}
+.inv__scroll .inv{min-width:520px}
+.pay{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:8px 0 0}
+.pay div{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:14px 16px}
+.pay b{display:block;font-family:"Bricolage Grotesque",system-ui,sans-serif;font-size:1.2rem}
+.pay span{color:var(--ink-2);font-size:.9rem}
+.cond{margin:0;padding-left:20px;color:var(--ink-2);max-width:72ch}
+.cond li{margin:8px 0}
+.cond b{color:var(--ink);font-weight:600}
+
+/* ===== Aceite ===== */
+.steps{counter-reset:s;margin:0 0 22px;padding:0;list-style:none;display:grid;gap:10px}
+.steps li{counter-increment:s;display:grid;grid-template-columns:36px 1fr;gap:12px;align-items:start;background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:14px 16px}
+.steps li::before{content:counter(s);width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand);font-weight:700}
+.steps b{display:block}
+.steps span{color:var(--ink-2);font-size:.93rem}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.foot{margin:56px 0 32px;padding-top:20px;border-top:1px solid var(--rule);color:var(--ink-2);font-size:.86rem}
+.foot p{margin:0 0 4px}
+
+/* ===== CTA fixo inferior ===== */
+.cta{position:fixed;left:0;right:0;bottom:0;z-index:60;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--rule);box-shadow:0 -8px 24px rgba(0,0,0,.08);transform:translateY(110%);transition:transform .25s ease}
+.cta.is-on{transform:none}
+.cta__in{max-width:960px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.cta__in div{display:flex;flex-direction:column;line-height:1.2;margin-right:auto;min-width:0}
+.cta__in small{font-size:.78rem;color:var(--ink-2)}
+.cta__in b{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-size:1.2rem;white-space:nowrap}
+.cta .btn{min-height:46px;padding:0 16px}
+.toast{position:fixed;left:50%;bottom:90px;z-index:70;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:.9rem;transition:.2s}
+.toast.is-on{opacity:1;transform:translate(-50%,0)}
+
+/* ===== Responsivo ===== */
+@media (max-width:820px){
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pfields{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:720px){
+  .gantt,.gnote{display:none}
+  .tl{display:block}
+  .weeks{display:none}
+}
+@media (max-width:640px){
+  body{font-size:15.5px}
+  .brand span{display:none}
+  .iconbtn .lbl{display:none}
+  .iconbtn{padding:0 10px;min-width:40px;justify-content:center}
+  .hero{padding:30px 0 32px}
+  .hero__lede{font-size:1.04rem}
+  .kpi{padding:11px 13px 12px}
+  .kpi b{font-size:1.12rem}
+  .kpi--main,.kpi:nth-child(4){grid-column:1 / -1}
+  .kpi--main b{font-size:1.6rem}
+  .hero__actions .btn{flex:1 1 auto}
+  .sec{padding:40px 0 4px}
+  .cards{grid-template-columns:minmax(0,1fr)}
+  .acc__body{padding:2px 0 20px 4px}
+  .acc > summary{align-items:flex-start}
+  .acc > summary::before{margin-top:8px}
+  .acc__meta{font-size:.78rem;padding-top:2px}
+  /* tabela → cartões */
+  .tbl{overflow:visible}
+  .tbl table{min-width:0}
+  .tbl thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .tbl table,.tbl tbody,.tbl tr,.tbl td{display:block;width:100%}
+  .tbl tr{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:10px 14px;margin:0 0 10px}
+  .tbl td{display:grid;grid-template-columns:minmax(84px,34%) minmax(0,1fr);gap:10px;border:0;padding:5px 0}
+  .tbl td::before{content:attr(data-label);color:var(--ink-2);font-size:.8rem;line-height:1.5}
+  .tbl td:first-child{display:block;font-weight:600;padding:2px 0 7px;margin-bottom:4px;border-bottom:1px solid var(--rule)}
+  .tbl td:first-child::before{display:none}
+  .tbl td.code{white-space:normal;word-break:break-word}
+  .diagram--er > svg{min-width:0}
+  /* investimento → cartões */
+  .inv__scroll .inv{min-width:0}
+  .inv thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .inv,.inv tbody,.inv tfoot{display:block;width:100%}
+  .inv tbody tr{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px 12px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 14px;margin:0 0 10px}
+  .inv tbody td{border:0;padding:0;width:auto!important}
+  .inv tbody td:first-child{grid-column:1 / -1}
+  .inv tbody td.val{font-size:1.05rem}
+  .inv tfoot tr{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--brand);color:var(--brand-ink);border-radius:12px;padding:14px 16px}
+  .inv tfoot td{border:0;padding:0;font-size:1.05rem}
+  .inv tfoot td:last-child{font-size:1.35rem}
+  .actions .btn{flex:1 1 100%}
+  .zoombtn{position:static;margin:0 0 8px auto;display:flex}
+}
+@media (min-width:821px){ .cta{left:auto;right:20px;bottom:20px;border:1px solid var(--rule);border-radius:16px;padding:10px 12px 10px 18px} .cta__in{gap:18px} }
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+@media print{
+  .top,.toolbar,.cta,.toast,.zoombtn,.hero__actions,.actions{display:none!important}
+  body{background:#fff;color:#000;padding:0}
+  .acc__body{animation:none}
+  .tbl{overflow:visible}
+  .gantt,.gnote,.weeks{display:none!important}
+  .tl{display:block!important}
+  .sec{break-inside:auto}
+  .card,.kpi,.tbl tr,.steps li{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#conteudo">Pular para o conteúdo</a>
+<header class="top">
+  <div class="top__in">
+    <a class="brand" href="#topo"><b>Vitamed</b><span>Proposta de desenvolvimento</span></a>
+    <button class="iconbtn" id="share-btn" type="button" aria-label="Compartilhar proposta"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg><span class="lbl">Compartilhar</span></button>
+    <button class="iconbtn" id="theme-btn" type="button" aria-label="Mudar tema"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg><span class="lbl" id="theme-lbl">Escuro</span></button>
+  </div>
+  <nav class="secnav" aria-label="Seções da proposta"><div class="secnav__in" id="secnav">
+    <!-- um link por seção, na mesma ordem das <section> -->
+    <a href="#contexto">Como é hoje</a><a href="#solucao">Solução</a><a href="#anexo">Anexo técnico</a><a href="#limites">Limites</a><a href="#prazo">Prazo</a><a href="#investimento">Investimento</a><a href="#aceite">Próximos passos</a>
+  </div></nav>
+  <div class="top__progress"><i id="progress"></i></div>
+</header>
+
+<main id="topo">
+<div class="wrap">
+  <section class="hero" id="inicio" aria-label="Apresentação">
+    <p class="eyebrow">Proposta comercial</p>
+    <h1>Monitor de atendimento do WhatsApp</h1>
+    <p class="hero__lede">Proposta para a Vitamed registrar e medir todo o atendimento do WhatsApp sem mudar a rotina: a equipe segue respondendo pelo app, e a plataforma anota quem atendeu, quanto tempo levou e como terminou.</p>
+    <div class="kpis">
+      <div class="kpi kpi--main"><span>Investimento</span><b data-bind="total">R$ 6.000,00</b><small>escopo completo</small></div>
+      <div class="kpi"><span>Prazo</span><b data-bind="prazo">35 dias úteis</b><small data-bind="prazo-sub">7 semanas, com piloto</small></div>
+      <div class="kpi"><span>Entrega prevista</span><b data-bind="entrega">—</b><small data-bind="inicio">—</small></div>
+      <div class="kpi"><span>Escopo</span><b>12 funcionalidades</b><small>13 tabelas · sem custo por mensagem</small></div>
+    </div>
+    <div class="hero__actions">
+      <a class="btn btn--primary" href="#investimento">Ver investimento</a>
+      <a class="btn" href="#prazo">Ver cronograma</a>
+    </div>
+    <p class="issued">Emitida em 28/10/2026 para a Farmácia Vitamed.</p>
+  </section>
+
+  <div class="content" id="conteudo">
+      <section class="sec" id="contexto">
+        <h2>Como é hoje</h2>
+        <p class="sec__lead">O WhatsApp Business já é o canal que o cliente usa e que a equipe domina, e isso não vai mudar. Os limites abaixo vêm de o app não registrar nem medir o atendimento. Abra cada item para ver o impacto no dia a dia.</p>
+        <div class="toolbar"><button class="iconbtn" type="button" data-toggle-all="#ctx-list" data-open="true">Expandir todos</button><button class="iconbtn" type="button" data-toggle-all="#ctx-list" data-open="false">Recolher todos</button></div>
+        <div id="ctx-list"><details class="acc"><summary><span>Ninguém sabe quem atendeu cada cliente</span></summary><div class="acc__body"><p>Várias pessoas respondem pelo mesmo número. Depois, não dá para saber quem conduziu a conversa, quem resolveu e quem deixou sem resposta.</p><div class="tech-note"><b>Detalhe técnico.</b> O app WhatsApp Business não registra o autor de cada mensagem quando o número é usado por mais de uma pessoa.</div></div></details><details class="acc"><summary><span>Cliente esperando sem ninguém perceber</span></summary><div class="acc__body"><p>Uma mensagem que chega no meio do movimento pode ficar sem resposta por horas. Ninguém é avisado.</p><div class="tech-note"><b>Detalhe técnico.</b> O app não tem fila, tempo de espera nem alerta: a única pista é o contador de não lidas, que some quando alguém abre a conversa.</div></div></details><details class="acc"><summary><span>Nenhum número sobre o atendimento</span></summary><div class="acc__body"><p>Não há como saber quanto tempo se leva para responder, quais horários têm mais procura ou qual setor está sobrecarregado.</p><div class="tech-note"><b>Detalhe técnico.</b> As estatísticas do app são de mensagens enviadas e lidas. Não existe medição por conversa, atendente, setor ou horário.</div></div></details><details class="acc"><summary><span>Histórico preso no celular</span></summary><div class="acc__body"><p>Se o aparelho troca, quebra ou uma conversa é apagada, o registro do atendimento vai junto.</p><div class="tech-note"><b>Detalhe técnico.</b> O backup do app é por aparelho (Google Drive ou iCloud), sem consulta centralizada nem busca por período.</div></div></details><details class="acc"><summary><span>Receitas e comprovantes se perdem</span></summary><div class="acc__body"><p>Fotos de receita, comprovantes de pagamento e notas fiscais ficam espalhados na galeria do celular.</p><div class="tech-note"><b>Detalhe técnico.</b> As mídias ficam só no aparelho. Pela API, os links da Meta expiram, então precisam ser baixados e guardados no momento em que chegam.</div></div></details><details class="acc"><summary><span>Setores misturados no mesmo número</span></summary><div class="acc__body"><p>Financeiro, Farmácia e Fornecedores dividem a mesma caixa de entrada, sem separação do que é de quem.</p><div class="tech-note"><b>Detalhe técnico.</b> A separação depende de etiquetas aplicadas à mão, que ninguém consegue manter com o volume do dia a dia.</div></div></details><details class="acc"><summary><span>Sem padrão de abertura e encerramento</span></summary><div class="acc__body"><p>Cada pessoa abre e fecha a conversa do seu jeito. O cliente não sabe com quem falou e a conversa nunca termina formalmente.</p><div class="tech-note"><b>Detalhe técnico.</b> Sem um marco claro de início e fim, não é possível calcular duração, abandono ou resultado de cada atendimento.</div></div></details></div>
+      </section>
+
+      <section class="sec" id="solucao">
+        <h2>A solução proposta</h2>
+        <p class="sec__lead">Uma plataforma que observa o WhatsApp da Vitamed pela API oficial da Meta. Ela lê, registra e organiza; a única mensagem que envia é a avaliação ao final do atendimento. Cada funcionalidade resolve um ponto de "Como é hoje".</p>
+        <div class="cards"><article class="card"><div class="card__head"><span class="card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></svg></span><h3>A equipe continua no app</h3></div><p>Ninguém muda a rotina: todo mundo segue respondendo pelo celular, no mesmo número, sem custo por mensagem.</p></article><article class="card"><div class="card__head"><span class="card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg></span><h3>Registro completo e permanente</h3></div><p>Toda mensagem recebida e enviada fica gravada fora do celular, com data e hora, mesmo se o aparelho for trocado.</p></article><article class="card"><div class="card__head"><span class="card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg></span><h3>Receitas e comprovantes guardados</h3></div><p>Fotos, áudios e documentos são baixados na hora em que chegam e ficam ligados à conversa de origem.</p></article><article class="card"><div class="card__head"><span class="card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m16 11 2 2 4-4"/></svg></span><h3>Quem atendeu cada conversa</h3></div><p>A mensagem padrão de abertura ("Bom dia, sou o Vinícius do Financeiro…") identifica o atendente. Transferências também ficam registradas.</p></article><article class="card"><div class="card__head"><span class="card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg></span><h3>Status automático</h3></div><p>Cada conversa aparece como aguardando atendente, em atendimento, aguardando cliente, finalizada ou abandonada.</p></article><article class="card"><div class="card__head"><span class="card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg></span><h3>Ficha-resumo de cada conversa</h3></div><p>Assunto, atendente, duração, número de mensagens e mídias, resultado e nota, montados por regra, sem inteligência artificial.</p></article><article class="card"><div class="card__head"><span class="card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg></span><h3>Indicadores de atendimento</h3></div><p>Tempo até assumir, tempo de primeira resposta, duração, volume por hora, por setor e por atendente.</p></article><article class="card"><div class="card__head"><span class="card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span><h3>Alerta de cliente esperando</h3></div><p>O painel e o e-mail avisam quando um cliente passa do tempo de espera definido sem resposta.</p></article><article class="card"><div class="card__head"><span class="card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span><h3>Consulta de conversas</h3></div><p>Busque por cliente, período, setor ou atendente e veja a linha do tempo completa, com acesso às mídias.</p></article><article class="card"><div class="card__head"><span class="card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg></span><h3>Conversa com cara de WhatsApp</h3></div><p>Abra qualquer atendimento e veja os balões, as fotos, os documentos e os áudios como no celular.</p></article><article class="card"><div class="card__head"><span class="card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M11.5 2.3a.5.5 0 0 1 .9 0l2.3 4.7a2 2 0 0 0 1.5 1.1l5.2.8a.5.5 0 0 1 .3.9l-3.8 3.7a2 2 0 0 0-.6 1.8l.9 5.2a.5.5 0 0 1-.8.6l-4.6-2.5a2 2 0 0 0-1.9 0l-4.6 2.5a.5.5 0 0 1-.8-.6l.9-5.2a2 2 0 0 0-.6-1.8L2.4 9.7a.5.5 0 0 1 .3-.9l5.2-.8A2 2 0 0 0 9.4 7z"/></svg></span><h3>Avaliação do cliente</h3></div><p>Ao finalizar, o cliente recebe uma pergunta de 1 a 5. A nota vai para a ficha e para a média do painel.</p></article><article class="card"><div class="card__head"><span class="card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span><h3>Acesso por papel e setor</h3></div><p>Administrador, gestor e atendente veem só o que o papel permite, com vínculo de cada usuário ao seu setor.</p></article></div>
+      </section>
+
+      <section class="sec" id="anexo">
+        <h2>Anexo técnico</h2>
+        <p class="sec__lead">O que será construído: 13 tabelas, 5 origens de dados, 7 regras no motor, 6 status de conversa e 7 indicadores, tudo sem inteligência artificial e sem custo por mensagem lida.</p>
+        <div class="toolbar"><button class="iconbtn" type="button" data-toggle-all="#anexo-list" data-open="true">Expandir tudo</button><button class="iconbtn" type="button" data-toggle-all="#anexo-list" data-open="false">Recolher tudo</button></div>
+        <div id="anexo-list"><details class="acc" id="a-arquitetura"><summary><span>Arquitetura e fluxo dos dados</span></summary><div class="acc__body"><p>O número continua no app WhatsApp Business. Pelo modo Coexistência da API oficial, a Meta espelha para a plataforma tudo o que entra e sai, inclusive o que a equipe digita no celular.</p><div class="diagram"><svg role="img" aria-label="Fluxo dos dados: do WhatsApp ao painel" style="width:100%;height:auto;max-width:480px"
+ viewBox="0.00 0.00 357.80 633.80" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(14.4 619.4)">
+<g id="clust1" class="cluster">
+<path fill="transparent" stroke="var(--brand)" stroke-dasharray="5,2" d="M20,-8C20,-8 309,-8 309,-8 315,-8 321,-14 321,-20 321,-20 321,-363 321,-363 321,-369 315,-375 309,-375 309,-375 20,-375 20,-375 14,-375 8,-369 8,-363 8,-363 8,-20 8,-20 8,-14 14,-8 20,-8"/>
+<text text-anchor="middle" x="164.5" y="-362.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--brand)">Plataforma Vitamed</text>
+</g>
+<g id="node1" class="node">
+<path fill="var(--surface)" stroke="var(--rule-2)" d="M184.5,-605C184.5,-605 143.5,-605 143.5,-605 137.5,-605 131.5,-599 131.5,-593 131.5,-593 131.5,-581 131.5,-581 131.5,-575 137.5,-569 143.5,-569 143.5,-569 184.5,-569 184.5,-569 190.5,-569 196.5,-575 196.5,-581 196.5,-581 196.5,-593 196.5,-593 196.5,-599 190.5,-605 184.5,-605"/>
+<text text-anchor="middle" x="164" y="-584.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">Cliente</text>
+</g>
+<g id="node2" class="node">
+<path fill="var(--brand-soft)" stroke="var(--brand)" d="M249.5,-527C249.5,-527 78.5,-527 78.5,-527 72.5,-527 66.5,-521 66.5,-515 66.5,-515 66.5,-501 66.5,-501 66.5,-495 72.5,-489 78.5,-489 78.5,-489 249.5,-489 249.5,-489 255.5,-489 261.5,-495 261.5,-501 261.5,-501 261.5,-515 261.5,-515 261.5,-521 255.5,-527 249.5,-527"/>
+<text text-anchor="middle" x="164" y="-511.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">App WhatsApp Business</text>
+<text text-anchor="middle" x="164" y="-499.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">(equipe responde pelo celular)</text>
+</g>
+<g id="edge1" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M164,-561.85C164,-553.07 164,-543.14 164,-534.27"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="161.55,-561.91 164,-568.91 166.45,-561.91 161.55,-561.91"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="166.45,-534.11 164,-527.11 161.55,-534.11 166.45,-534.11"/>
+<text text-anchor="middle" x="190" y="-545.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">mensagens</text>
+</g>
+<g id="node3" class="node">
+<path fill="var(--surface)" stroke="var(--rule-2)" d="M218,-447C218,-447 110,-447 110,-447 104,-447 98,-441 98,-435 98,-435 98,-421 98,-421 98,-415 104,-409 110,-409 110,-409 218,-409 218,-409 224,-409 230,-415 230,-421 230,-421 230,-435 230,-435 230,-441 224,-447 218,-447"/>
+<text text-anchor="middle" x="164" y="-431.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">API oficial da Meta</text>
+<text text-anchor="middle" x="164" y="-419.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">modo Coexistência</text>
+</g>
+<g id="edge2" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M164,-488.91C164,-478.65 164,-465.64 164,-454.37"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="166.45,-454.26 164,-447.26 161.55,-454.26 166.45,-454.26"/>
+<text text-anchor="middle" x="181.5" y="-465.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">espelha</text>
+</g>
+<g id="node4" class="node">
+<path fill="var(--surface)" stroke="var(--rule-2)" d="M239.5,-347C239.5,-347 88.5,-347 88.5,-347 82.5,-347 76.5,-341 76.5,-335 76.5,-335 76.5,-321 76.5,-321 76.5,-315 82.5,-309 88.5,-309 88.5,-309 239.5,-309 239.5,-309 245.5,-309 251.5,-315 251.5,-321 251.5,-321 251.5,-335 251.5,-335 251.5,-341 245.5,-347 239.5,-347"/>
+<text text-anchor="middle" x="164" y="-331.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">Recepção de webhooks</text>
+<text text-anchor="middle" x="164" y="-319.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">assinatura + idempotência</text>
+</g>
+<g id="edge3" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M164,-408.57C164,-393.28 164,-371.38 164,-354.42"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="166.45,-354.02 164,-347.02 161.55,-354.02 166.45,-354.02"/>
+<text text-anchor="middle" x="203" y="-385.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">recebidas + ecos</text>
+</g>
+<g id="node5" class="node">
+<path fill="var(--surface)" stroke="var(--rule-2)" d="M127.5,-276C127.5,-276 28.5,-276 28.5,-276 22.5,-276 16.5,-270 16.5,-264 16.5,-264 16.5,-250 16.5,-250 16.5,-244 22.5,-238 28.5,-238 28.5,-238 127.5,-238 127.5,-238 133.5,-238 139.5,-244 139.5,-250 139.5,-250 139.5,-264 139.5,-264 139.5,-270 133.5,-276 127.5,-276"/>
+<text text-anchor="middle" x="78" y="-260.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">Eventos brutos</text>
+<text text-anchor="middle" x="78" y="-248.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">(payload original)</text>
+</g>
+<g id="edge4" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M141.4,-308.87C130.54,-300.16 117.42,-289.62 105.93,-280.41"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="107.44,-278.48 100.44,-276.01 104.37,-282.3 107.44,-278.48"/>
+</g>
+<g id="node6" class="node">
+<path fill="var(--surface)" stroke="var(--rule-2)" d="M301,-276C301,-276 177,-276 177,-276 171,-276 165,-270 165,-264 165,-264 165,-250 165,-250 165,-244 171,-238 177,-238 177,-238 301,-238 301,-238 307,-238 313,-244 313,-250 313,-250 313,-264 313,-264 313,-270 307,-276 301,-276"/>
+<text text-anchor="middle" x="239" y="-260.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">Mídias</text>
+<text text-anchor="middle" x="239" y="-248.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">baixadas e guardadas</text>
+</g>
+<g id="edge5" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M183.71,-308.87C193.01,-300.31 204.21,-290.01 214.09,-280.92"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="215.93,-282.55 219.43,-276.01 212.62,-278.94 215.93,-282.55"/>
+</g>
+<g id="node7" class="node">
+<path fill="var(--brand-soft)" stroke="var(--brand)" d="M163.5,-196C163.5,-196 28.5,-196 28.5,-196 22.5,-196 16.5,-190 16.5,-184 16.5,-184 16.5,-170 16.5,-170 16.5,-164 22.5,-158 28.5,-158 28.5,-158 163.5,-158 163.5,-158 169.5,-158 175.5,-164 175.5,-170 175.5,-170 175.5,-184 175.5,-184 175.5,-190 169.5,-196 163.5,-196"/>
+<text text-anchor="middle" x="96" y="-180.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">Motor de regras</text>
+<text text-anchor="middle" x="96" y="-168.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">(determinístico, sem IA)</text>
+</g>
+<g id="edge6" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M82.17,-237.91C84.54,-227.65 87.54,-214.64 90.15,-203.37"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="92.6,-203.63 91.79,-196.26 87.82,-202.53 92.6,-203.63"/>
+<text text-anchor="middle" x="120" y="-214.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">reprocessável</text>
+</g>
+<g id="node8" class="node">
+<path fill="var(--surface)" stroke="var(--rule-2)" d="M166,-125C166,-125 28,-125 28,-125 22,-125 16,-119 16,-113 16,-113 16,-99 16,-99 16,-93 22,-87 28,-87 28,-87 166,-87 166,-87 172,-87 178,-93 178,-99 178,-99 178,-113 178,-113 178,-119 172,-125 166,-125"/>
+<text text-anchor="middle" x="97" y="-109.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">Conversas, status,</text>
+<text text-anchor="middle" x="97" y="-97.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">atendente, ficha&#45;resumo</text>
+</g>
+<g id="edge7" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M96.26,-157.87C96.38,-150.09 96.51,-140.86 96.63,-132.41"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="99.08,-132.28 96.74,-125.25 94.18,-132.21 99.08,-132.28"/>
+</g>
+<g id="node9" class="node">
+<path fill="var(--surface)" stroke="var(--rule-2)" d="M144.5,-54C144.5,-54 49.5,-54 49.5,-54 43.5,-54 37.5,-48 37.5,-42 37.5,-42 37.5,-28 37.5,-28 37.5,-22 43.5,-16 49.5,-16 49.5,-16 144.5,-16 144.5,-16 150.5,-16 156.5,-22 156.5,-28 156.5,-28 156.5,-42 156.5,-42 156.5,-48 150.5,-54 144.5,-54"/>
+<text text-anchor="middle" x="97" y="-38.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">Painel, consultas</text>
+<text text-anchor="middle" x="97" y="-26.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">e alertas</text>
+</g>
+<g id="edge8" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M97,-86.87C97,-79.09 97,-69.86 97,-61.41"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="99.45,-61.25 97,-54.25 94.55,-61.25 99.45,-61.25"/>
+</g>
+</g>
+</svg>
+</div><div class="tbl"><table><thead><tr><th>Camada</th><th>Tecnologia ou padrão</th></tr></thead><tbody><tr><td>Canal</td><td>App WhatsApp Business 2.24.17 ou superior, no celular ou no WhatsApp Web</td></tr><tr><td>Integração</td><td>API oficial do WhatsApp (Cloud API, Meta) em modo Coexistência, conectada pelo Embedded Signup</td></tr><tr><td>Recepção</td><td>Endpoint HTTPS de webhooks com validação de assinatura (X-Hub-Signature-256) e idempotência pelo id da Meta</td></tr><tr><td>Processamento</td><td>Motor de regras determinístico, sem IA, que pode reprocessar tudo a partir dos eventos brutos</td></tr><tr><td>Banco de dados</td><td>Relacional, com o payload original de cada webhook preservado</td></tr><tr><td>Mídias</td><td>Armazenamento próprio, com hash, tamanho e caminho registrados</td></tr><tr><td>Hospedagem</td><td>Servidor VPS com HTTPS e backup diário</td></tr><tr><td>Painel</td><td>Web responsivo, com login e controle de acesso por papel e setor</td></tr></tbody></table></div><p>Princípio: todo resultado (status, atendente, ficha, indicador) é derivado dos dados gravados. Se uma regra mudar, o motor recalcula o histórico a partir dos eventos brutos, sem perder nada.</p></div></details><details class="acc" id="a-entrada"><summary><span>Como os dados entram</span><span class="acc__meta">5 origens</span></summary><div class="acc__body"><div class="tbl"><table><thead><tr><th>Origem</th><th>Como chega</th><th>Custo</th></tr></thead><tbody><tr><td>Mensagens do cliente</td><td>Webhook de mensagens recebidas</td><td>Gratuito</td></tr><tr><td>Mensagens da equipe pelo app</td><td>Eventos de eco (smb_message_echoes)</td><td>Gratuito</td></tr><tr><td>Entrega e leitura</td><td>Webhook de status</td><td>Gratuito</td></tr><tr><td>Fotos, áudios e documentos</td><td>Download pelo id da Meta logo no recebimento (os links expiram)</td><td>Gratuito</td></tr><tr><td>Histórico e contatos</td><td>Importação única no onboarding (janela de 24 h)</td><td>Gratuito</td></tr></tbody></table></div><div class="tech-note"><b>Dois horários por evento.</b> Cada registro guarda o horário informado pela Meta e o horário de chegada ao sistema. Assim os tempos são calculados pelo momento real da mensagem, mesmo que o webhook atrase.</div></div></details><details class="acc" id="a-modelo"><summary><span>Modelo de dados</span><span class="acc__meta">13 tabelas</span></summary><div class="acc__body"><p>Treze tabelas em quatro grupos: acesso (cinza), cadastros (azul), atendimento (verde) e eventos brutos (roxo). O diagrama mostra chaves primárias (PK), estrangeiras (FK) e únicas (UK).</p><div class="diagram diagram--er"><svg role="img" aria-label="Diagrama entidade-relacionamento" style="width:100%;height:auto"
+ viewBox="0.00 0.00 909.80 1188.80" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(14.4 1174.4)">
+<g id="node1" class="node">
+<polygon fill="#475569" stroke="transparent" points="409,-1134 409,-1156 476,-1156 476,-1134 409,-1134"/>
+<polygon fill="none" stroke="var(--rule-2)" points="409,-1134 409,-1156 476,-1156 476,-1134 409,-1134"/>
+<text text-anchor="start" x="414" y="-1143.2" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="white">papeis</text>
+<polygon fill="none" stroke="var(--rule-2)" points="409,-1112 409,-1134 435,-1134 435,-1112 409,-1112"/>
+<text text-anchor="start" x="414" y="-1120.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">PK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="435,-1112 435,-1134 476,-1134 476,-1112 435,-1112"/>
+<text text-anchor="start" x="440" y="-1120.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="409,-1090 409,-1112 435,-1112 435,-1090 409,-1090"/>
+<text text-anchor="start" x="414" y="-1098.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="435,-1090 435,-1112 476,-1112 476,-1090 435,-1090"/>
+<text text-anchor="start" x="440" y="-1098.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">nome</text>
+</g>
+<g id="node3" class="node">
+<polygon fill="#475569" stroke="transparent" points="93,-945 93,-967 213,-967 213,-945 93,-945"/>
+<polygon fill="none" stroke="var(--rule-2)" points="93,-945 93,-967 213,-967 213,-945 93,-945"/>
+<text text-anchor="start" x="98" y="-954.2" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="white">papel_permissoes</text>
+<polygon fill="none" stroke="var(--rule-2)" points="93,-923 93,-945 124,-945 124,-923 93,-923"/>
+<text text-anchor="start" x="98" y="-931.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">FK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="124,-923 124,-945 213,-945 213,-923 124,-923"/>
+<text text-anchor="start" x="129" y="-931.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">papel_id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="93,-901 93,-923 124,-923 124,-901 93,-901"/>
+<text text-anchor="start" x="98" y="-909.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">FK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="124,-901 124,-923 213,-923 213,-901 124,-901"/>
+<text text-anchor="start" x="129" y="-909.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">permissao_id</text>
+</g>
+<g id="edge2" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M400.27,-1107.53C357.41,-1091.5 289.96,-1062.98 239,-1026 219.87,-1012.12 201.48,-993.62 186.65,-976.93"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="188.22,-974.99 181.76,-971.34 184.53,-978.22 188.22,-974.99"/>
+<text text-anchor="middle" x="300" y="-1053.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">1:N</text>
+</g>
+<g id="node4" class="node">
+<polygon fill="#475569" stroke="transparent" points="463,-1000 463,-1022 611,-1022 611,-1000 463,-1000"/>
+<polygon fill="none" stroke="var(--rule-2)" points="463,-1000 463,-1022 611,-1022 611,-1000 463,-1000"/>
+<text text-anchor="start" x="468" y="-1009.2" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="white">usuarios</text>
+<polygon fill="none" stroke="var(--rule-2)" points="463,-978 463,-1000 489,-1000 489,-978 463,-978"/>
+<text text-anchor="start" x="468" y="-986.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">PK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="489,-978 489,-1000 611,-1000 611,-978 489,-978"/>
+<text text-anchor="start" x="494" y="-986.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="463,-956 463,-978 489,-978 489,-956 463,-956"/>
+<text text-anchor="start" x="468" y="-964.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="489,-956 489,-978 611,-978 611,-956 489,-956"/>
+<text text-anchor="start" x="494" y="-964.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">nome</text>
+<polygon fill="none" stroke="var(--rule-2)" points="463,-934 463,-956 489,-956 489,-934 463,-934"/>
+<text text-anchor="start" x="468" y="-942.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="489,-934 489,-956 611,-956 611,-934 489,-934"/>
+<text text-anchor="start" x="494" y="-942.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">email</text>
+<polygon fill="none" stroke="var(--rule-2)" points="463,-912 463,-934 489,-934 489,-912 463,-912"/>
+<text text-anchor="start" x="468" y="-920.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="489,-912 489,-934 611,-934 611,-912 489,-912"/>
+<text text-anchor="start" x="494" y="-920.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">senha_hash</text>
+<polygon fill="none" stroke="var(--rule-2)" points="463,-890 463,-912 489,-912 489,-890 463,-890"/>
+<text text-anchor="start" x="468" y="-898.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="489,-890 489,-912 611,-912 611,-890 489,-890"/>
+<text text-anchor="start" x="494" y="-898.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">nome_apresentacao</text>
+<polygon fill="none" stroke="var(--rule-2)" points="463,-868 463,-890 489,-890 489,-868 463,-868"/>
+<text text-anchor="start" x="468" y="-876.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">FK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="489,-868 489,-890 611,-890 611,-868 489,-868"/>
+<text text-anchor="start" x="494" y="-876.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">papel_id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="463,-846 463,-868 489,-868 489,-846 463,-846"/>
+<text text-anchor="start" x="468" y="-854.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="489,-846 489,-868 611,-868 611,-846 489,-846"/>
+<text text-anchor="start" x="494" y="-854.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">ativo</text>
+</g>
+<g id="edge1" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M460.32,-1085.94C468.16,-1070.5 477.75,-1051.63 487.44,-1032.55"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="489.75,-1033.42 490.73,-1026.07 485.38,-1031.2 489.75,-1033.42"/>
+<text text-anchor="middle" x="484" y="-1053.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">1:N</text>
+</g>
+<g id="node2" class="node">
+<polygon fill="#475569" stroke="transparent" points="113,-1134 113,-1156 194,-1156 194,-1134 113,-1134"/>
+<polygon fill="none" stroke="var(--rule-2)" points="113,-1134 113,-1156 194,-1156 194,-1134 113,-1134"/>
+<text text-anchor="start" x="118" y="-1143.2" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="white">permissoes</text>
+<polygon fill="none" stroke="var(--rule-2)" points="113,-1112 113,-1134 144,-1134 144,-1112 113,-1112"/>
+<text text-anchor="start" x="118" y="-1120.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">PK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="144,-1112 144,-1134 194,-1134 194,-1112 144,-1112"/>
+<text text-anchor="start" x="149" y="-1120.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="113,-1090 113,-1112 144,-1112 144,-1090 113,-1090"/>
+<text text-anchor="start" x="118" y="-1098.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="144,-1090 144,-1112 194,-1112 194,-1090 144,-1090"/>
+<text text-anchor="start" x="149" y="-1098.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">chave</text>
+</g>
+<g id="edge3" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M153,-1085.94C153,-1055.26 153,-1011.09 153,-978.46"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="155.45,-978.26 153,-971.26 150.55,-978.26 155.45,-978.26"/>
+<text text-anchor="middle" x="161" y="-1053.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">1:N</text>
+</g>
+<g id="node6" class="node">
+<polygon fill="#475569" stroke="transparent" points="188,-668 188,-690 296,-690 296,-668 188,-668"/>
+<polygon fill="none" stroke="var(--rule-2)" points="188,-668 188,-690 296,-690 296,-668 188,-668"/>
+<text text-anchor="start" x="193" y="-677.2" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="white">usuario_setores</text>
+<polygon fill="none" stroke="var(--rule-2)" points="188,-646 188,-668 222,-668 222,-646 188,-646"/>
+<text text-anchor="start" x="193" y="-654.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">FK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="222,-646 222,-668 296,-668 296,-646 222,-646"/>
+<text text-anchor="start" x="227" y="-654.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">usuario_id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="188,-624 188,-646 222,-646 222,-624 188,-624"/>
+<text text-anchor="start" x="193" y="-632.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">FK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="222,-624 222,-646 296,-646 296,-624 222,-624"/>
+<text text-anchor="start" x="227" y="-632.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">setor_id</text>
+</g>
+<g id="edge4" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M454.85,-874.29C424.79,-852.95 390.45,-828.75 359,-807 342.68,-795.71 335.88,-796.18 322,-782 298.46,-757.95 278.01,-725.93 263.68,-700.45"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="265.71,-699.06 260.17,-694.13 261.42,-701.44 265.71,-699.06"/>
+<text text-anchor="middle" x="377" y="-809.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">1:N</text>
+</g>
+<g id="node9" class="node">
+<polygon fill="#0f766e" stroke="transparent" points="523,-756 523,-778 680,-778 680,-756 523,-756"/>
+<polygon fill="none" stroke="var(--rule-2)" points="523,-756 523,-778 680,-778 680,-756 523,-756"/>
+<text text-anchor="start" x="528" y="-765.2" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="white">conversas</text>
+<polygon fill="none" stroke="var(--rule-2)" points="523,-734 523,-756 549,-756 549,-734 523,-734"/>
+<text text-anchor="start" x="528" y="-742.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">PK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="549,-734 549,-756 680,-756 680,-734 549,-734"/>
+<text text-anchor="start" x="554" y="-742.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="523,-712 523,-734 549,-734 549,-712 523,-712"/>
+<text text-anchor="start" x="528" y="-720.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">FK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="549,-712 549,-734 680,-734 680,-712 549,-712"/>
+<text text-anchor="start" x="554" y="-720.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">contato_id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="523,-690 523,-712 549,-712 549,-690 523,-690"/>
+<text text-anchor="start" x="528" y="-698.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">FK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="549,-690 549,-712 680,-712 680,-690 549,-690"/>
+<text text-anchor="start" x="554" y="-698.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">setor_id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="523,-668 523,-690 549,-690 549,-668 523,-668"/>
+<text text-anchor="start" x="528" y="-676.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">FK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="549,-668 549,-690 680,-690 680,-668 549,-668"/>
+<text text-anchor="start" x="554" y="-676.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">atendente_id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="523,-646 523,-668 549,-668 549,-646 523,-646"/>
+<text text-anchor="start" x="528" y="-654.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="549,-646 549,-668 680,-668 680,-646 549,-646"/>
+<text text-anchor="start" x="554" y="-654.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">status</text>
+<polygon fill="none" stroke="var(--rule-2)" points="523,-624 523,-646 549,-646 549,-624 523,-624"/>
+<text text-anchor="start" x="528" y="-632.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="549,-624 549,-646 680,-646 680,-624 549,-624"/>
+<text text-anchor="start" x="554" y="-632.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">aberta_em</text>
+<polygon fill="none" stroke="var(--rule-2)" points="523,-602 523,-624 549,-624 549,-602 523,-602"/>
+<text text-anchor="start" x="528" y="-610.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="549,-602 549,-624 680,-624 680,-602 549,-602"/>
+<text text-anchor="start" x="554" y="-610.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">ultima_atividade</text>
+<polygon fill="none" stroke="var(--rule-2)" points="523,-580 523,-602 549,-602 549,-580 523,-580"/>
+<text text-anchor="start" x="528" y="-588.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="549,-580 549,-602 680,-602 680,-580 549,-580"/>
+<text text-anchor="start" x="554" y="-588.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">encerrada_em</text>
+<polygon fill="none" stroke="var(--rule-2)" points="523,-558 523,-580 549,-580 549,-558 523,-558"/>
+<text text-anchor="start" x="528" y="-566.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="549,-558 549,-580 680,-580 680,-558 549,-558"/>
+<text text-anchor="start" x="554" y="-566.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">motivo_encerramento</text>
+<polygon fill="none" stroke="var(--rule-2)" points="523,-536 523,-558 549,-558 549,-536 523,-536"/>
+<text text-anchor="start" x="528" y="-544.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="549,-536 549,-558 680,-558 680,-536 549,-536"/>
+<text text-anchor="start" x="554" y="-544.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">nota</text>
+</g>
+<g id="edge9" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M558.22,-841.81C562.14,-824.97 566.3,-807.08 570.44,-789.33"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="572.88,-789.65 572.08,-782.27 568.11,-788.54 572.88,-789.65"/>
+<text text-anchor="middle" x="591.5" y="-809.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">1:N atende</text>
+</g>
+<g id="node12" class="node">
+<polygon fill="#0f766e" stroke="transparent" points="642,-413 642,-435 764,-435 764,-413 642,-413"/>
+<polygon fill="none" stroke="var(--rule-2)" points="642,-413 642,-435 764,-435 764,-413 642,-413"/>
+<text text-anchor="start" x="647" y="-422.2" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="white">eventos_conversa</text>
+<polygon fill="none" stroke="var(--rule-2)" points="642,-391 642,-413 677,-413 677,-391 642,-391"/>
+<text text-anchor="start" x="647" y="-399.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">PK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="677,-391 677,-413 764,-413 764,-391 677,-391"/>
+<text text-anchor="start" x="682" y="-399.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="642,-369 642,-391 677,-391 677,-369 642,-369"/>
+<text text-anchor="start" x="647" y="-377.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">FK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="677,-369 677,-391 764,-391 764,-369 677,-369"/>
+<text text-anchor="start" x="682" y="-377.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">conversa_id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="642,-347 642,-369 677,-369 677,-347 642,-347"/>
+<text text-anchor="start" x="647" y="-355.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">FK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="677,-347 677,-369 764,-369 764,-347 677,-347"/>
+<text text-anchor="start" x="682" y="-355.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">usuario_id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="642,-325 642,-347 677,-347 677,-325 642,-325"/>
+<text text-anchor="start" x="647" y="-333.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="677,-325 677,-347 764,-347 764,-325 677,-325"/>
+<text text-anchor="start" x="682" y="-333.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">tipo</text>
+<polygon fill="none" stroke="var(--rule-2)" points="642,-303 642,-325 677,-325 677,-303 642,-303"/>
+<text text-anchor="start" x="647" y="-311.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="677,-303 677,-325 764,-325 764,-303 677,-303"/>
+<text text-anchor="start" x="682" y="-311.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">dados</text>
+<polygon fill="none" stroke="var(--rule-2)" points="642,-281 642,-303 677,-303 677,-281 642,-281"/>
+<text text-anchor="start" x="647" y="-289.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="677,-281 677,-303 764,-303 764,-281 677,-281"/>
+<text text-anchor="start" x="682" y="-289.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">ocorrido_em</text>
+</g>
+<g id="edge13" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M619.25,-881.84C652.42,-856.34 687.04,-822.3 705,-782 753.03,-674.24 739.99,-535.15 723.62,-446.49"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="725.98,-445.82 722.28,-439.39 721.17,-446.73 725.98,-445.82"/>
+<text text-anchor="middle" x="747" y="-654.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">1:N</text>
+</g>
+<g id="node5" class="node">
+<polygon fill="#1d4ed8" stroke="transparent" points="266,-945 266,-967 333,-967 333,-945 266,-945"/>
+<polygon fill="none" stroke="var(--rule-2)" points="266,-945 266,-967 333,-967 333,-945 266,-945"/>
+<text text-anchor="start" x="271" y="-954.2" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="white">setores</text>
+<polygon fill="none" stroke="var(--rule-2)" points="266,-923 266,-945 292,-945 292,-923 266,-923"/>
+<text text-anchor="start" x="271" y="-931.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">PK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="292,-923 292,-945 333,-945 333,-923 292,-923"/>
+<text text-anchor="start" x="297" y="-931.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="266,-901 266,-923 292,-923 292,-901 266,-901"/>
+<text text-anchor="start" x="271" y="-909.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="292,-901 292,-923 333,-923 333,-901 292,-901"/>
+<text text-anchor="start" x="297" y="-909.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">nome</text>
+</g>
+<g id="edge5" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M290.6,-896.74C285.38,-873.9 278.61,-843.76 273,-817 264.8,-777.85 256.14,-733.11 250.06,-701.09"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="252.44,-700.47 248.73,-694.05 247.63,-701.39 252.44,-700.47"/>
+<text text-anchor="middle" x="281" y="-809.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">1:N</text>
+</g>
+<g id="node8" class="node">
+<polygon fill="#1d4ed8" stroke="transparent" points="8,-690 8,-712 136,-712 136,-690 8,-690"/>
+<polygon fill="none" stroke="var(--rule-2)" points="8,-690 8,-712 136,-712 136,-690 8,-690"/>
+<text text-anchor="start" x="13" y="-699.2" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="white">mensagens_padrao</text>
+<polygon fill="none" stroke="var(--rule-2)" points="8,-668 8,-690 43,-690 43,-668 8,-668"/>
+<text text-anchor="start" x="13" y="-676.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">PK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="43,-668 43,-690 136,-690 136,-668 43,-668"/>
+<text text-anchor="start" x="48" y="-676.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="8,-646 8,-668 43,-668 43,-646 8,-646"/>
+<text text-anchor="start" x="13" y="-654.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="43,-646 43,-668 136,-668 136,-646 43,-646"/>
+<text text-anchor="start" x="48" y="-654.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">tipo</text>
+<polygon fill="none" stroke="var(--rule-2)" points="8,-624 8,-646 43,-646 43,-624 8,-624"/>
+<text text-anchor="start" x="13" y="-632.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="43,-624 43,-646 136,-646 136,-624 43,-624"/>
+<text text-anchor="start" x="48" y="-632.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">padrao_texto</text>
+<polygon fill="none" stroke="var(--rule-2)" points="8,-602 8,-624 43,-624 43,-602 8,-602"/>
+<text text-anchor="start" x="13" y="-610.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">FK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="43,-602 43,-624 136,-624 136,-602 43,-602"/>
+<text text-anchor="start" x="48" y="-610.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">setor_id</text>
+</g>
+<g id="edge6" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M278.97,-896.92C268.32,-879.37 254.28,-858.54 239,-842 209.56,-810.13 192.15,-813.2 162,-782 144.5,-763.89 127.64,-742.23 113.33,-722.1"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="115.21,-720.51 109.17,-716.19 111.2,-723.33 115.21,-720.51"/>
+<text text-anchor="middle" x="216" y="-809.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">1:N</text>
+</g>
+<g id="edge8" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M299,-896.85C301.06,-868.21 308.8,-829.39 334,-807 388.46,-758.61 432.44,-817.61 496,-782 500.22,-779.64 504.34,-777.04 508.36,-774.24"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="509.96,-776.1 514.18,-770 507.08,-772.14 509.96,-776.1"/>
+<text text-anchor="middle" x="342" y="-809.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">1:N</text>
+</g>
+<g id="node7" class="node">
+<polygon fill="#1d4ed8" stroke="transparent" points="767,-989 767,-1011 873,-1011 873,-989 767,-989"/>
+<polygon fill="none" stroke="var(--rule-2)" points="767,-989 767,-1011 873,-1011 873,-989 767,-989"/>
+<text text-anchor="start" x="772" y="-998.2" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="white">contatos</text>
+<polygon fill="none" stroke="var(--rule-2)" points="767,-967 767,-989 793,-989 793,-967 767,-967"/>
+<text text-anchor="start" x="772" y="-975.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">PK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="793,-967 793,-989 873,-989 873,-967 793,-967"/>
+<text text-anchor="start" x="798" y="-975.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="767,-945 767,-967 793,-967 793,-945 767,-945"/>
+<text text-anchor="start" x="772" y="-953.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">UK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="793,-945 793,-967 873,-967 873,-945 793,-945"/>
+<text text-anchor="start" x="798" y="-953.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">telefone</text>
+<polygon fill="none" stroke="var(--rule-2)" points="767,-923 767,-945 793,-945 793,-923 767,-923"/>
+<text text-anchor="start" x="772" y="-931.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="793,-923 793,-945 873,-945 873,-923 793,-923"/>
+<text text-anchor="start" x="798" y="-931.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">nome_salvo</text>
+<polygon fill="none" stroke="var(--rule-2)" points="767,-901 767,-923 793,-923 793,-901 767,-901"/>
+<text text-anchor="start" x="772" y="-909.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="793,-901 793,-923 873,-923 873,-901 793,-901"/>
+<text text-anchor="start" x="798" y="-909.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">nome_perfil</text>
+<polygon fill="none" stroke="var(--rule-2)" points="767,-879 767,-901 793,-901 793,-879 767,-879"/>
+<text text-anchor="start" x="772" y="-887.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="793,-879 793,-901 873,-901 873,-879 793,-879"/>
+<text text-anchor="start" x="798" y="-887.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">origem</text>
+<polygon fill="none" stroke="var(--rule-2)" points="767,-857 767,-879 793,-879 793,-857 767,-857"/>
+<text text-anchor="start" x="772" y="-865.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="793,-857 793,-879 873,-879 873,-857 793,-857"/>
+<text text-anchor="start" x="798" y="-865.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">observacoes</text>
+</g>
+<g id="edge7" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M759,-856.4C738.29,-830.4 714.69,-800.76 692.15,-772.46"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="693.94,-770.77 687.66,-766.82 690.1,-773.82 693.94,-770.77"/>
+<text text-anchor="middle" x="732" y="-809.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">1:N</text>
+</g>
+<g id="node10" class="node">
+<polygon fill="#0f766e" stroke="transparent" points="456,-446 456,-468 583,-468 583,-446 456,-446"/>
+<polygon fill="none" stroke="var(--rule-2)" points="456,-446 456,-468 583,-468 583,-446 456,-446"/>
+<text text-anchor="start" x="461" y="-455.2" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="white">mensagens</text>
+<polygon fill="none" stroke="var(--rule-2)" points="456,-424 456,-446 482,-446 482,-424 456,-424"/>
+<text text-anchor="start" x="461" y="-432.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">PK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="482,-424 482,-446 583,-446 583,-424 482,-424"/>
+<text text-anchor="start" x="487" y="-432.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="456,-402 456,-424 482,-424 482,-402 456,-402"/>
+<text text-anchor="start" x="461" y="-410.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">FK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="482,-402 482,-424 583,-424 583,-402 482,-402"/>
+<text text-anchor="start" x="487" y="-410.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">conversa_id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="456,-380 456,-402 482,-402 482,-380 456,-380"/>
+<text text-anchor="start" x="461" y="-388.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">FK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="482,-380 482,-402 583,-402 583,-380 482,-380"/>
+<text text-anchor="start" x="487" y="-388.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">evento_bruto_id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="456,-358 456,-380 482,-380 482,-358 456,-358"/>
+<text text-anchor="start" x="461" y="-366.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">UK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="482,-358 482,-380 583,-380 583,-358 482,-358"/>
+<text text-anchor="start" x="487" y="-366.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">meta_id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="456,-336 456,-358 482,-358 482,-336 456,-336"/>
+<text text-anchor="start" x="461" y="-344.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="482,-336 482,-358 583,-358 583,-336 482,-336"/>
+<text text-anchor="start" x="487" y="-344.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">direcao</text>
+<polygon fill="none" stroke="var(--rule-2)" points="456,-314 456,-336 482,-336 482,-314 456,-314"/>
+<text text-anchor="start" x="461" y="-322.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="482,-314 482,-336 583,-336 583,-314 482,-314"/>
+<text text-anchor="start" x="487" y="-322.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">tipo</text>
+<polygon fill="none" stroke="var(--rule-2)" points="456,-292 456,-314 482,-314 482,-292 456,-292"/>
+<text text-anchor="start" x="461" y="-300.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="482,-292 482,-314 583,-314 583,-292 482,-292"/>
+<text text-anchor="start" x="487" y="-300.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">texto</text>
+<polygon fill="none" stroke="var(--rule-2)" points="456,-270 456,-292 482,-292 482,-270 456,-270"/>
+<text text-anchor="start" x="461" y="-278.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="482,-270 482,-292 583,-292 583,-270 482,-270"/>
+<text text-anchor="start" x="487" y="-278.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">horario_evento</text>
+<polygon fill="none" stroke="var(--rule-2)" points="456,-248 456,-270 482,-270 482,-248 456,-248"/>
+<text text-anchor="start" x="461" y="-256.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="482,-248 482,-270 583,-270 583,-248 482,-248"/>
+<text text-anchor="start" x="487" y="-256.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">horario_chegada</text>
+</g>
+<g id="edge10" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M566.7,-531.77C561.9,-514.37 556.97,-496.51 552.18,-479.18"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="554.51,-478.41 550.29,-472.32 549.79,-479.72 554.51,-478.41"/>
+<text text-anchor="middle" x="566" y="-499.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">1:N</text>
+</g>
+<g id="edge12" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M643.67,-531.77C653.58,-502.9 663.93,-472.77 673.15,-445.91"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="675.51,-446.57 675.47,-439.16 670.88,-444.98 675.51,-446.57"/>
+<text text-anchor="middle" x="664" y="-499.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">1:N</text>
+</g>
+<g id="node11" class="node">
+<polygon fill="#0f766e" stroke="transparent" points="463,-158 463,-180 575,-180 575,-158 463,-158"/>
+<polygon fill="none" stroke="var(--rule-2)" points="463,-158 463,-180 575,-180 575,-158 463,-158"/>
+<text text-anchor="start" x="468" y="-167.2" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="white">midias</text>
+<polygon fill="none" stroke="var(--rule-2)" points="463,-136 463,-158 489,-158 489,-136 463,-136"/>
+<text text-anchor="start" x="468" y="-144.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">PK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="489,-136 489,-158 575,-158 575,-136 489,-136"/>
+<text text-anchor="start" x="494" y="-144.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="463,-114 463,-136 489,-136 489,-114 463,-114"/>
+<text text-anchor="start" x="468" y="-122.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">FK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="489,-114 489,-136 575,-136 575,-114 489,-114"/>
+<text text-anchor="start" x="494" y="-122.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">mensagem_id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="463,-92 463,-114 489,-114 489,-92 463,-92"/>
+<text text-anchor="start" x="468" y="-100.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="489,-92 489,-114 575,-114 575,-92 489,-92"/>
+<text text-anchor="start" x="494" y="-100.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">meta_id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="463,-70 463,-92 489,-92 489,-70 463,-70"/>
+<text text-anchor="start" x="468" y="-78.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="489,-70 489,-92 575,-92 575,-70 489,-70"/>
+<text text-anchor="start" x="494" y="-78.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">tipo</text>
+<polygon fill="none" stroke="var(--rule-2)" points="463,-48 463,-70 489,-70 489,-48 463,-48"/>
+<text text-anchor="start" x="468" y="-56.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="489,-48 489,-70 575,-70 575,-48 489,-48"/>
+<text text-anchor="start" x="494" y="-56.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">tamanho</text>
+<polygon fill="none" stroke="var(--rule-2)" points="463,-26 463,-48 489,-48 489,-26 463,-26"/>
+<text text-anchor="start" x="468" y="-34.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="489,-26 489,-48 575,-48 575,-26 489,-26"/>
+<text text-anchor="start" x="494" y="-34.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">hash</text>
+<polygon fill="none" stroke="var(--rule-2)" points="463,-4 463,-26 489,-26 489,-4 463,-4"/>
+<text text-anchor="start" x="468" y="-12.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="489,-4 489,-26 575,-26 575,-4 489,-4"/>
+<text text-anchor="start" x="494" y="-12.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">caminho</text>
+</g>
+<g id="edge11" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M519,-243.89C519,-226.5 519,-208.67 519,-191.63"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="521.45,-191.38 519,-184.38 516.55,-191.38 521.45,-191.38"/>
+<text text-anchor="middle" x="527" y="-211.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">1:N</text>
+</g>
+<g id="node13" class="node">
+<polygon fill="#7c3aed" stroke="transparent" points="348,-690 348,-712 470,-712 470,-690 348,-690"/>
+<polygon fill="none" stroke="var(--rule-2)" points="348,-690 348,-712 470,-712 470,-690 348,-690"/>
+<text text-anchor="start" x="353" y="-699.2" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="white">eventos_brutos</text>
+<polygon fill="none" stroke="var(--rule-2)" points="348,-668 348,-690 374,-690 374,-668 348,-668"/>
+<text text-anchor="start" x="353" y="-676.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">PK</text>
+<polygon fill="none" stroke="var(--rule-2)" points="374,-668 374,-690 470,-690 470,-668 374,-668"/>
+<text text-anchor="start" x="379" y="-676.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">id</text>
+<polygon fill="none" stroke="var(--rule-2)" points="348,-646 348,-668 374,-668 374,-646 348,-646"/>
+<text text-anchor="start" x="353" y="-654.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="374,-646 374,-668 470,-668 470,-646 374,-646"/>
+<text text-anchor="start" x="379" y="-654.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">payload</text>
+<polygon fill="none" stroke="var(--rule-2)" points="348,-624 348,-646 374,-646 374,-624 348,-624"/>
+<text text-anchor="start" x="353" y="-632.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="374,-624 374,-646 470,-646 470,-624 374,-624"/>
+<text text-anchor="start" x="379" y="-632.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">recebido_em</text>
+<polygon fill="none" stroke="var(--rule-2)" points="348,-602 348,-624 374,-624 374,-602 348,-602"/>
+<text text-anchor="start" x="353" y="-610.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)"> </text>
+<polygon fill="none" stroke="var(--rule-2)" points="374,-602 374,-624 470,-624 470,-602 374,-602"/>
+<text text-anchor="start" x="379" y="-610.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">processado_em</text>
+</g>
+<g id="edge14" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M430.6,-597.68C443.14,-563.83 459.4,-519.93 474.55,-479.02"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="476.93,-479.63 477.07,-472.22 472.34,-477.93 476.93,-479.63"/>
+<text text-anchor="middle" x="493.5" y="-499.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">1:N origem</text>
+</g>
+</g>
+</svg>
+</div><p class="subtable-title">Dicionário de dados</p><details class="acc"><summary><span>usuarios</span><span class="acc__meta">6 campos</span></summary><div class="acc__body"><div class="tbl"><table><thead><tr><th>Campo</th><th>Descrição</th></tr></thead><tbody><tr><td class="code">nome</td><td>Nome completo</td></tr><tr><td class="code">email</td><td>Login, único</td></tr><tr><td class="code">senha_hash</td><td>Senha guardada só como hash</td></tr><tr><td class="code">nome_apresentacao</td><td>Como o atendente se apresenta ("Vinícius"), usado para reconhecer a abertura</td></tr><tr><td class="code">papel_id</td><td>Papel do usuário</td></tr><tr><td class="code">ativo</td><td>Inativo não acessa o painel</td></tr></tbody></table></div></div></details><details class="acc"><summary><span>papeis / permissoes / papel_permissoes</span><span class="acc__meta">3 campos</span></summary><div class="acc__body"><div class="tbl"><table><thead><tr><th>Campo</th><th>Descrição</th></tr></thead><tbody><tr><td class="code">papel</td><td>Administrador, gestor ou atendente</td></tr><tr><td class="code">permissao</td><td>Ação liberada (ex.: ver conversas de outro setor)</td></tr><tr><td class="code">papel_permissoes</td><td>Matriz de permissões por papel</td></tr></tbody></table></div></div></details><details class="acc"><summary><span>setores / usuario_setores</span><span class="acc__meta">2 campos</span></summary><div class="acc__body"><div class="tbl"><table><thead><tr><th>Campo</th><th>Descrição</th></tr></thead><tbody><tr><td class="code">nome</td><td>Financeiro, Farmácia, Fornecedores</td></tr><tr><td class="code">usuario_setores</td><td>Setores em que cada usuário atua</td></tr></tbody></table></div></div></details><details class="acc"><summary><span>contatos</span><span class="acc__meta">5 campos</span></summary><div class="acc__body"><div class="tbl"><table><thead><tr><th>Campo</th><th>Descrição</th></tr></thead><tbody><tr><td class="code">telefone</td><td>Número do cliente, único</td></tr><tr><td class="code">nome_salvo</td><td>Nome sincronizado da agenda do app</td></tr><tr><td class="code">nome_perfil</td><td>Nome de perfil do WhatsApp</td></tr><tr><td class="code">origem</td><td>sync, perfil ou manual</td></tr><tr><td class="code">observacoes</td><td>Anotações internas</td></tr></tbody></table></div></div></details><details class="acc"><summary><span>conversas</span><span class="acc__meta">7 campos</span></summary><div class="acc__body"><div class="tbl"><table><thead><tr><th>Campo</th><th>Descrição</th></tr></thead><tbody><tr><td class="code">contato_id</td><td>Cliente da conversa</td></tr><tr><td class="code">setor_id</td><td>Setor identificado</td></tr><tr><td class="code">atendente_id</td><td>Atendente atual</td></tr><tr><td class="code">status</td><td>Calculado pelo motor de regras</td></tr><tr><td class="code">aberta_em / ultima_atividade / encerrada_em</td><td>Marcos de tempo da conversa</td></tr><tr><td class="code">motivo_encerramento</td><td>Mensagem padrão, inatividade ou manual</td></tr><tr><td class="code">nota</td><td>Avaliação de 1 a 5 enviada ao finalizar</td></tr></tbody></table></div></div></details><details class="acc"><summary><span>mensagens</span><span class="acc__meta">6 campos</span></summary><div class="acc__body"><div class="tbl"><table><thead><tr><th>Campo</th><th>Descrição</th></tr></thead><tbody><tr><td class="code">meta_id</td><td>Id da Meta, único: impede gravar a mesma mensagem duas vezes</td></tr><tr><td class="code">direcao</td><td>Entrada, saída pelo app ou saída pela API</td></tr><tr><td class="code">tipo</td><td>Texto, imagem, áudio, documento…</td></tr><tr><td class="code">texto</td><td>Conteúdo da mensagem</td></tr><tr><td class="code">horario_evento / horario_chegada</td><td>Horário da Meta e horário de recebimento</td></tr><tr><td class="code">evento_bruto_id</td><td>Webhook de origem, para auditoria e reprocessamento</td></tr></tbody></table></div></div></details><details class="acc"><summary><span>midias</span><span class="acc__meta">4 campos</span></summary><div class="acc__body"><div class="tbl"><table><thead><tr><th>Campo</th><th>Descrição</th></tr></thead><tbody><tr><td class="code">mensagem_id</td><td>Mensagem a que pertence</td></tr><tr><td class="code">tipo / tamanho</td><td>Formato e tamanho do arquivo</td></tr><tr><td class="code">hash</td><td>Impressão digital do arquivo, evita duplicados</td></tr><tr><td class="code">caminho</td><td>Local no armazenamento</td></tr></tbody></table></div></div></details><details class="acc"><summary><span>eventos_conversa</span><span class="acc__meta">3 campos</span></summary><div class="acc__body"><div class="tbl"><table><thead><tr><th>Campo</th><th>Descrição</th></tr></thead><tbody><tr><td class="code">tipo</td><td>Abertura, transferência, encerramento, avaliação ou alerta</td></tr><tr><td class="code">usuario_id</td><td>Atendente envolvido, quando houver</td></tr><tr><td class="code">dados / ocorrido_em</td><td>Detalhes e momento do evento</td></tr></tbody></table></div></div></details><details class="acc"><summary><span>mensagens_padrao</span><span class="acc__meta">3 campos</span></summary><div class="acc__body"><div class="tbl"><table><thead><tr><th>Campo</th><th>Descrição</th></tr></thead><tbody><tr><td class="code">tipo</td><td>Abertura, transferência ou encerramento</td></tr><tr><td class="code">padrao_texto</td><td>Modelo de texto reconhecido pelo motor</td></tr><tr><td class="code">setor_id</td><td>Setor a que se aplica</td></tr></tbody></table></div></div></details><details class="acc"><summary><span>eventos_brutos</span><span class="acc__meta">2 campos</span></summary><div class="acc__body"><div class="tbl"><table><thead><tr><th>Campo</th><th>Descrição</th></tr></thead><tbody><tr><td class="code">payload</td><td>Conteúdo original do webhook, sem alteração</td></tr><tr><td class="code">recebido_em / processado_em</td><td>Controle de processamento</td></tr></tbody></table></div></div></details></div></details><details class="acc" id="a-regras"><summary><span>Motor de regras</span><span class="acc__meta">7 regras</span></summary><div class="acc__body"><div class="tbl"><table><thead><tr><th>Regra</th><th>Como é decidido</th></tr></thead><tbody><tr><td>Início de conversa</td><td>Primeira mensagem do cliente depois de um encerramento ou depois de X horas sem atividade</td></tr><tr><td>Quem atendeu</td><td>Mensagem padrão de abertura comparada ao nome de apresentação dos usuários cadastrados</td></tr><tr><td>Transferência</td><td>Mensagem padrão de transferência registra a troca de atendente e de setor</td></tr><tr><td>Sem identificação</td><td>Empresa respondeu sem abertura reconhecida: a conversa fica "sem identificação" e gera alerta</td></tr><tr><td>Setor</td><td>Resposta do cliente ao menu da saudação do app ou setor do atendente que assumiu</td></tr><tr><td>Assunto</td><td>Dicionário de palavras-chave por setor (boleto, receita, orçamento, nota fiscal, pedido…)</td></tr><tr><td>Encerramento</td><td>Mensagem padrão de encerramento ou inatividade além do limite configurado</td></tr></tbody></table></div><p>Todas as regras são determinísticas: o mesmo dado sempre gera o mesmo resultado. Os limites de tempo e os textos padrão são parâmetros ajustáveis no piloto.</p></div></details><details class="acc" id="a-status"><summary><span>Status da conversa</span><span class="acc__meta">6 status</span></summary><div class="acc__body"><div class="diagram"><svg role="img" aria-label="Ciclo de status da conversa" style="width:100%;height:auto;max-width:560px"
+ viewBox="0.00 0.00 413.30 481.80" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(14.4 467.4)">
+<g id="node1" class="node">
+<ellipse fill="var(--ink-2)" stroke="var(--ink-2)" cx="200.5" cy="-446.5" rx="6.5" ry="6.5"/>
+</g>
+<g id="node2" class="node">
+<path fill="var(--surface)" stroke="var(--rule-2)" d="M264,-390C264,-390 137,-390 137,-390 131,-390 125,-384 125,-378 125,-378 125,-366 125,-366 125,-360 131,-354 137,-354 137,-354 264,-354 264,-354 270,-354 276,-360 276,-366 276,-366 276,-378 276,-378 276,-384 270,-390 264,-390"/>
+<text text-anchor="middle" x="200.5" y="-369.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">Aguardando atendente</text>
+</g>
+<g id="edge1" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M200.5,-439.81C200.5,-430.75 200.5,-412.5 200.5,-397.37"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="202.95,-397.24 200.5,-390.24 198.05,-397.24 202.95,-397.24"/>
+<text text-anchor="middle" x="234.5" y="-412.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">cliente escreve</text>
+</g>
+<g id="node3" class="node">
+<path fill="var(--brand-soft)" stroke="var(--brand)" d="M124,-208C124,-208 33,-208 33,-208 27,-208 21,-202 21,-196 21,-196 21,-184 21,-184 21,-178 27,-172 33,-172 33,-172 124,-172 124,-172 130,-172 136,-178 136,-184 136,-184 136,-196 136,-196 136,-202 130,-208 124,-208"/>
+<text text-anchor="middle" x="78.5" y="-187.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">Em atendimento</text>
+</g>
+<g id="edge2" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M130.7,-353.89C99.57,-342.41 65.83,-323.75 47.5,-294 32.1,-269.01 47.31,-235.86 61.34,-214.01"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="63.39,-215.34 65.23,-208.16 59.31,-212.62 63.39,-215.34"/>
+<text text-anchor="middle" x="84.5" y="-278.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">abertura padrão</text>
+<text text-anchor="middle" x="84.5" y="-268.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">reconhecida</text>
+</g>
+<g id="node6" class="node">
+<path fill="var(--surface)" stroke="var(--rule-2)" d="M297,-36C297,-36 228,-36 228,-36 222,-36 216,-30 216,-24 216,-24 216,-12 216,-12 216,-6 222,0 228,0 228,0 297,0 297,0 303,0 309,-6 309,-12 309,-12 309,-24 309,-24 309,-30 303,-36 297,-36"/>
+<text text-anchor="middle" x="262.5" y="-15.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">Abandonada</text>
+</g>
+<g id="edge9" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M263.75,-353.93C274.64,-348.85 285.12,-342.33 293.5,-334 312.86,-314.73 316.5,-304.32 316.5,-277 316.5,-277 316.5,-277 316.5,-103 316.5,-79.53 301.4,-57.39 287.17,-41.74"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="288.59,-39.68 282,-36.28 285.03,-43.05 288.59,-39.68"/>
+<text text-anchor="middle" x="350.5" y="-187.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">inatividade X h</text>
+</g>
+<g id="node7" class="node">
+<path fill="var(--surface)" stroke="var(--bad)" d="M249.5,-294C249.5,-294 151.5,-294 151.5,-294 145.5,-294 139.5,-288 139.5,-282 139.5,-282 139.5,-270 139.5,-270 139.5,-264 145.5,-258 151.5,-258 151.5,-258 249.5,-258 249.5,-258 255.5,-258 261.5,-264 261.5,-270 261.5,-270 261.5,-282 261.5,-282 261.5,-288 255.5,-294 249.5,-294"/>
+<text text-anchor="middle" x="200.5" y="-279.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">Sem identificação</text>
+<text text-anchor="middle" x="200.5" y="-267.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">(gera alerta)</text>
+</g>
+<g id="edge3" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M200.5,-353.76C200.5,-339.05 200.5,-317.74 200.5,-301.3"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="202.95,-301.13 200.5,-294.13 198.05,-301.13 202.95,-301.13"/>
+<text text-anchor="middle" x="243" y="-326.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">empresa responde</text>
+<text text-anchor="middle" x="243" y="-316.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">sem abertura</text>
+</g>
+<g id="node4" class="node">
+<path fill="var(--surface)" stroke="var(--rule-2)" d="M249,-122C249,-122 142,-122 142,-122 136,-122 130,-116 130,-110 130,-110 130,-98 130,-98 130,-92 136,-86 142,-86 142,-86 249,-86 249,-86 255,-86 261,-92 261,-98 261,-98 261,-110 261,-110 261,-116 255,-122 249,-122"/>
+<text text-anchor="middle" x="195.5" y="-101.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">Aguardando cliente</text>
+</g>
+<g id="edge4" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M122.31,-171.83C133.67,-166.36 145.52,-159.7 155.5,-152 164.32,-145.2 172.58,-136.16 179.27,-127.84"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="181.28,-129.25 183.65,-122.22 177.41,-126.24 181.28,-129.25"/>
+<text text-anchor="middle" x="209" y="-144.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">empresa responde</text>
+</g>
+<g id="node5" class="node">
+<path fill="var(--surface)" stroke="var(--rule-2)" d="M67,-36C67,-36 12,-36 12,-36 6,-36 0,-30 0,-24 0,-24 0,-12 0,-12 0,-6 6,0 12,0 12,0 67,0 67,0 73,0 79,-6 79,-12 79,-12 79,-24 79,-24 79,-30 73,-36 67,-36"/>
+<text text-anchor="middle" x="39.5" y="-15.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="var(--ink)">Finalizada</text>
+</g>
+<g id="edge6" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M53.81,-171.92C38.76,-159.91 20.86,-142.4 12.5,-122 1.7,-95.65 13.68,-63.71 24.93,-42.45"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="27.13,-43.53 28.37,-36.22 22.84,-41.16 27.13,-43.53"/>
+<text text-anchor="middle" x="62" y="-101.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">encerramento padrão</text>
+</g>
+<g id="edge5" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M129.91,-116.98C103.85,-123.2 78.22,-131.66 70.5,-142 65.65,-148.5 65.68,-156.91 67.57,-164.82"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="65.34,-165.9 69.75,-171.87 70.02,-164.46 65.34,-165.9"/>
+<text text-anchor="middle" x="108.5" y="-144.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">cliente responde</text>
+</g>
+<g id="edge7" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M148.3,-85.96C134.22,-80.25 118.96,-73.43 105.5,-66 92.18,-58.65 78.34,-49.12 66.79,-40.57"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="68.04,-38.44 60.97,-36.2 65.1,-42.36 68.04,-38.44"/>
+<text text-anchor="middle" x="155" y="-58.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">encerramento padrão</text>
+</g>
+<g id="edge8" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M202.92,-85.57C207.31,-76.3 213.39,-64.99 220.5,-56 224.66,-50.74 229.63,-45.62 234.67,-40.96"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="236.54,-42.57 240.13,-36.09 233.28,-38.92 236.54,-42.57"/>
+<text text-anchor="middle" x="254.5" y="-58.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">inatividade X h</text>
+</g>
+<g id="edge10" class="edge">
+<path fill="none" stroke="var(--ink-2)" d="M175.52,-257.8C156.36,-244.61 129.81,-226.33 109.32,-212.22"/>
+<polygon fill="var(--ink-2)" stroke="var(--ink-2)" points="110.6,-210.13 103.45,-208.18 107.83,-214.17 110.6,-210.13"/>
+<text text-anchor="middle" x="184.5" y="-230.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="var(--ink-2)">abertura posterior</text>
+</g>
+</g>
+</svg>
+</div><div class="tbl"><table><thead><tr><th>Status</th><th>Quando</th></tr></thead><tbody><tr><td>Aguardando atendente</td><td>Último evento é do cliente e ainda não houve abertura</td></tr><tr><td>Em atendimento</td><td>Abertura reconhecida e conversa ativa</td></tr><tr><td>Aguardando cliente</td><td>Último evento é da empresa</td></tr><tr><td>Finalizada</td><td>Mensagem padrão de encerramento</td></tr><tr><td>Abandonada</td><td>Inatividade além do limite configurado</td></tr><tr><td>Sem identificação</td><td>Empresa respondeu sem abertura reconhecida (alerta)</td></tr></tbody></table></div></div></details><details class="acc" id="a-ficha"><summary><span>Ficha-resumo (sem IA)</span></summary><div class="acc__body"><p>Montada por regra a partir dos dados da conversa. Exemplo:</p><div class="tech-note"><b>Orçamento</b> · atendido por Vinícius do Financeiro · 14 min · 12 mensagens (5 do cliente, 7 da empresa) · 2 imagens · finalizada · nota 5</div><p style="margin-top:12px">O assunto vem do dicionário de palavras-chave; a nota vem da avaliação de 1 a 5 enviada ao finalizar.</p></div></details><details class="acc" id="a-indicadores"><summary><span>Indicadores e painel</span><span class="acc__meta">7 indicadores</span></summary><div class="acc__body"><div class="tbl"><table><thead><tr><th>Indicador</th><th>Como é calculado</th></tr></thead><tbody><tr><td>Tempo até assumir</td><td>Da primeira mensagem do cliente até a abertura padrão</td></tr><tr><td>Tempo de primeira resposta</td><td>Da primeira mensagem do cliente até a primeira resposta da empresa</td></tr><tr><td>Duração da conversa</td><td>Da abertura ao encerramento</td></tr><tr><td>Volume por hora</td><td>Conversas iniciadas por faixa de horário e dia da semana</td></tr><tr><td>Por setor e atendente</td><td>Quantidade, tempos médios e status finais</td></tr><tr><td>Pendências</td><td>Conversas aguardando atendente e tempo de espera atual</td></tr><tr><td>Nota média</td><td>Média das avaliações de 1 a 5</td></tr></tbody></table></div></div></details><details class="acc" id="a-seguranca"><summary><span>Segurança, privacidade e LGPD</span><span class="acc__meta">7 itens</span></summary><div class="acc__body"><ul class="chk"><li><b>Webhooks autenticados.</b> Só são aceitos eventos com assinatura válida da Meta.</li><li><b>Sem duplicidade.</b> O id da Meta é único: um mesmo evento recebido duas vezes é gravado uma vez.</li><li><b>Senhas protegidas.</b> Guardadas apenas como hash.</li><li><b>Acesso por papel e setor.</b> Cada usuário vê só o que o papel e os setores permitem.</li><li><b>Rastreabilidade.</b> Eventos brutos preservados permitem auditar e reprocessar qualquer resultado.</li><li><b>Backup.</b> Banco e mídias com cópia diária.</li><li><b>LGPD.</b> Base legal, aviso a clientes e funcionários, prazo de retenção e acesso por papel definidos com a Vitamed antes do uso real.</li></ul></div></details><details class="acc" id="a-entregaveis"><summary><span>Entregáveis</span><span class="acc__meta">6 itens</span></summary><div class="acc__body"><ul class="chk"><li><b>Plataforma em produção</b> na hospedagem contratada, conectada ao número da Vitamed.</li><li><b>Painel web</b> com conversas, fichas, indicadores e alertas.</li><li><b>Importação inicial</b> de histórico e contatos no onboarding.</li><li><b>Mensagens padrão e dicionário de assuntos</b> configurados com a equipe.</li><li><b>Código-fonte e script do banco.</b></li><li><b>Guia de uso</b> para a equipe (mensagens padrão) e para gestores (painel).</li></ul></div></details></div>
+      </section>
+
+      <section class="sec" id="limites">
+        <h2>Limites da Coexistência</h2>
+        <p class="sec__lead">O modo Coexistência é o que permite manter o app e não pagar por mensagem. Em troca, a Meta impõe algumas regras ao número. É importante conhecê-las antes de aprovar.</p>
+        <h3 class="sub">Regras da Meta para o número</h3>
+        <ul class="cond">
+          <li>O app precisa ser <b>aberto ao menos a cada 13 dias</b>, na versão <b>2.24.17 ou superior</b>, e o número precisa ter uso real.</li>
+          <li><b>WhatsApp para Windows não é suportado</b>: mensagens enviadas por ele não chegam à plataforma. Use o celular ou o WhatsApp Web (testado antes da entrada em produção).</li>
+          <li><b>Grupos não são sincronizados</b>; listas de transmissão e mensagens temporárias ficam desativadas.</li>
+          <li>O selo <b>Meta Verified é perdido</b>, e a verificação padrão de negócio e o selo OBA não são aceitos.</li>
+          <li>Não pode haver <b>ferramentas não oficiais</b> (conexão por QR Code) no mesmo número.</li>
+          <li>A conexão exige um <b>Tech Provider ou um BSP</b> que repasse o histórico e os contatos. Isso é confirmado na validação técnica, antes do início.</li>
+          <li>A identificação do atendente vem da mensagem padrão: serve para <b>gestão</b>, não é uma <b>auditoria forte</b>.</li>
+        </ul>
+        <h3 class="sub">Quando é hora de uma plataforma completa</h3>
+        <ul class="cond">
+          <li>Fila e distribuição automática entre atendentes, ou mais atendentes simultâneos do que o app comporta.</li>
+          <li>Isolamento de acesso por setor dentro do próprio atendimento.</li>
+          <li>Triagem automática, atendimento fora do horário, campanhas ou avisos proativos.</li>
+          <li>Identificação de atendente à prova de falhas.</li>
+        </ul>
+        <p class="pnote" style="margin-top:14px">Os dados gravados por esta plataforma são aproveitados se a Vitamed migrar para uma solução completa no futuro.</p>
+      </section>
+
+      <section class="sec" id="prazo">
+        <h2>Prazo de desenvolvimento</h2>
+        <p class="sec__lead">Contagem em dias úteis a partir da data de início, já com o piloto de duas semanas no número real. Altere a data para simular outro começo: a entrega e o cronograma se recalculam.</p>
+        <div class="pfields">
+          <div class="pfield pfield--edit"><label for="start-date">Início (toque para alterar)</label><input type="date" id="start-date" value="2026-11-03"><p class="pfield__sub" id="start-dow"></p></div>
+          <div class="pfield"><span class="pfield__label">Prazo</span><div class="pfield__value">35 dias úteis</div><p class="pfield__sub">7 semanas de 5 dias úteis</p></div>
+          <div class="pfield"><span class="pfield__label">Previsão de entrega</span><div class="pfield__value" id="end-date">—</div><p class="pfield__sub" id="end-dow"></p></div>
+        </div>
+        <p class="pnote" id="pnote"></p>
+        <div class="weeks" id="wk-strip"></div>
+        <div class="gantt" id="gantt"></div>
+        <ol class="tl" id="timeline"></ol>
+        <p class="gnote">Contam apenas dias úteis: fins de semana e feriados nacionais ficam de fora. Os tracejados indicam essa pausa.</p>
+      </section>
+
+      <section class="sec" id="investimento">
+        <h2>Investimento</h2>
+        <p class="sec__lead">O valor abaixo cobre todo o escopo descrito neste documento: integração com a API oficial, motor de regras, painel, tela de conversa, avaliação, alertas, testes e o piloto de duas semanas.</p>
+        <div class="inv__scroll"><table class="inv"><thead><tr><th>Funcionalidade ou etapa</th><th>Dificuldade</th><th>Valor</th></tr></thead><tbody><tr><td><span class="nm">Ambiente, conta Meta e onboarding da Coexistência</span><small>Configuração da conta na Meta, conexão do número pelo Embedded Signup, hospedagem com HTTPS e backup.</small></td><td class="lv"><span class="lvl lvl--alta">Alta</span></td><td class="val">R$ 400,00</td></tr><tr><td><span class="nm">Recepção de webhooks</span><small>Validação de assinatura, idempotência, gravação dos eventos brutos, ecos do app e status de entrega.</small></td><td class="lv"><span class="lvl lvl--alta">Alta</span></td><td class="val">R$ 700,00</td></tr><tr><td><span class="nm">Modelo de dados e migrações</span><small>13 tabelas com chaves, índices e regras de integridade.</small></td><td class="lv"><span class="lvl lvl--media">Média</span></td><td class="val">R$ 350,00</td></tr><tr><td><span class="nm">Login, papéis e permissões por setor</span><small>Administrador, gestor e atendente, com vínculo de cada usuário aos seus setores.</small></td><td class="lv"><span class="lvl lvl--media">Média</span></td><td class="val">R$ 450,00</td></tr><tr><td><span class="nm">Cadastro de contatos</span><small>Sincronização com a agenda do app, nome de perfil e cadastro manual.</small></td><td class="lv"><span class="lvl lvl--baixa">Baixa</span></td><td class="val">R$ 200,00</td></tr><tr><td><span class="nm">Mídias</span><small>Download no recebimento, armazenamento com hash e vínculo à mensagem.</small></td><td class="lv"><span class="lvl lvl--media">Média</span></td><td class="val">R$ 300,00</td></tr><tr><td><span class="nm">Motor de regras</span><small>Início e fim de conversa, atendente, transferência, status, setor, assunto e ficha-resumo.</small></td><td class="lv"><span class="lvl lvl--alta">Alta</span></td><td class="val">R$ 1.000,00</td></tr><tr><td><span class="nm">Consulta de conversas</span><small>Busca por cliente, período, setor e atendente, com a linha do tempo completa.</small></td><td class="lv"><span class="lvl lvl--baixa">Baixa</span></td><td class="val">R$ 300,00</td></tr><tr><td><span class="nm">Tela de conversa estilo WhatsApp</span><small>Balões, imagens e documentos na própria conversa e player de áudio.</small></td><td class="lv"><span class="lvl lvl--media">Média</span></td><td class="val">R$ 600,00</td></tr><tr><td><span class="nm">Indicadores e painel</span><small>Tempos, volume por hora, setor e atendente, pendências e espera.</small></td><td class="lv"><span class="lvl lvl--alta">Alta</span></td><td class="val">R$ 600,00</td></tr><tr><td><span class="nm">Alertas de cliente aguardando</span><small>Aviso no painel e por e-mail quando o tempo de espera passa do limite.</small></td><td class="lv"><span class="lvl lvl--baixa">Baixa</span></td><td class="val">R$ 250,00</td></tr><tr><td><span class="nm">Avaliação de 1 a 5 ao finalizar</span><small>Pesquisa enviada pela API ao encerrar a conversa, com a nota gravada na ficha e na nota média.</small></td><td class="lv"><span class="lvl lvl--media">Média</span></td><td class="val">R$ 300,00</td></tr><tr><td><span class="nm">Piloto de 2 semanas, testes e ajustes de regras</span><small>Acompanhamento com o número real, calibragem das mensagens padrão, limites de tempo e dicionário de assuntos.</small></td><td class="lv"><span class="lvl lvl--media">Média</span></td><td class="val">R$ 550,00</td></tr></tbody><tfoot><tr><td colspan="2">Valor total de desenvolvimento</td><td>R$ 6.000,00</td></tr></tfoot></table></div>
+        <p class="inv-legend">Dificuldade: baixa para cadastros e consultas simples; média para regras de negócio ou vários vínculos entre tabelas; alta para integração com a Meta, cálculos e automação.</p>
+        <h3 class="sub">Custos mensais de terceiros</h3>
+        <p class="pnote">Pagos diretamente aos fornecedores; não estão incluídos no valor de desenvolvimento.</p>
+        <div class="tbl"><table><thead><tr><th>Item</th><th>Valor</th><th>Observação</th></tr></thead><tbody><tr><td>Hospedagem (VPS), backup e armazenamento de mídias</td><td>R$ 130 a R$ 350 por mês</td><td>Estimativa; varia com o volume de mídias</td></tr><tr><td>Leitura de mensagens pela Meta</td><td>R$ 0</td><td>Mensagens recebidas e ecos do app são gratuitos</td></tr><tr><td>Avaliações enviadas pela API</td><td>R$ 0 até 1.000 por mês; depois R$ 0,035 cada</td><td>Única mensagem que a plataforma envia</td></tr><tr><td>Inteligência artificial</td><td>R$ 0</td><td>Não utiliza</td></tr><tr><td>BSP</td><td>Conforme o provedor</td><td>Só se a conexão exigir um BSP</td></tr><tr><td>Manutenção e suporte</td><td>A combinar</td><td>Opcional, 4 a 8 horas por mês</td></tr></tbody></table></div>
+        <h3 class="sub">Observações e condições</h3>
+        <ul class="cond">
+          <li>Correções de erros, bugs, falhas técnicas ou ajustes necessários ao adequado funcionamento das funcionalidades previstas nesta proposta <b>não gerarão custos adicionais</b>, desde que estejam relacionados ao escopo originalmente contratado.</li>
+          <li>Alterações, melhorias ou acréscimos de funcionalidades que <b>não estejam contemplados no escopo inicial</b> serão considerados novas demandas e poderão gerar custos adicionais de desenvolvimento, mediante <b>avaliação, orçamento e aprovação prévia</b>.</li>
+          <li>Eventuais novas demandas serão analisadas individualmente, considerando sua complexidade, impacto no sistema e prazo necessário para implementação.</li>
+          <li>O prazo considera a <b>conexão do número à API em modo Coexistência liberada na primeira semana</b>. Atrasos de aprovação da Meta ou do BSP deslocam o cronograma na mesma medida.</li>
+          <li>Mudanças de regra da Meta sobre a Coexistência, posteriores a esta proposta, serão avaliadas à parte.</li>
+        </ul>
+      </section>
+
+      <section class="sec" id="aceite">
+        <h2>Próximos passos</h2>
+        <p class="sec__lead">O que fazemos juntos antes e logo depois da aprovação.</p>
+        <ol class="steps">
+          <li><div><b>Aprovação da proposta</b><span>Confirme o escopo, o valor e a data de início.</span></div></li>
+          <li><div><b>Validação técnica com número de teste</b><span>Confirmar o eco das mensagens do app, a leitura das mensagens padrão, a sincronização de contatos e o caminho de conexão (Tech Provider ou BSP).</span></div></li>
+          <li><div><b>Mensagens padrão e assuntos</b><span>Definir a abertura de cada atendente, a transferência, o encerramento e o dicionário de assuntos por setor.</span></div></li>
+          <li><div><b>LGPD</b><span>Base legal, aviso a clientes e funcionários, prazo de retenção e acesso por papel.</span></div></li>
+          <li><div><b>Desenvolvimento e piloto</b><span>Sete semanas, com as duas últimas acompanhando o número real.</span></div></li>
+        </ol>
+        <div class="actions">
+          <a class="btn btn--wa" data-wa href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21l1.7-5A8.5 8.5 0 1 1 8 19.3Z"/><path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1.2-1.4-2-1-1 .8a4 4 0 0 1-2.1-2.1l.8-1-1-2Z"/></svg>Aprovar pelo WhatsApp</a>
+          <button class="btn" type="button" data-print><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2"/><path d="M6 14h12v7H6z"/></svg>Salvar em PDF</button>
+        </div>
+      </section>
+  </div>
+
+  <footer class="foot">
+    <p>Proposta emitida em 28/10/2026 para a Farmácia Vitamed.</p><p>Prazo e valores referem-se ao escopo descrito neste documento.</p>
+  </footer>
+</div>
+</main>
+
+<div class="cta" id="cta" aria-label="Resumo do investimento">
+  <div class="cta__in">
+    <div><small>Investimento total</small><b data-bind="total">R$ 6.000,00</b></div>
+    <a class="btn btn--primary" id="cta-btn" href="#aceite">Aprovar proposta</a>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<dialog class="zoom" id="zoom" aria-label="Diagrama ampliado">
+  <div class="zoom__bar"><b id="zoom-title">Diagrama</b>
+    <button class="iconbtn" type="button" data-z="-1" aria-label="Diminuir">−</button>
+    <button class="iconbtn" type="button" data-z="1" aria-label="Aumentar">+</button>
+    <button class="iconbtn" type="button" id="zoom-close">Fechar</button></div>
+  <div class="zoom__body" id="zoom-body"></div>
+</dialog>
+
+<script>
+/* ======================= CONFIGURAÇÃO DA PROPOSTA ======================= */
+var PROPOSTA = {
+  id: 'vitamed-whatsapp',                 // usado na chave do tema salvo
+  inicio: '2026-11-03',     // AAAA-MM-DD (editável pelo cliente na seção Prazo)
+  etapas: [{"n": "Ambiente, conta Meta, conexão do número e hospedagem", "d": 3}, {"n": "Modelo de dados e migrações", "d": 1}, {"n": "Recepção de webhooks: assinatura, idempotência, ecos e status", "d": 3}, {"n": "Login, papéis e permissões por setor", "d": 2}, {"n": "Cadastro e sincronização de contatos", "d": 1}, {"n": "Download e armazenamento de mídias", "d": 1}, {"n": "Motor de regras: conversas, status, atendente e ficha-resumo", "d": 5}, {"n": "Consulta de conversas com linha do tempo", "d": 1}, {"n": "Tela de conversa estilo WhatsApp", "d": 2}, {"n": "Indicadores e painel", "d": 3}, {"n": "Alertas de cliente aguardando", "d": 1}, {"n": "Avaliação de 1 a 5 ao finalizar", "d": 2}, {"n": "Piloto no número real: acompanhamento e calibragem das regras", "d": 5}, {"n": "Piloto, ajustes finais, guia de uso e entrega", "d": 5}],           // [{n:'Nome da etapa', d:dias_uteis}, ...] na ordem de execução
+  semanas: ["Fundação e conexão com a Meta", "Captura das mensagens e acessos", "Mídias e motor de regras", "Conversas e painel", "Indicadores, alertas e avaliação", "Piloto no número real", "Ajustes e entrega"],         // títulos opcionais por semana: ['Base', 'Núcleo', ...] ou []
+  whatsapp: '',          // DDI+DDD+número só dígitos (ex.: 5517999990000) ou '' para ocultar
+  mensagem: 'Olá! Li a proposta do Monitor de atendimento do WhatsApp e gostaria de aprovar.'    // mensagem pré-preenchida do WhatsApp
+};
+/* ======================================================================= */
+(function(){
+  var root = document.documentElement, $ = function(s,c){return (c||document).querySelector(s);}, $$ = function(s,c){return Array.prototype.slice.call((c||document).querySelectorAll(s));};
+  function setAll(k, v){ $$('[data-bind="'+k+'"]').forEach(function(e){ e.textContent = v; }); }
+  function toast(msg){ var t = $('#toast'); t.textContent = msg; t.classList.add('is-on'); clearTimeout(t._h); t._h = setTimeout(function(){ t.classList.remove('is-on'); }, 2200); }
+
+  /* tema */
+  var TKEY = 'proposta-tema-' + PROPOSTA.id;
+  function isDark(){ var t = root.getAttribute('data-theme'); if(t) return t === 'dark'; return window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches; }
+  function paintTheme(){ $('#theme-lbl').textContent = isDark() ? 'Claro' : 'Escuro'; $('#theme-btn').setAttribute('aria-label', isDark() ? 'Mudar para tema claro' : 'Mudar para tema escuro'); }
+  try{ var saved = localStorage.getItem(TKEY); if(saved) root.setAttribute('data-theme', saved); }catch(e){}
+  paintTheme();
+  $('#theme-btn').addEventListener('click', function(){ var n = isDark() ? 'light' : 'dark'; root.setAttribute('data-theme', n); try{ localStorage.setItem(TKEY, n); }catch(e){} paintTheme(); });
+
+  /* compartilhar */
+  $('#share-btn').addEventListener('click', function(){
+    var data = { title: document.title, url: location.href };
+    if(navigator.share){ navigator.share(data).catch(function(){}); return; }
+    if(navigator.clipboard){ navigator.clipboard.writeText(location.href).then(function(){ toast('Link copiado'); }, function(){ toast(location.href); }); }
+    else toast(location.href);
+  });
+
+  /* expandir/recolher */
+  $$('[data-toggle-all]').forEach(function(btn){ btn.addEventListener('click', function(){ var s = $(btn.getAttribute('data-toggle-all')); if(!s) return; var o = btn.getAttribute('data-open') === 'true'; $$('details', s).forEach(function(d){ d.open = o; }); }); });
+
+  /* tabelas → rótulos para o modo cartão */
+  $$('.tbl table').forEach(function(t){
+    var hs = $$('thead th', t).map(function(th){ return th.textContent.trim(); });
+    $$('tbody tr', t).forEach(function(tr){ Array.prototype.forEach.call(tr.children, function(td, i){ if(hs[i] && !td.hasAttribute('data-label')) td.setAttribute('data-label', hs[i]); }); });
+  });
+
+  /* diagramas: botão ampliar */
+  var zoom = $('#zoom'), zbody = $('#zoom-body'), zw = 1, zbase = 900;
+  function zsize(){ var s = $('svg', zbody); if(!s) return; s.style.width = Math.round(zbase * zw) + 'px'; s.style.minWidth = '0'; }
+  $$('.diagram').forEach(function(d){
+    var svg = $('svg', d); if(!svg) return;
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'iconbtn zoombtn';
+    b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>Ampliar';
+    b.addEventListener('click', function(){
+      if(!zoom.showModal){ d.scrollIntoView(); return; }
+      zbody.innerHTML = ''; var c = svg.cloneNode(true); c.removeAttribute('id'); c.style.maxWidth = 'none'; zbody.appendChild(c);
+      $('#zoom-title').textContent = svg.getAttribute('aria-label') || 'Diagrama'; zoom.showModal();
+      var vb = (svg.getAttribute('viewBox')||'0 0 900 600').split(/[\s,]+/), fit = zbody.clientWidth - 32;
+      zbase = Math.max(fit, Math.min((+vb[2] || 900) * 1.2, fit * 2.2)); zw = 1; zsize();
+    });
+    d.insertBefore(b, d.firstChild);
+  });
+  $$('[data-z]', zoom).forEach(function(b){ b.addEventListener('click', function(){ zw = Math.max(.5, Math.min(3, zw + (+b.getAttribute('data-z')) * .25)); zsize(); }); });
+  $('#zoom-close').addEventListener('click', function(){ zoom.close(); });
+
+  /* progresso + CTA + navegação ativa */
+  var bar = $('#progress'), cta = $('#cta'), hero = $('.hero'), ace = $('#aceite');
+  function onScroll(){
+    var h = root.scrollHeight - innerHeight; bar.style.width = (h > 0 ? Math.min(100, scrollY / h * 100) : 0) + '%';
+    var past = hero.getBoundingClientRect().bottom < 0;
+    var atEnd = ace && ace.getBoundingClientRect().top < innerHeight * .8;
+    var on = past && !atEnd; cta.classList.toggle('is-on', on);
+    root.style.setProperty('--cta-h', on && innerWidth <= 820 ? cta.offsetHeight + 'px' : '0px');
+  }
+  addEventListener('scroll', onScroll, {passive:true}); addEventListener('resize', onScroll); onScroll();
+
+  var nav = $('#secnav'), links = $$('a', nav), secs = links.map(function(a){ return $(a.getAttribute('href')); }).filter(Boolean);
+  function spy(){
+    var y = (parseFloat(getComputedStyle(root).scrollPaddingTop) || 120) + 10, cur = null;
+    secs.forEach(function(s){ if(s.getBoundingClientRect().top <= y) cur = s; });
+    links.forEach(function(a){
+      var act = cur && a.getAttribute('href') === '#' + cur.id;
+      if(act && a.getAttribute('aria-current') !== 'true'){ nav.scrollTo({ left: a.offsetLeft - 12, behavior: 'smooth' }); }
+      if(act) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current');
+    });
+  }
+  addEventListener('scroll', spy, {passive:true}); spy();
+
+  /* aceite via WhatsApp */
+  if(PROPOSTA.whatsapp){
+    var wa = 'https://wa.me/' + PROPOSTA.whatsapp + '?text=' + encodeURIComponent(PROPOSTA.mensagem || ('Olá! Li a proposta "' + document.title + '" e gostaria de aprovar.'));
+    $$('[data-wa]').forEach(function(a){ a.href = wa; a.target = '_blank'; a.rel = 'noopener'; });
+    $('#cta-btn').href = wa; $('#cta-btn').target = '_blank'; $('#cta-btn').rel = 'noopener';
+    $('#cta-btn').className = 'btn btn--wa';
+  } else {
+    $$('[data-wa]').forEach(function(a){ a.remove(); });
+    if(!ace){ $('#cta-btn').href = '#investimento'; $('#cta-btn').textContent = 'Ver detalhes'; }
+  }
+  $$('[data-print]').forEach(function(b){ b.addEventListener('click', function(){ window.print(); }); });
+
+  /* ---------------- cronograma (dias úteis, feriados nacionais) ---------------- */
+  var WD = ['dom','seg','ter','qua','qui','sex','sáb'];
+  var FIXED = [[1,1,'Confraternização Universal'],[4,21,'Tiradentes'],[5,1,'Dia do Trabalho'],[9,7,'Independência do Brasil'],[10,12,'Nossa Senhora Aparecida'],[11,2,'Finados'],[11,15,'Proclamação da República'],[11,20,'Consciência Negra'],[12,25,'Natal']];
+  var holCache = {};
+  function pad(n){ return (n < 10 ? '0' : '') + n; }
+  function key(d){ return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
+  function mk(y,m,d){ return new Date(y, m, d, 12); }
+  function easter(y){ var a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1; return mk(y,mo-1,da); }
+  function hol(y){ if(holCache[y]) return holCache[y]; var h = {}; FIXED.forEach(function(x){ h[key(mk(y,x[0]-1,x[1]))] = x[2]; }); var e = easter(y); h[key(mk(y,e.getMonth(),e.getDate()-2))] = 'Sexta-feira Santa'; return (holCache[y] = h); }
+  function holName(d){ return hol(d.getFullYear())[key(d)] || null; }
+  function isBiz(d){ var w = d.getDay(); return w !== 0 && w !== 6 && !holName(d); }
+  function nextBiz(d){ var x = new Date(d); while(!isBiz(x)) x.setDate(x.getDate()+1); return x; }
+  function fmt(d){ return pad(d.getDate()) + '/' + pad(d.getMonth()+1); }
+  function fmtFull(d){ return fmt(d) + '/' + d.getFullYear(); }
+  function dow(d){ return d.toLocaleDateString('pt-BR', {weekday:'long'}); }
+  function range(a,b){ return a.getTime() === b.getTime() ? fmt(a) : fmt(a) + ' a ' + fmt(b); }
+  function parse(v){ var p = (v||'').split('-'); return p.length === 3 ? mk(+p[0], +p[1]-1, +p[2]) : null; }
+  function wc(w){ return 'g-w' + (((w-1) % 3) + 1); }
+  var TOTAL = PROPOSTA.etapas.reduce(function(s,e){ return s + e.d; }, 0);
+  var NWK = Math.ceil(TOTAL / 5);
+  var startEl = $('#start-date');
+
+  function render(){
+    var raw = parse(startEl && startEl.value) || parse(PROPOSTA.inicio);
+    var start = nextBiz(raw), adjusted = key(start) !== key(raw);
+    var days = [], d = new Date(start);
+    while(days.length < TOTAL){ days.push(new Date(d)); d.setDate(d.getDate()+1); d = nextBiz(d); }
+    var last = days[TOTAL-1];
+    setAll('entrega', fmtFull(last)); setAll('inicio', 'início em ' + fmt(start));
+    if($('#start-dow')){ $('#start-dow').textContent = adjusted ? dow(raw) + ', não é dia útil' : dow(start); }
+    if($('#end-date')){ $('#end-date').textContent = fmtFull(last); $('#end-dow').textContent = dow(last); }
+
+    var notes = [];
+    if(adjusted) notes.push('<b>' + fmt(raw) + '</b> não é dia útil; a contagem começa em <b>' + fmt(start) + '</b>.');
+    for(var c = new Date(start); c <= last; c.setDate(c.getDate()+1)){ var hn = holName(c); if(c.getDay() % 6 !== 0 && hn) notes.push('<b>' + fmt(c) + '</b> (' + hn + ') é feriado nacional e não conta como dia útil.'); }
+    if($('#pnote')) $('#pnote').innerHTML = notes.join(' ');
+
+    /* etapas com índice de dias */
+    var cur = 0, st = PROPOSTA.etapas.map(function(e){ var a = cur, b = cur + e.d - 1; cur += e.d; return { n:e.n, d:e.d, a:a, b:b, w:Math.floor(a/5)+1 }; });
+
+    /* cartões de semana */
+    var strip = '';
+    for(var w = 1; w <= NWK; w++){ var a = days[(w-1)*5], b = days[Math.min(w*5, TOTAL)-1], nd = Math.min(5, TOTAL-(w-1)*5);
+      strip += '<article class="wkc '+wc(w)+'"><h3>Semana '+w+'</h3>' + (PROPOSTA.semanas[w-1] ? '<p class="wkc__t">'+PROPOSTA.semanas[w-1]+'</p>' : '') + '<p class="wkc__d">'+range(a,b)+'</p><p class="wkc__n">'+nd+(nd>1?' dias úteis':' dia útil')+'</p></article>'; }
+    if($('#wk-strip')) $('#wk-strip').innerHTML = NWK <= 6 ? strip : '';
+
+    /* Gantt (desktop): colunas por dia até 25 dias úteis; acima disso, colunas por semana */
+    var byWeek = TOTAL > 25, cols = byWeek ? NWK : TOTAL;
+    var g = '<div class="gantt__scroll"><div class="gantt__grid" role="table" aria-label="Cronograma por etapa" style="grid-template-columns:minmax(220px,290px) repeat('+cols+',minmax('+(byWeek?56:34)+'px,1fr));min-width:'+(260+cols*(byWeek?56:36))+'px">';
+    g += '<div class="g-corner">Etapa</div>';
+    if(byWeek){
+      for(var k = 0; k < NWK; k++){ g += '<div class="g-week '+wc(k+1)+'" style="grid-row:1;grid-column:'+(k+2)+'">Sem '+(k+1)+'</div><div class="g-day g-ws" style="grid-row:2;grid-column:'+(k+2)+'"><b>'+fmt(days[k*5])+'</b><small>'+WD[days[k*5].getDay()]+'</small></div>'; }
+    } else {
+      for(var w2 = 1; w2 <= NWK; w2++){ var span = Math.min(5, TOTAL-(w2-1)*5); g += '<div class="g-week '+wc(w2)+'" style="grid-row:1;grid-column:'+(2+(w2-1)*5)+' / span '+span+'">Semana '+w2+'</div>'; }
+      days.forEach(function(dd,i){ var gap = i > 0 && (dd - days[i-1]) > 90000000; g += '<div class="g-day'+(i%5===0?' g-ws':(gap?' g-gap':''))+'" style="grid-row:2;grid-column:'+(i+2)+'"><b>'+pad(dd.getDate())+'</b><small>'+WD[dd.getDay()]+'</small></div>'; });
+    }
+    st.forEach(function(s, ri){
+      var r = ri + 3;
+      g += '<div class="g-name" style="grid-row:'+r+'"><span>'+s.n+'</span><small>'+range(days[s.a], days[s.b])+' · '+s.d+' dia'+(s.d>1?'s':'')+'</small></div>';
+      for(var i = 0; i < cols; i++){ var gp = !byWeek && i > 0 && (days[i] - days[i-1]) > 90000000; g += '<div class="g-cell'+((byWeek || i%5===0)?' g-ws':(gp?' g-gap':''))+'" style="grid-row:'+r+';grid-column:'+(i+2)+'"></div>'; }
+      var c1 = byWeek ? Math.floor(s.a/5) : s.a, c2 = byWeek ? Math.floor(s.b/5) : s.b;
+      g += '<div class="g-bar '+wc(s.w)+'" style="grid-row:'+r+';grid-column:'+(c1+2)+' / '+(c2+3)+'" title="'+range(days[s.a], days[s.b])+'"></div>';
+    });
+    g += '</div></div>';
+    if($('#gantt')) $('#gantt').innerHTML = g;
+
+    /* linha do tempo (celular e impressão) */
+    var tl = '';
+    for(var w3 = 1; w3 <= NWK; w3++){
+      var items = st.filter(function(s){ return s.w === w3; }); if(!items.length) continue;
+      var a3 = days[(w3-1)*5], b3 = days[Math.min(w3*5, TOTAL)-1];
+      tl += '<li class="tl__wk '+wc(w3)+'"><div class="tl__wkh"><b>Semana '+w3+'</b><span>'+(PROPOSTA.semanas[w3-1]||'')+'</span><em>'+range(a3,b3)+'</em></div>';
+      items.forEach(function(s){ tl += '<div class="tl__it"><div><p>'+s.n+'</p><small>'+range(days[s.a], days[s.b])+' · '+s.d+' dia'+(s.d>1?'s úteis':' útil')+'</small></div></div>'; });
+      tl += '</li>';
+    }
+    if($('#timeline')) $('#timeline').innerHTML = tl;
+  }
+  if(startEl){
+    if(!startEl.value) startEl.value = PROPOSTA.inicio;
+    startEl.addEventListener('input', render);
+    startEl.addEventListener('change', function(){ if(!startEl.value) startEl.value = PROPOSTA.inicio; render(); });
+  }
+  render();
+
+  /* impressão: abre todos os acordeões */
+  var closed = [];
+  addEventListener('beforeprint', function(){ closed = []; $$('details').forEach(function(d){ if(!d.open){ closed.push(d); d.open = true; } }); });
+  addEventListener('afterprint', function(){ closed.forEach(function(d){ d.open = false; }); });
+})();
+</script>
+</body>
+</html>
