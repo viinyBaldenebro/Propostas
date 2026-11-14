@@ -1056,8 +1056,11 @@ async function iniciarApp(){
   try{ S.dados=await lerPlanilha(); }
   catch(e){
     TOKEN=null; SESSAO=null; $('#carregando').hidden=true;
-    const semAcesso=e.status===403||e.status===404;
-    montarLogin(semAcesso?'Esta conta do Google não tem acesso à planilha do painel. Peça ao responsável para compartilhá-la com você e tente de novo.':'Não foi possível ler a planilha: '+e.message);
+        const dica = /has not been used|is disabled|SERVICE_DISABLED/i.test(e.message) ? 'A Google Sheets API não está ativada no projeto do Google Cloud.'
+      : /insufficient|scope/i.test(e.message) ? 'A permissão para planilhas não foi concedida. Entre de novo e marque a caixa de acesso ao Google Sheets.'
+      : e.status===404 ? 'Planilha não encontrada. Confira o ID da planilha.'
+      : e.status===403 ? 'Esta conta do Google não tem acesso à planilha. Peça para compartilharem com você.' : 'Não foi possível ler a planilha.';
+    montarLogin(`${dica} (Google respondeu${e.status?' '+e.status:''}: ${e.message})`);
     return;
   }
   $('#carregando').hidden=true;
