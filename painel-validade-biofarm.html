@@ -304,6 +304,20 @@
 </dialog>
 
 <!-- ============================ DADOS ============================ -->
+<dialog id="dlg-modal" class="w-[min(460px,calc(100vw-1.5rem))] rounded-3xl p-0 bg-white text-ink shadow-2xl border border-line">
+  <form method="dialog" id="mdl-form" class="p-6 sm:p-7">
+    <h2 id="mdl-titulo" class="text-xl font-extrabold tracking-tight"></h2>
+    <div id="mdl-texto" class="mt-2 text-sm text-mute leading-relaxed"></div>
+    <div id="mdl-resumo" class="mt-3 rounded-2xl bg-cream/70 border border-line p-3.5 text-sm" hidden></div>
+    <label id="mdl-campo" class="mt-4 block text-sm font-semibold" hidden><span id="mdl-rotulo"></span>
+      <input id="mdl-input" class="mt-1.5 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm font-normal"></label>
+    <p id="mdl-ajuda" class="mt-1.5 text-xs text-mute" hidden></p>
+    <div class="mt-6 flex flex-wrap justify-end gap-2.5">
+      <button type="button" id="mdl-cancelar" class="rounded-xl border border-line hover:bg-cream px-4 py-2.5 text-sm font-bold">Cancelar</button>
+      <button type="submit" id="mdl-ok" class="rounded-xl bg-navy hover:bg-navy-700 text-white px-5 py-2.5 text-sm font-bold">Confirmar</button>
+    </div>
+  </form>
+</dialog>
 <dialog id="dlg-desc" class="w-[min(680px,calc(100vw-1.5rem))] max-h-[calc(100dvh-1.5rem)] rounded-3xl p-0 bg-white text-ink shadow-2xl border border-line">
   <div class="p-6 sm:p-8">
     <div class="flex items-start justify-between gap-4">
@@ -725,6 +739,24 @@ async function aplicarImportacao(){
   const n=lotes.length; $('#dlg-import').close(); atualizarTudo(); toast(`${INTF.format(n)} lotes gravados na planilha.`);
 }
 
+/* ---------- Modal padrão (substitui alert/confirm/prompt) ---------- */
+function modal(o){
+  return new Promise(res=>{
+    const d=$('#dlg-modal'), ok=$('#mdl-ok'), inp=$('#mdl-input');
+    $('#mdl-titulo').textContent=o.titulo; $('#mdl-texto').innerHTML=o.texto||'';
+    const r=$('#mdl-resumo'); r.hidden=!o.resumo; r.innerHTML=o.resumo||'';
+    const c=o.campo; $('#mdl-campo').hidden=!c; $('#mdl-ajuda').hidden=!(c&&c.ajuda); 
+    if(c){ $('#mdl-rotulo').textContent=c.rotulo; inp.type=c.tipo||'text'; inp.value=c.valor||''; inp.placeholder=c.placeholder||''; inp.removeAttribute('max'); if(c.max) inp.max=c.max; $('#mdl-ajuda').textContent=c.ajuda||''; }
+    ok.textContent=o.ok||'Confirmar'; ok.className='rounded-xl px-5 py-2.5 text-sm font-bold text-white '+(o.perigo?'':'bg-navy hover:bg-navy-700'); ok.style.background=o.perigo?'var(--b-venc)':'';
+    let fim=false; const sair=v=>{ if(fim) return; fim=true; d.close(); res(v); };
+    $('#mdl-form').onsubmit=e=>{ e.preventDefault(); sair(c?inp.value:true); };
+    $('#mdl-cancelar').onclick=()=>sair(null);
+    d.oncancel=e=>{ e.preventDefault(); sair(null); };
+    d.onclick=e=>{ if(e.target===d) sair(null); };
+    d.showModal(); if(c) inp.focus(); else $('#mdl-cancelar').focus();
+  });
+}
+
 /* ---------- Descarte de lotes vencidos ---------- */
 async function descartar(ls,motivo){
   const q=quem(), agora=iso();
@@ -748,11 +780,13 @@ function msgErroGravar(e){ return e.status===403?'Sua conta pode ver a planilha,
 async function acaoDescartar(ids){
   const ls=ids.map(id=>S.todos.find(x=>x.id===id)).filter(l=>l&&l.dias<0); if(!ls.length) return;
   const v=ls.reduce((a,l)=>a+l.total,0);
-  const msg=ls.length===1?`Marcar como descartado?\n\n${ls[0].desc}\nLote ${ls[0].lote||'—'} · ${brl(ls[0].total)}\n\nEle deixa de aparecer no painel e nos alertas para todos. Dá para desfazer em “Descartados”.`
-    :`Marcar ${ls.length} lotes vencidos (${brl(v)}) como descartados?\n\nEles deixam de aparecer no painel e nos alertas para todos. Dá para desfazer em “Descartados”.`;
-  const obs=prompt(msg+'\n\nObservação (opcional, ex.: descarte em 14/11, termo nº…):','');
+  const um=ls.length===1;
+  const obs=await modal({titulo:um?'Descartar este lote?':`Descartar ${ls.length} lotes vencidos?`,
+    texto:'Ele deixa de aparecer no painel e nos alertas para todos os usuários. Dá para desfazer em “Descartados”.'.replace('Ele',um?'Ele':'Eles'),
+    resumo:um?`<b>${esc(ls[0].desc)}</b><br><span class="text-mute">Lote ${esc(ls[0].lote||'—')} · venceu em ${fData(ls[0].val)} · ${brl(ls[0].total)}</span>`:`<b>${ls.length} lotes</b> <span class="text-mute">· ${brl(v)} em valor de custo</span>`,
+    campo:{rotulo:'Observação (opcional)',placeholder:'Ex.: descarte de 14/11, termo nº…'},ok:um?'Descartar lote':'Descartar lotes',perigo:true});
   if(obs===null) return;
-  try{ await descartar(ls,obs.trim()); }catch(e){ toast(msgErroGravar(e),'erro'); return; }
+  try{ await descartar(ls,String(obs).trim()); }catch(e){ toast(msgErroGravar(e),'erro'); return; }
   atualizarTudo(); toast(ls.length===1?'Lote marcado como descartado.':`${ls.length} lotes marcados como descartados.`);
 }
 function abrirDescartados(){
@@ -766,7 +800,8 @@ function abrirDescartados(){
       <button data-desfazer="${i}" class="rounded-lg border border-line hover:bg-cream px-3 py-1.5 text-sm font-semibold flex-none">Desfazer</button></li>`).join('')}</ul>`
     :'<p class="text-mute">Nenhum lote descartado até agora. Use “Descartar” nos lotes vencidos da lista.</p>');
   $$('#desc-corpo [data-desfazer]').forEach(b=>b.onclick=async()=>{
-    const r=L[+b.dataset.desfazer]; if(!confirm(`Desfazer o descarte de ${r.desc} (lote ${r.lote||'—'})? Ele volta a aparecer no painel.`)) return;
+    const r=L[+b.dataset.desfazer];
+    if(!await modal({titulo:'Desfazer o descarte?',texto:'O lote volta a aparecer no painel e nos alertas.',resumo:`<b>${esc(r.desc)}</b><br><span class="text-mute">Lote ${esc(r.lote||'—')} · ${brl(r.total)}</span>`,ok:'Desfazer descarte'})) return;
     b.disabled=true;
     try{ await desfazerDescarte(r); }catch(e){ b.disabled=false; toast(msgErroGravar(e),'erro'); return; }
     atualizarTudo(); abrirDescartados(); toast('Descarte desfeito.');
@@ -1105,7 +1140,7 @@ function abrirDados(){
     <ul class="mt-2 divide-y divide-line text-sm">${h.map(x=>`<li class="py-2.5 flex flex-wrap justify-between gap-2"><span><b>${esc(x.arquivo)}</b> <span class="text-mute">· ${esc(x.modo)}${x.formato&&x.formato!=='Descarte'?' · '+esc(x.formato):''}</span></span><span class="text-mute tab-num">${new Date(x.quando).toLocaleString('pt-BR')} · ${esc(x.por||'')} · ${INTF.format(x.lotes)} ${plural(x.lotes,'lote')}${x.ok==='sim'?' · conferido':x.ok==='não'?' · com ressalvas':''}</span></li>`).join('')||'<li class="py-2 text-mute">Sem registros.</li>'}</ul>
     <div class="mt-6 flex justify-end"><button id="btn-apagar" class="rounded-xl border-2 px-4 py-2.5 text-sm font-bold" style="border-color:var(--b-venc);color:var(--b-venc)">Apagar dados da planilha</button></div>`;
   $('#btn-apagar')?.addEventListener('click',async()=>{
-    if(!confirm('Apagar os lotes da planilha? Isso afeta todos que usam o painel. O histórico e os lotes descartados são mantidos, e este apagamento fica registrado com o seu nome.')) return;
+    if(!await modal({titulo:'Apagar os dados da planilha?',texto:'Isso afeta todos que usam o painel. O histórico e os lotes descartados são mantidos, e este apagamento fica registrado com o seu nome.',resumo:S.dados?`<b>${INTF.format(S.dados.lotes.length)} lotes</b> <span class="text-mute">· ${esc(S.dados.meta.arquivo)}</span>`:'',ok:'Apagar dados',perigo:true})) return;
     try{ await apagarPlanilha(); }catch(e){ toast('Não foi possível apagar: '+e.message,'erro'); return; }
     S.dados=null; $('#dlg-dados').close(); atualizarTudo(); toast('Dados apagados da planilha.');
   });
@@ -1149,7 +1184,11 @@ function ligarEventos(){
   $('#btn-sair').onclick=sair;
   $('#btn-user').onclick=()=>{ const m=$('#menu-user'); m.hidden=!m.hidden; $('#btn-user').setAttribute('aria-expanded',!m.hidden); };
   $('#btn-atualizar').onclick=()=>{ $('#menu-user').hidden=true; recarregarDados(true); };
-  const mudarData=()=>{ const v=prompt('Data de referência (AAAA-MM-DD). Deixe vazio para usar hoje:',S.ref); if(v===null) return; const novo=v.trim()||hojeIso(); if(!/^\d{4}-\d{2}-\d{2}$/.test(novo)||isNaN(utc(novo))){ toast('Data inválida. Use AAAA-MM-DD.','erro'); return; } S.ref=novo; atualizarTudo(); };
+  const mudarData=async()=>{
+    const v=await modal({titulo:'Data de referência',texto:'Os vencimentos são calculados a partir desta data. Use uma data futura para simular. Deixe vazio para voltar a usar hoje.',campo:{rotulo:'Data',tipo:'date',valor:S.ref===hojeIso()?'':S.ref},ok:'Aplicar data'});
+    if(v===null) return; const novo=String(v).trim()||hojeIso();
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(novo)||isNaN(utc(novo))){ toast('Data inválida.','erro'); return; }
+    S.ref=novo; atualizarTudo(); };
   $('#btn-data').onclick=mudarData; $('#btn-data-m').onclick=()=>{ $('#menu-user').hidden=true; mudarData(); };
   $('#btn-filtros').onclick=()=>{ const e=$('#f-extra'); const abre=e.classList.contains('hidden'); e.classList.toggle('hidden',!abre); ['grid','grid-cols-2','gap-2','w-full'].forEach(c=>e.classList.toggle(c,abre)); $('#btn-filtros').setAttribute('aria-expanded',abre); };
   $('#ordenar-m').onchange=e=>{ const [c,d]=e.target.value.split(':'); S.ordem={col:c,dir:+d}; S.pag=1; renderTabela(); };
