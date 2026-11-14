@@ -124,6 +124,7 @@
           <p class="text-xs font-bold text-mute">Conectado como</p>
           <p id="user-email" class="text-sm font-semibold break-all mb-1"></p>
           <div class="my-3 h-px bg-line"></div>
+          <button id="btn-data-m" class="sm:hidden w-full text-left text-sm font-semibold hover:text-brand-700 py-1">Data de referência</button>
           <button id="btn-atualizar" class="w-full text-left text-sm font-semibold hover:text-brand-700 py-1">Atualizar dados da planilha</button>
           <a id="lnk-planilha" target="_blank" rel="noopener" class="block w-full text-left text-sm font-semibold hover:text-brand-700 py-1">Abrir planilha</a>
           <button id="btn-dados" class="w-full text-left text-sm font-semibold hover:text-brand-700 py-1">Dados e importações</button>
@@ -176,12 +177,15 @@
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mute" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
           <input id="f-busca" type="search" placeholder="Buscar produto, código, lote ou fornecedor" class="w-full rounded-xl border border-line bg-white pl-9 pr-3 py-2.5 text-sm" aria-label="Buscar">
         </div>
-        <select id="f-grupo" class="rounded-xl border border-line bg-white px-3 py-2.5 text-sm" aria-label="Grupo"></select>
-        <select id="f-setor" class="rounded-xl border border-line bg-white px-3 py-2.5 text-sm" aria-label="Setor"></select>
-        <select id="f-fornecedor" class="rounded-xl border border-line bg-white px-3 py-2.5 text-sm max-w-[200px]" aria-label="Fornecedor"></select>
-        <select id="f-filial" class="rounded-xl border border-line bg-white px-3 py-2.5 text-sm" aria-label="Filial"></select>
-        <select id="f-portaria" class="rounded-xl border border-line bg-white px-3 py-2.5 text-sm" aria-label="Controlados"></select>
-        <select id="f-situacao" class="rounded-xl border border-line bg-white px-3 py-2.5 text-sm" aria-label="Situação do produto"></select>
+        <button id="btn-filtros" type="button" class="md:hidden rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold" aria-expanded="false" aria-controls="f-extra">Filtros</button>
+        <div id="f-extra" class="hidden md:contents">
+        <select id="f-grupo" class="w-full md:w-auto rounded-xl border border-line bg-white px-3 py-2.5 text-sm" aria-label="Grupo"></select>
+        <select id="f-setor" class="w-full md:w-auto rounded-xl border border-line bg-white px-3 py-2.5 text-sm" aria-label="Setor"></select>
+        <select id="f-fornecedor" class="w-full md:w-auto rounded-xl border border-line bg-white px-3 py-2.5 text-sm max-w-[200px]" aria-label="Fornecedor"></select>
+        <select id="f-filial" class="w-full md:w-auto rounded-xl border border-line bg-white px-3 py-2.5 text-sm" aria-label="Filial"></select>
+        <select id="f-portaria" class="w-full md:w-auto rounded-xl border border-line bg-white px-3 py-2.5 text-sm" aria-label="Controlados"></select>
+        <select id="f-situacao" class="w-full md:w-auto rounded-xl border border-line bg-white px-3 py-2.5 text-sm" aria-label="Situação do produto"></select>
+        </div>
       </div>
       <div id="chips-filtro" class="flex flex-wrap items-center gap-2 mt-2 empty:hidden"></div>
     </section>
@@ -213,7 +217,7 @@
           <h3 id="r-titulo" class="text-lg font-extrabold tracking-tight">Onde está concentrado</h3>
           <p id="r-sub" class="font-serif italic text-mute text-sm"></p>
         </div>
-        <div id="r-tabs" class="flex flex-wrap gap-1 rounded-xl bg-cream p-1 text-sm no-print" role="tablist"></div>
+        <div id="r-tabs" class="flex flex-wrap gap-1 max-w-full rounded-xl bg-cream p-1 text-sm no-print" role="tablist"></div>
       </div>
       <div id="rank" class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-2.5"></div>
     </section>
@@ -225,7 +229,12 @@
           <h3 id="l-titulo" class="text-lg font-extrabold tracking-tight">Lotes</h3>
           <p id="l-sub" class="font-serif italic text-mute text-sm"></p>
         </div>
-        <div class="flex flex-wrap items-center gap-2 text-sm">
+        <div class="flex flex-wrap items-center gap-2 text-sm w-full md:w-auto">
+          <label class="flex md:hidden items-center gap-2 font-semibold">Ordenar
+            <select id="ordenar-m" class="rounded-xl border border-line bg-white px-3 py-2 font-normal">
+              <option value="dias:1">Vencimento (mais próximo)</option><option value="total:-1">Maior valor</option><option value="desc:1">Produto (A–Z)</option><option value="fornecedor:1">Fornecedor (A–Z)</option>
+            </select>
+          </label>
           <label class="flex items-center gap-2 font-semibold">Agrupar por
             <select id="agrupar" class="rounded-xl border border-line bg-white px-3 py-2 font-normal">
               <option value="">Sem agrupamento</option>
@@ -238,6 +247,8 @@
               <option value="banda">Faixa de validade</option>
             </select>
           </label>
+          <button id="btn-desc" class="rounded-xl border border-line hover:bg-cream px-3.5 py-2 font-semibold">Descartados</button>
+          <button id="btn-desc-lote" class="rounded-xl border-2 px-3.5 py-2 font-bold" style="border-color:var(--b-venc);color:var(--b-venc)" hidden>Descartar vencidos</button>
           <button id="btn-csv" class="rounded-xl border border-line hover:bg-cream px-3.5 py-2 font-semibold">Exportar CSV</button>
           <button id="btn-print" class="rounded-xl border border-line hover:bg-cream px-3.5 py-2 font-semibold">Imprimir</button>
         </div>
@@ -293,12 +304,22 @@
 </dialog>
 
 <!-- ============================ DADOS ============================ -->
+<dialog id="dlg-desc" class="w-[min(680px,calc(100vw-1.5rem))] max-h-[calc(100dvh-1.5rem)] rounded-3xl p-0 bg-white text-ink shadow-2xl border border-line">
+  <div class="p-6 sm:p-8">
+    <div class="flex items-start justify-between gap-4">
+      <div><h2 class="text-2xl font-extrabold tracking-tight">Lotes descartados</h2>
+        <p class="font-serif italic text-mute mt-1">Registrados na planilha, com quem descartou e quando.</p></div>
+      <button id="desc-fechar" class="rounded-full w-9 h-9 grid place-items-center border border-line hover:bg-cream" aria-label="Fechar"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div id="desc-corpo" class="mt-5"></div>
+  </div>
+</dialog>
 <dialog id="dlg-dados" class="w-[min(680px,calc(100vw-1.5rem))] max-h-[calc(100dvh-1.5rem)] rounded-3xl p-0 bg-white text-ink shadow-2xl border border-line">
   <div class="p-6 sm:p-8">
     <div class="flex items-start justify-between gap-4">
       <div>
         <h2 class="text-2xl font-extrabold tracking-tight">Dados e importações</h2>
-        <p class="font-serif italic text-mute mt-1">Guardados somente neste navegador.</p>
+        <p class="font-serif italic text-mute mt-1">Quem importou, descartou ou apagou dados, e quando.</p>
       </div>
       <button id="dados-fechar" class="rounded-full w-9 h-9 grid place-items-center border border-line hover:bg-cream" aria-label="Fechar">
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
@@ -360,7 +381,7 @@ const CONFIG = {
   planilhaId:'1hVzo0cBmdv538emz7mcFHqAiS_bZqMsHJ1lZbWs5Qhc',
   escopos:'https://www.googleapis.com/auth/spreadsheets openid email profile'
 };
-const ABA = {lotes:'Lotes', cfg:'Config', hist:'Historico'};
+const ABA = {lotes:'Lotes', cfg:'Config', hist:'Historico', desc:'Descartes'};
 const OCIOSO_MS = 30*60*1000;
 let SESSAO=null, TOKEN=null, TOKEN_EXP=0, TOKEN_CLIENT=null, AGUARDANDO=null;
 
@@ -396,6 +417,7 @@ const pj = o => ({method:'POST',body:JSON.stringify(o)});
 
 const CAB_LOTES=['Código','Produto','Grupo','Tipo','Setor','Situação','Unidade','Família','Portaria','Filial','Fornecedor','Lote','Nota','Fabricação','Validade','Quantidade','Custo unitário','Valor total'];
 const CAB_HIST=['Quando','Por','Arquivo','Formato','Modo','Lotes','Produtos','Valor','Conferido','Emissão'];
+const CAB_DESC=['Quando','Por','Ação','Chave','Código','Produto','Lote','Validade','Filial','Nota','Quantidade','Valor','Motivo'];
 const col = n => String.fromCharCode(64+n);
 
 async function lerPlanilha(){
@@ -406,6 +428,7 @@ async function lerPlanilha(){
   if(tem.has(ABA.lotes)) pedidos.push(['lotes',`${ABA.lotes}!A:${col(18)}`]);
   if(tem.has(ABA.cfg)) pedidos.push(['cfg',`${ABA.cfg}!A:B`]);
   if(tem.has(ABA.hist)) pedidos.push(['hist',`${ABA.hist}!A:${col(10)}`]);
+  if(tem.has(ABA.desc)) pedidos.push(['desc',`${ABA.desc}!A:${col(13)}`]);
   const out={};
   if(pedidos.length){
     const q=pedidos.map(p=>'ranges='+encodeURIComponent(p[1])).join('&');
@@ -421,7 +444,9 @@ async function lerPlanilha(){
     lotes.push({cod,filial:s(r[9]),fornecedor:s(r[10]),lote:s(r[11]),nota:s(r[12]),fabr:s(r[13])||null,val:s(r[14]),qtd:n(r[15]),custo:n(r[16]),total:n(r[17])});
   }
   const cfg={}; (out.cfg||[]).forEach(r=>{ if(r[0]) cfg[s(r[0])]=r[1]; });
-  S.hist=(out.hist||[]).slice(1).filter(r=>r.length).reverse().slice(0,30).map(r=>({quando:s(r[0]),por:s(r[1]),arquivo:s(r[2]),formato:s(r[3]),modo:s(r[4]),lotes:n(r[5]),produtos:n(r[6]),valor:n(r[7]),ok:s(r[8])==='sim',emissao:s(r[9])}));
+  S.hist=(out.hist||[]).slice(1).filter(r=>r.length).reverse().slice(0,60).map(r=>({quando:s(r[0]),por:s(r[1]),arquivo:s(r[2]),formato:s(r[3]),modo:s(r[4]),lotes:n(r[5]),produtos:n(r[6]),valor:n(r[7]),ok:s(r[8]),emissao:s(r[9])}));
+  S.descReg=(out.desc||[]).slice(1).filter(r=>r.length&&s(r[3])).map(r=>({quando:s(r[0]),por:s(r[1]),acao:s(r[2]),chave:s(r[3]),cod:s(r[4]),desc:s(r[5]),lote:s(r[6]),val:s(r[7]),filial:s(r[8]),nota:s(r[9]),qtd:n(r[10]),total:n(r[11]),motivo:s(r[12])}));
+  calcDesc();
   S.ultimaLeitura=Date.now();
   if(!lotes.length) return null;
   return {lotes,produtos,meta:{arquivo:s(cfg.arquivo),formato:s(cfg.formato),importadoEm:+cfg.importadoEm||Date.now(),por:s(cfg.por),emissao:s(cfg.emissao)||null,emissaoHora:s(cfg.emissaoHora),periodoIni:s(cfg.periodoIni)||null,periodoFim:s(cfg.periodoFim)||null}};
@@ -432,6 +457,7 @@ async function garantirAbas(){
   const falta=Object.values(ABA).filter(t=>!tem.has(t));
   if(falta.length){
     await SHEETS({path:':batchUpdate',opts:pj({requests:falta.map(title=>({addSheet:{properties:{title}}}))})});
+    if(falta.includes(ABA.desc)) await SHEETS({path:'/values/'+encodeURIComponent(ABA.desc+'!A1')+'?valueInputOption=RAW',opts:{method:'PUT',body:JSON.stringify({values:[CAB_DESC]})}});
     if(falta.includes(ABA.hist)) await SHEETS({path:'/values/'+encodeURIComponent(ABA.hist+'!A1')+'?valueInputOption=RAW',opts:{method:'PUT',body:JSON.stringify({values:[CAB_HIST]})}});
   }
 }
@@ -449,8 +475,20 @@ async function gravarPlanilha(dados,hist){
   await SHEETS({path:'/values/'+encodeURIComponent(`${ABA.cfg}!A1`)+'?valueInputOption=RAW',opts:{method:'PUT',body:JSON.stringify({values:cfg})}});
   if(hist) await SHEETS({path:'/values/'+encodeURIComponent(`${ABA.hist}!A1`)+':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS',opts:pj({values:[hist]})});
 }
+async function addLinhas(aba,rows){
+  await SHEETS({path:'/values/'+encodeURIComponent(`${aba}!A1`)+':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS',opts:pj({values:rows})});
+}
+const iso=()=>new Date().toISOString();
+const quem=()=>SESSAO?.nome||SESSAO?.u||'';
+function histEntrada(modo,arquivo,formato,lotes,produtos,valor,ok,emissao){
+  return [iso(),quem(),arquivo,formato,modo,lotes,produtos,Math.round(valor*100)/100,ok||'',emissao||''];
+}
+function guardarHistLocal(r){ S.hist=[{quando:r[0],por:r[1],arquivo:r[2],formato:r[3],modo:r[4],lotes:r[5],produtos:r[6],valor:r[7],ok:r[8],emissao:r[9]},...(S.hist||[])].slice(0,60); }
 async function apagarPlanilha(){
   await garantirAbas();
+  const d=S.dados, h=histEntrada('apagou os dados',d?.meta?.arquivo||'(base atual)',d?.meta?.formato||'',d?.lotes.length||0,d?Object.keys(d.produtos).length:0,d?d.lotes.reduce((a,l)=>a+l.total,0):0,'',d?.meta?.emissao);
+  await addLinhas(ABA.hist,[h]);   // registra antes de apagar: se falhar, nada é apagado
+  guardarHistLocal(h);
   await SHEETS({path:'/values/'+encodeURIComponent(`${ABA.lotes}!A:${col(18)}`)+':clear',opts:pj({})});
   await SHEETS({path:'/values/'+encodeURIComponent(`${ABA.cfg}!A:B`)+':clear',opts:pj({})});
 }
@@ -682,9 +720,58 @@ async function aplicarImportacao(){
     toast(e.status===403?'Sua conta pode ver a planilha, mas não editar. Peça permissão de editor.':'Não foi possível gravar na planilha: '+e.message,'erro'); return;
   }
   btn.textContent=txtOrig;
-  S.dados=dados; S.hist=[{quando:hist[0],por:meta.por,arquivo:meta.arquivo,formato:meta.formato,modo:hist[4],lotes:IMP.lotes.length,produtos:hist[6],valor:hist[7],ok:c.ok,emissao:meta.emissao},...(S.hist||[])];
+  S.dados=dados; S.hist=[{quando:hist[0],por:meta.por,arquivo:meta.arquivo,formato:meta.formato,modo:hist[4],lotes:IMP.lotes.length,produtos:hist[6],valor:hist[7],ok:c.ok?'sim':'não',emissao:meta.emissao},...(S.hist||[])];
   S.pag=1; S.f=filtrosVazios(); IMP=null;
   const n=lotes.length; $('#dlg-import').close(); atualizarTudo(); toast(`${INTF.format(n)} lotes gravados na planilha.`);
+}
+
+/* ---------- Descarte de lotes vencidos ---------- */
+async function descartar(ls,motivo){
+  const q=quem(), agora=iso();
+  const rows=ls.map(l=>[agora,q,'descartou',chaveLote(l),l.cod,l.desc,l.lote,l.val,l.filial,l.nota,l.qtd,l.total,motivo||'']);
+  const prods=new Set(ls.map(l=>l.cod)).size, valor=ls.reduce((a,l)=>a+l.total,0);
+  const arq=ls.length===1?`${ls[0].desc} · lote ${ls[0].lote||'—'}`:`${ls.length} lotes vencidos`;
+  const h=[agora,q,arq,'Descarte','descartou',ls.length,prods,Math.round(valor*100)/100,'',''];
+  await garantirAbas(); await addLinhas(ABA.desc,rows); await addLinhas(ABA.hist,[h]);
+  S.descReg.push(...rows.map(r=>({quando:r[0],por:r[1],acao:r[2],chave:r[3],cod:r[4],desc:r[5],lote:r[6],val:r[7],filial:r[8],nota:r[9],qtd:r[10],total:r[11],motivo:r[12]})));
+  calcDesc(); guardarHistLocal(h);
+}
+async function desfazerDescarte(r){
+  const agora=iso(), q=quem();
+  const row=[agora,q,'desfez',r.chave,r.cod,r.desc,r.lote,r.val,r.filial,r.nota,r.qtd,r.total,''];
+  const h=[agora,q,`${r.desc} · lote ${r.lote||'—'}`,'Descarte','desfez o descarte',1,1,Math.round(r.total*100)/100,'',''];
+  await garantirAbas(); await addLinhas(ABA.desc,[row]); await addLinhas(ABA.hist,[h]);
+  S.descReg.push({quando:agora,por:q,acao:'desfez',chave:r.chave,cod:r.cod,desc:r.desc,lote:r.lote,val:r.val,filial:r.filial,nota:r.nota,qtd:r.qtd,total:r.total,motivo:''});
+  calcDesc(); guardarHistLocal(h);
+}
+function msgErroGravar(e){ return e.status===403?'Sua conta pode ver a planilha, mas não editar. Peça permissão de editor.':'Não foi possível gravar na planilha: '+e.message; }
+async function acaoDescartar(ids){
+  const ls=ids.map(id=>S.todos.find(x=>x.id===id)).filter(l=>l&&l.dias<0); if(!ls.length) return;
+  const v=ls.reduce((a,l)=>a+l.total,0);
+  const msg=ls.length===1?`Marcar como descartado?\n\n${ls[0].desc}\nLote ${ls[0].lote||'—'} · ${brl(ls[0].total)}\n\nEle deixa de aparecer no painel e nos alertas para todos. Dá para desfazer em “Descartados”.`
+    :`Marcar ${ls.length} lotes vencidos (${brl(v)}) como descartados?\n\nEles deixam de aparecer no painel e nos alertas para todos. Dá para desfazer em “Descartados”.`;
+  const obs=prompt(msg+'\n\nObservação (opcional, ex.: descarte em 14/11, termo nº…):','');
+  if(obs===null) return;
+  try{ await descartar(ls,obs.trim()); }catch(e){ toast(msgErroGravar(e),'erro'); return; }
+  atualizarTudo(); toast(ls.length===1?'Lote marcado como descartado.':`${ls.length} lotes marcados como descartados.`);
+}
+function abrirDescartados(){
+  const L=[...S.descAtivos.values()].sort((a,b)=>b.quando.localeCompare(a.quando));
+  const tot=L.reduce((a,r)=>a+r.total,0);
+  $('#desc-corpo').innerHTML=(L.length?`<p class="text-sm text-mute">${L.length} ${plural(L.length,'lote descartado','lotes descartados')} · ${brl(tot)}. Eles não entram nas contagens, gráficos e alertas.</p>
+    <ul class="mt-3 divide-y divide-line">${L.map((r,i)=>`<li class="py-3 flex flex-wrap items-start justify-between gap-3">
+      <div class="min-w-0"><p class="font-bold leading-snug">${esc(r.desc)}</p>
+        <p class="text-xs text-mute tab-num mt-0.5">cód. ${esc(r.cod)} · lote ${esc(r.lote||'—')} · venc. ${fData(r.val)} · ${NUMF.format(r.qtd)} · ${brl(r.total)}</p>
+        <p class="text-xs text-mute mt-0.5">Descartado em ${new Date(r.quando).toLocaleString('pt-BR')} por ${esc(r.por||'—')}${r.motivo?' · '+esc(r.motivo):''}</p></div>
+      <button data-desfazer="${i}" class="rounded-lg border border-line hover:bg-cream px-3 py-1.5 text-sm font-semibold flex-none">Desfazer</button></li>`).join('')}</ul>`
+    :'<p class="text-mute">Nenhum lote descartado até agora. Use “Descartar” nos lotes vencidos da lista.</p>');
+  $$('#desc-corpo [data-desfazer]').forEach(b=>b.onclick=async()=>{
+    const r=L[+b.dataset.desfazer]; if(!confirm(`Desfazer o descarte de ${r.desc} (lote ${r.lote||'—'})? Ele volta a aparecer no painel.`)) return;
+    b.disabled=true;
+    try{ await desfazerDescarte(r); }catch(e){ b.disabled=false; toast(msgErroGravar(e),'erro'); return; }
+    atualizarTudo(); abrirDescartados(); toast('Descarte desfeito.');
+  });
+  $('#dlg-desc').showModal();
 }
 
 /* ====================================================================
@@ -700,16 +787,20 @@ const BANDAS = [
 const BANDA = Object.fromEntries(BANDAS.map(b=>[b.id,b]));
 const bandaDe = d => d<0?'venc':d<=30?'crit':d<=60?'alert':d<=90?'aten':'ok';
 const filtrosVazios = () => ({busca:'',grupo:'',setor:'',fornecedor:'',filial:'',portaria:'',situacao:'',banda:'',mes:'',ate:null,prod:''});
-const S = { dados:null, ref:hojeIso(), f:filtrosVazios(), metrica:'valor', rank:'fornecedor', agrupar:'', ordem:{col:'dias',dir:1}, pag:1, porPag:25, abertos:new Set(), todos:[], base:[], lista:[] };
+const S = { descReg:[], descAtivos:new Map(), dados:null, ref:hojeIso(), f:filtrosVazios(), metrica:'valor', rank:'fornecedor', agrupar:'', ordem:{col:'dias',dir:1}, pag:1, porPag:25, abertos:new Set(), todos:[], base:[], lista:[] };
 
 function chipBanda(l){
   const b=BANDA[l.banda];
   const txt = l.dias<0 ? `Venceu há ${-l.dias} ${plural(-l.dias,'dia')}` : l.dias===0 ? 'Vence hoje' : `Vence em ${l.dias} ${plural(l.dias,'dia')}`;
   return `<span class="chip band-${l.banda}">${txt}</span>`;
 }
+function calcDesc(){
+  const m=new Map(); for(const r of S.descReg){ if(r.acao==='descartou') m.set(r.chave,r); else if(r.acao==='desfez') m.delete(r.chave); }
+  S.descAtivos=m;
+}
 function enriquecer(){
   const {lotes,produtos}=S.dados;
-  S.todos=lotes.map((l,i)=>{ const p=produtos[l.cod]||{}; const dias=diasAte(l.val,S.ref);
+  S.todos=lotes.filter(l=>!S.descAtivos.has(chaveLote(l))).map((l,i)=>{ const p=produtos[l.cod]||{}; const dias=diasAte(l.val,S.ref);
     return {...l,id:i,desc:p.desc||l.cod,grupo:p.grupo||'',setor:p.setor||'',situacao:p.situacao||'',unidade:p.unidade||'',portaria:p.portaria||'',dias,banda:bandaDe(dias),mes:l.val.slice(0,7)}; });
 }
 function passaGlobais(l){
@@ -793,7 +884,7 @@ function renderHero(){
   // cartões
   $('#bandas').innerHTML=BANDAS.map(b=>{
     const n=g.nBanda[b.id]||0, v=S.base.filter(l=>l.banda===b.id).reduce((a,l)=>a+l.total,0), sel=S.f.banda===b.id;
-    return `<button data-act="banda" data-id="${b.id}" aria-pressed="${sel}" class="text-left rounded-2xl bg-white text-ink p-4 relative overflow-hidden transition hover:-translate-y-0.5 ${sel?'ring-4 ring-brand':''}">
+    return `<button data-act="banda" data-id="${b.id}" aria-pressed="${sel}" class="text-left rounded-2xl bg-white text-ink p-4 relative overflow-hidden transition hover:-translate-y-0.5 last:col-span-2 md:last:col-span-1 ${sel?'ring-4 ring-brand':''}">
       <span class="absolute left-0 top-0 bottom-0 w-1.5" style="background:${b.cor}"></span>
       <span class="block text-sm font-bold pl-1">${b.nome}</span>
       <span class="block text-xs text-mute pl-1">${b.faixa}</span>
@@ -803,6 +894,7 @@ function renderHero(){
 }
 
 function renderChips(){
+  const nAtivos=['grupo','setor','fornecedor','filial','portaria','situacao'].filter(k=>S.f[k]).length; $('#btn-filtros').textContent=nAtivos?`Filtros (${nAtivos})`:'Filtros';
   const f=S.f, c=[];
   const add=(k,txt)=>c.push(`<button data-act="rm" data-k="${k}" class="chip chip-plain" style="--c:#38406A">${esc(txt)} <span aria-hidden="true">×</span><span class="sr-only">remover filtro</span></button>`);
   if(f.banda) add('banda','Faixa: '+BANDA[f.banda].nome);
@@ -899,58 +991,85 @@ function renderRank(){
 
 /* ---------- Tabela ---------- */
 const COLS = [
-  {k:'dias',n:'Situação'},{k:'desc',n:'Produto'},{k:'lote',n:'Lote'},{k:'fornecedor',n:'Fornecedor',cls:'hidden lg:table-cell'},{k:'filial',n:'Filial',cls:'hidden xl:table-cell'},
-  {k:'fabr',n:'Fabricação',cls:'hidden xl:table-cell'},{k:'val',n:'Validade'},{k:'qtd',n:'Quantidade',r:1},{k:'custo',n:'Custo un.',r:1,cls:'hidden xl:table-cell'},{k:'total',n:'Valor',r:1}
+  {k:'dias',n:'Vencimento'},{k:'desc',n:'Produto'},{k:'lote',n:'Lote'},{k:'fornecedor',n:'Origem'},{k:'qtd',n:'Quantidade',r:1},{k:'total',n:'Valor',r:1}
 ];
 function ordenar(l){
   const {col,dir}=S.ordem; const k=col==='val'?'dias':col;
   return [...l].sort((a,b)=>{ const x=a[k],y=b[k]; const c=(typeof x==='number'&&typeof y==='number')?x-y:String(x??'').localeCompare(String(y??''),'pt-BR',{numeric:true}); return (c||a.dias-b.dias)*dir; });
 }
+const btnDescartar = l => l.dias<0 ? `<button data-act="descartar" data-id="${l.id}" class="no-print mt-2 block text-xs font-bold text-mute hover:text-ink underline decoration-dotted underline-offset-2">Descartar lote</button>` : '';
+const tagsLote = l => (l.portaria?`<span class="chip chip-plain" style="--c:#38406A" title="Portaria 344/98: produto controlado">${esc(l.portaria)}</span> `:'')+(l.situacao==='I'?`<span class="chip chip-plain" style="--c:#5E6580">inativo</span>`:'');
+const textoDias = l => l.dias<0 ? `Venceu há ${-l.dias} ${plural(-l.dias,'dia')}` : l.dias===0 ? 'Vence hoje' : `Vence em ${l.dias} ${plural(l.dias,'dia')}`;
 function linhaLote(l){
-  const tags=(l.portaria?`<span class="chip chip-plain" style="--c:#38406A" title="Portaria 344/98">${esc(l.portaria)}</span> `:'')+(l.situacao==='I'?`<span class="chip chip-plain" style="--c:#5E6580">inativo</span>`:'');
-  return `<tr class="border-t border-line hover:bg-cream/50 align-top">
-    <td class="px-4 py-2.5">${chipBanda(l)}</td>
-    <td class="px-4 py-2.5 min-w-[220px]"><span class="font-semibold">${esc(l.desc)}</span> ${tags}<br><span class="text-xs text-mute tab-num">cód. ${esc(l.cod)} · ${esc(l.grupo)}${l.setor?' · setor '+esc(l.setor):''}</span></td>
-    <td class="px-4 py-2.5 tab-num"><span class="break-all">${esc(l.lote||'—')}</span>${l.nota?`<br><span class="text-xs text-mute">NF ${esc(l.nota)}</span>`:''}</td>
-    <td class="px-4 py-2.5 hidden lg:table-cell">${esc(l.fornecedor)}</td>
-    <td class="px-4 py-2.5 hidden xl:table-cell tab-num">${esc(l.filial)}</td>
-    <td class="px-4 py-2.5 hidden xl:table-cell tab-num">${fData(l.fabr)}</td>
-    <td class="px-4 py-2.5 tab-num font-semibold whitespace-nowrap">${fData(l.val)}</td>
-    <td class="px-4 py-2.5 tab-num text-right whitespace-nowrap">${NUMF.format(l.qtd)} ${unid(l.unidade)}</td>
-    <td class="px-4 py-2.5 tab-num text-right hidden xl:table-cell">${l.custo.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4})}</td>
-    <td class="px-4 py-2.5 tab-num text-right font-semibold">${brl(l.total)}</td></tr>`;
+  return `<tr class="border-t border-line hover:bg-cream/60 align-top">
+    <td class="band-${l.banda} pl-5 pr-4 py-3 whitespace-nowrap" style="box-shadow:inset 5px 0 0 var(--c)">
+      <span class="block num text-[1.45rem] leading-none">${fData(l.val)}</span>
+      <span class="mt-1.5 inline-block">${chipBanda(l)}</span>${btnDescartar(l)}</td>
+    <td class="px-4 py-3 min-w-[240px] max-w-[380px]">
+      <span class="block font-bold text-[.95rem] leading-snug">${esc(l.desc)} ${tagsLote(l)}</span>
+      <span class="block text-xs text-mute tab-num mt-0.5">cód. ${esc(l.cod)} · ${esc(l.grupo)}${l.setor?' · setor '+esc(l.setor):''}</span></td>
+    <td class="px-4 py-3 tab-num">
+      <span class="block font-semibold break-all max-w-[190px]">${esc(l.lote||'—')}</span>
+      <span class="block text-xs text-mute mt-0.5">${l.nota?'NF '+esc(l.nota)+' · ':''}fab. ${fData(l.fabr)}</span></td>
+    <td class="px-4 py-3">
+      <span class="block">${esc(l.fornecedor||'—')}</span>
+      <span class="block text-xs text-mute mt-0.5">Filial ${esc(l.filial||'—')}</span></td>
+    <td class="px-4 py-3 tab-num text-right whitespace-nowrap">
+      <span class="block font-semibold">${NUMF.format(l.qtd)} ${unid(l.unidade)}</span>
+      <span class="block text-xs text-mute mt-0.5">${l.custo.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4})} / un.</span></td>
+    <td class="px-4 py-3 text-right whitespace-nowrap"><span class="num text-[1.35rem] leading-none">${brl(l.total)}</span></td></tr>`;
+}
+function cartaoLote(l){
+  return `<article class="band-${l.banda} rounded-2xl border border-line bg-white p-4" style="border-left:6px solid var(--c)">
+    <div class="flex items-start justify-between gap-3">
+      <div><span class="block num text-[1.7rem] leading-none">${fData(l.val)}</span><span class="mt-1.5 inline-block">${chipBanda(l)}</span></div>
+      <div class="text-right"><span class="block num text-[1.7rem] leading-none">${brl(l.total)}</span><span class="block text-xs text-mute mt-1.5 tab-num">${NUMF.format(l.qtd)} ${unid(l.unidade)}</span></div>
+    </div>
+    <p class="mt-3 font-bold leading-snug">${esc(l.desc)} ${tagsLote(l)}</p>
+    <p class="text-xs text-mute tab-num mt-0.5">cód. ${esc(l.cod)} · ${esc(l.grupo)}</p>
+    <div class="mt-3 pt-3 border-t border-line grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+      <div><span class="block text-mute">Lote</span><span class="block font-semibold break-all tab-num">${esc(l.lote||'—')}</span></div>
+      <div><span class="block text-mute">Fornecedor</span><span class="block font-semibold">${esc(l.fornecedor||'—')}</span></div>
+      <div><span class="block text-mute">Fabricação</span><span class="block font-semibold tab-num">${fData(l.fabr)}</span></div>
+      <div><span class="block text-mute">Filial${l.nota?' · NF':''}</span><span class="block font-semibold tab-num">${esc(l.filial||'—')}${l.nota?' · '+esc(l.nota):''}</span></div>
+    </div>${l.dias<0?`<button data-act="descartar" data-id="${l.id}" class="no-print mt-3 w-full rounded-xl border border-line hover:bg-cream py-2 text-sm font-bold">Descartar lote</button>`:''}</article>`;
 }
 function cabecalho(){
-  return `<thead><tr class="text-xs text-mute">${COLS.map(c=>{ const a=S.ordem.col===c.k; return `<th class="${c.cls||''} px-4 py-3 ${c.r?'text-right':'text-left'} font-bold border-b border-line whitespace-nowrap" aria-sort="${a?(S.ordem.dir>0?'ascending':'descending'):'none'}"><button data-act="ordem" data-k="${c.k}" class="hover:text-ink inline-flex items-center gap-1">${c.n}<span aria-hidden="true" class="${a?'text-brand-700':'opacity-30'}">${a?(S.ordem.dir>0?'↑':'↓'):'↕'}</span></button></th>`; }).join('')}</tr></thead>`;
+  return `<thead><tr class="text-xs text-mute">${COLS.map(c=>{ const a=S.ordem.col===c.k; return `<th class="${c.k==='dias'?'pl-5':'px-4'} pr-4 py-3 ${c.r?'text-right':'text-left'} font-bold border-b border-line whitespace-nowrap" aria-sort="${a?(S.ordem.dir>0?'ascending':'descending'):'none'}"><button data-act="ordem" data-k="${c.k}" class="hover:text-ink inline-flex items-center gap-1">${c.n}<span aria-hidden="true" class="${a?'text-brand-700':'opacity-30'}">${a?(S.ordem.dir>0?'↑':'↓'):'↕'}</span></button></th>`; }).join('')}</tr></thead>`;
 }
 function renderTabela(){
+  { const nd=S.descAtivos.size; $('#btn-desc').textContent=nd?`Descartados (${nd})`:'Descartados';
+    const nv=S.lista.filter(l=>l.dias<0).length, b=$('#btn-desc-lote'); b.hidden=!nv; b.textContent=`Descartar vencidos (${nv})`; }
   const n=S.lista.length, tv=S.lista.reduce((a,l)=>a+l.total,0);
   $('#l-sub').textContent=`${INTF.format(n)} ${plural(n,'lote')} · ${brl(tv)}`;
   const ordenados=ordenar(S.lista);
   if(!n){ $('#tabela').innerHTML='<p class="px-6 pb-10 text-center text-mute">Nenhum lote encontrado. Ajuste ou limpe os filtros.</p>'; $('#pag').innerHTML=''; return; }
-  let corpo='', total=0;
+  let linhas='', cartoes='', total=0;
   if(!S.agrupar){
-    total=n; const ini=(S.pag-1)*S.porPag; corpo=ordenados.slice(ini,ini+S.porPag).map(linhaLote).join('');
+    total=n; const ini=(S.pag-1)*S.porPag, fatia=ordenados.slice(ini,ini+S.porPag);
+    linhas=fatia.map(linhaLote).join(''); cartoes=fatia.map(cartaoLote).join('');
   } else {
     const chaves={produto:l=>l.cod,fornecedor:l=>l.fornecedor||'(sem fornecedor)',mes:l=>l.mes,setor:l=>l.setor||'—',filial:l=>l.filial||'—',grupo:l=>l.grupo||'—',banda:l=>l.banda};
-    const nome=(g)=>({produto:`${g.lotes[0].desc} <span class="text-xs text-mute font-normal">cód. ${esc(g.k)}</span>`,mes:esc(mesLongo(g.k)),setor:'Setor '+esc(g.k),filial:'Filial '+esc(g.k),banda:esc(BANDA[g.k]?.nome||g.k)}[S.agrupar]||esc(g.k));
+    const nome=(g)=>({produto:`${esc(g.lotes[0].desc)} <span class="text-xs text-mute font-normal">cód. ${esc(g.k)}</span>`,mes:esc(mesLongo(g.k)),setor:'Setor '+esc(g.k),filial:'Filial '+esc(g.k),banda:esc(BANDA[g.k]?.nome||g.k)}[S.agrupar]||esc(g.k));
     const gs=agrupar(ordenados,chaves[S.agrupar]).sort((a,b)=> S.agrupar==='mes'||S.agrupar==='banda' ? String(a.k).localeCompare(String(b.k)) : a.min-b.min);
     total=gs.length; const ini=(S.pag-1)*S.porPag;
-    corpo=gs.slice(ini,ini+S.porPag).map(g=>{
+    gs.slice(ini,ini+S.porPag).forEach(g=>{
       const id=S.agrupar+'|'+g.k, aberto=S.abertos.has(id), pior=bandaDe(g.min);
-      return `<tr class="border-t border-line bg-cream/70"><td colspan="${COLS.length}" class="px-4 py-3">
-        <button data-act="grupo" data-id="${esc(id)}" class="w-full flex flex-wrap items-center gap-x-4 gap-y-1 text-left" aria-expanded="${aberto}">
+      const cab=`<button data-act="grupo" data-id="${esc(id)}" class="w-full flex flex-wrap items-center gap-x-4 gap-y-1.5 text-left" aria-expanded="${aberto}">
           <span class="inline-block transition ${aberto?'rotate-90':''}" aria-hidden="true">▸</span>
-          <span class="font-bold flex-1 min-w-[180px]">${nome(g)}</span>
+          <span class="font-bold flex-1 min-w-[160px]">${nome(g)}</span>
           <span class="chip band-${pior}">${g.min<0?'Já venceu':'Vence em '+g.min+' '+plural(g.min,'dia')}</span>
           <span class="text-sm text-mute tab-num">${g.n} ${plural(g.n,'lote')}</span>
-          <span class="font-bold tab-num">${brl(g.valor)}</span></button></td></tr>${aberto?g.lotes.map(linhaLote).join(''):''}`;
-    }).join('');
+          <span class="font-bold tab-num">${brl(g.valor)}</span></button>`;
+      linhas+=`<tr class="border-t border-line bg-cream/70"><td colspan="${COLS.length}" class="px-5 py-3">${cab}</td></tr>${aberto?g.lotes.map(linhaLote).join(''):''}`;
+      cartoes+=`<div class="rounded-2xl bg-cream/80 border border-line p-3.5">${cab}</div>${aberto?g.lotes.map(cartaoLote).join(''):''}`;
+    });
   }
-  $('#tabela').innerHTML=`<table class="tbl w-full text-sm">${cabecalho()}<tbody>${corpo}</tbody></table>`;
+  $('#tabela').innerHTML=`<div class="hidden md:block"><table class="tbl w-full text-sm">${cabecalho()}<tbody>${linhas}</tbody></table></div><div class="md:hidden px-3 pb-3 space-y-3">${cartoes}</div>`;
   const pgs=Math.max(1,Math.ceil(total/S.porPag)); if(S.pag>pgs) S.pag=pgs;
-  $('#pag').innerHTML=`<div class="flex items-center gap-2"><label class="text-mute">Por página</label><select id="por-pag" class="rounded-lg border border-line px-2 py-1.5">${[25,50,100].map(v=>`<option ${v===S.porPag?'selected':''}>${v}</option>`).join('')}</select><span class="text-mute">${INTF.format(total)} ${S.agrupar?plural(total,'grupo'):plural(total,'linha')}</span></div>
+  $('#pag').innerHTML=`<div class="flex items-center gap-2"><label class="text-mute" for="por-pag">Por página</label><select id="por-pag" class="rounded-lg border border-line px-2 py-1.5">${[25,50,100].map(v=>`<option ${v===S.porPag?'selected':''}>${v}</option>`).join('')}</select><span class="text-mute">${INTF.format(total)} ${S.agrupar?plural(total,'grupo'):plural(total,'linha')}</span></div>
     <div class="flex items-center gap-2"><button data-act="pag" data-d="-1" class="rounded-lg border border-line px-3 py-1.5 font-semibold hover:bg-cream disabled:opacity-40" ${S.pag<=1?'disabled':''}>Anterior</button><span class="tab-num">${S.pag} de ${pgs}</span><button data-act="pag" data-d="1" class="rounded-lg border border-line px-3 py-1.5 font-semibold hover:bg-cream disabled:opacity-40" ${S.pag>=pgs?'disabled':''}>Próxima</button></div>`;
+  const om=$('#ordenar-m'); if(om) om.value=S.ordem.col+':'+S.ordem.dir;
 }
 
 /* ---------- Filtros (selects) ---------- */
@@ -982,11 +1101,11 @@ function abrirDados(){
   const h=S.hist||[], m=S.dados?.meta;
   $('#dados-corpo').innerHTML=`
     ${m?`<div class="rounded-2xl bg-cream/70 border border-line p-4 text-sm"><p class="font-bold">Base atual: ${esc(m.arquivo)}</p><p class="text-mute mt-1">${INTF.format(S.dados.lotes.length)} lotes · ${INTF.format(Object.keys(S.dados.produtos).length)} produtos · emitido em ${fData(m.emissao)}</p></div>`:'<p class="text-mute">A planilha ainda não tem dados.</p>'}
-    <h3 class="mt-5 font-bold">Histórico de importações</h3>
-    <ul class="mt-2 divide-y divide-line text-sm">${h.map(x=>`<li class="py-2.5 flex flex-wrap justify-between gap-2"><span><b>${esc(x.arquivo)}</b> <span class="text-mute">· ${esc(x.formato)} · ${esc(x.modo)}</span></span><span class="text-mute tab-num">${new Date(x.quando).toLocaleString('pt-BR')} · ${esc(x.por||'')} · ${INTF.format(x.lotes)} lotes · ${x.ok?'conferido':'com ressalvas'}</span></li>`).join('')||'<li class="py-2 text-mute">Sem importações.</li>'}</ul>
+    <h3 class="mt-5 font-bold">Histórico de alterações</h3>
+    <ul class="mt-2 divide-y divide-line text-sm">${h.map(x=>`<li class="py-2.5 flex flex-wrap justify-between gap-2"><span><b>${esc(x.arquivo)}</b> <span class="text-mute">· ${esc(x.modo)}${x.formato&&x.formato!=='Descarte'?' · '+esc(x.formato):''}</span></span><span class="text-mute tab-num">${new Date(x.quando).toLocaleString('pt-BR')} · ${esc(x.por||'')} · ${INTF.format(x.lotes)} ${plural(x.lotes,'lote')}${x.ok==='sim'?' · conferido':x.ok==='não'?' · com ressalvas':''}</span></li>`).join('')||'<li class="py-2 text-mute">Sem registros.</li>'}</ul>
     <div class="mt-6 flex justify-end"><button id="btn-apagar" class="rounded-xl border-2 px-4 py-2.5 text-sm font-bold" style="border-color:var(--b-venc);color:var(--b-venc)">Apagar dados da planilha</button></div>`;
   $('#btn-apagar')?.addEventListener('click',async()=>{
-    if(!confirm('Apagar os lotes da planilha? Isso afeta todos que usam o painel. O histórico de importações é mantido.')) return;
+    if(!confirm('Apagar os lotes da planilha? Isso afeta todos que usam o painel. O histórico e os lotes descartados são mantidos, e este apagamento fica registrado com o seu nome.')) return;
     try{ await apagarPlanilha(); }catch(e){ toast('Não foi possível apagar: '+e.message,'erro'); return; }
     S.dados=null; $('#dlg-dados').close(); atualizarTudo(); toast('Dados apagados da planilha.');
   });
@@ -1012,6 +1131,7 @@ function ligarEventos(){
     else if(act==='alerta'){ const a=S.alertas[+t.dataset.i]; if(!a?.f) return; const f=S.f; const novo=a.f.situacaoI?{situacao:'I',ate:180}:a.f; S.f={...filtrosVazios(),busca:f.busca,grupo:f.grupo,setor:f.setor,fornecedor:f.fornecedor,filial:f.filial,...novo}; preencherFiltros(); S.pag=1; atualizar(); $('#sec-tabela').scrollIntoView({behavior:'smooth',block:'start'}); }
     else if(act==='ordem'){ const k=t.dataset.k; S.ordem = S.ordem.col===k ? {col:k,dir:-S.ordem.dir} : {col:k,dir:1}; renderTabela(); }
     else if(act==='pag'){ S.pag+=+t.dataset.d; renderTabela(); $('#sec-tabela').scrollIntoView({block:'start'}); }
+    else if(act==='descartar'){ acaoDescartar([+t.dataset.id]); }
     else if(act==='grupo'){ const id=t.dataset.id; S.abertos.has(id)?S.abertos.delete(id):S.abertos.add(id); renderTabela(); }
   });
   document.addEventListener('change',e=>{
@@ -1023,11 +1143,16 @@ function ligarEventos(){
   $('#agrupar').addEventListener('change',e=>{ S.agrupar=e.target.value; S.pag=1; S.abertos.clear(); renderTabela(); });
   $('#btn-csv').onclick=exportarCSV; $('#btn-print').onclick=()=>window.print();
   $('#btn-import').onclick=abrirImport; $('#btn-dados').onclick=()=>{ $('#menu-user').hidden=true; abrirDados(); };
+  $('#btn-desc').onclick=abrirDescartados; $('#desc-fechar').onclick=()=>$('#dlg-desc').close();
+  $('#btn-desc-lote').onclick=()=>acaoDescartar(S.lista.filter(l=>l.dias<0).map(l=>l.id));
   $('#dados-fechar').onclick=()=>$('#dlg-dados').close();
   $('#btn-sair').onclick=sair;
   $('#btn-user').onclick=()=>{ const m=$('#menu-user'); m.hidden=!m.hidden; $('#btn-user').setAttribute('aria-expanded',!m.hidden); };
   $('#btn-atualizar').onclick=()=>{ $('#menu-user').hidden=true; recarregarDados(true); };
-  $('#btn-data').onclick=()=>{ const v=prompt('Data de referência (AAAA-MM-DD). Deixe vazio para usar hoje:',S.ref); if(v===null) return; const novo=v.trim()||hojeIso(); if(!/^\d{4}-\d{2}-\d{2}$/.test(novo)||isNaN(utc(novo))){ toast('Data inválida. Use AAAA-MM-DD.','erro'); return; } S.ref=novo; atualizarTudo(); };
+  const mudarData=()=>{ const v=prompt('Data de referência (AAAA-MM-DD). Deixe vazio para usar hoje:',S.ref); if(v===null) return; const novo=v.trim()||hojeIso(); if(!/^\d{4}-\d{2}-\d{2}$/.test(novo)||isNaN(utc(novo))){ toast('Data inválida. Use AAAA-MM-DD.','erro'); return; } S.ref=novo; atualizarTudo(); };
+  $('#btn-data').onclick=mudarData; $('#btn-data-m').onclick=()=>{ $('#menu-user').hidden=true; mudarData(); };
+  $('#btn-filtros').onclick=()=>{ const e=$('#f-extra'); const abre=e.classList.contains('hidden'); e.classList.toggle('hidden',!abre); ['grid','grid-cols-2','gap-2','w-full'].forEach(c=>e.classList.toggle(c,abre)); $('#btn-filtros').setAttribute('aria-expanded',abre); };
+  $('#ordenar-m').onchange=e=>{ const [c,d]=e.target.value.split(':'); S.ordem={col:c,dir:+d}; S.pag=1; renderTabela(); };
   // importação
   const dz=$('#dropzone');
   $('#imp-arquivo').addEventListener('change',e=>{ if(e.target.files[0]) processarArquivo(e.target.files[0]); });
