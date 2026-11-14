@@ -58,14 +58,24 @@
   dialog::backdrop{ background:rgba(20,25,40,.6); backdrop-filter:blur(3px); }
   dialog{ margin:auto; }
   @media print{
-    @page{ size:A4 landscape; margin:10mm; }
-    body{ background:#fff; }
-    .no-print, header.app-head, #filtros, #pag, .tbl-tools{ display:none !important; }
-    .print-only{ display:block !important; }
-    .card{ break-inside:avoid; box-shadow:none !important; }
-    #hero{ background:#fff !important; color:#0E0D29 !important; border:1px solid #ccc; }
-    #hero *{ color:#0E0D29 !important; }
+    @page{ size:A4 portrait; margin:9mm 8mm; }
+    html,body{ background:#fff !important; font-size:9pt; }
+    .no-print, header.app-head, #tip, #toasts{ display:none !important; }
+    #painel > *:not(#rel-print){ display:none !important; }
+    #painel{ max-width:none !important; padding:0 !important; margin:0 !important; }
+    #rel-print{ display:block !important; color:#0E0D29; }
     * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    #rel-print table{ width:100%; border-collapse:collapse; font-size:7.4pt; line-height:1.2; }
+    #rel-print thead{ display:table-header-group; }
+    #rel-print th{ text-align:left; font-weight:700; padding:2px 4px; border-bottom:1.5px solid #0E0D29; white-space:nowrap; }
+    #rel-print td{ padding:2px 4px; border-bottom:.5px solid #cfd2dc; vertical-align:top; }
+    #rel-print tr{ break-inside:avoid; }
+    #rel-print .r{ text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+    #rel-print .dt{ white-space:nowrap; font-weight:700; border-left:3px solid var(--c); font-variant-numeric:tabular-nums; }
+    #rel-print .sub{ color:#5E6580; }
+    #rel-print tfoot{ display:table-row-group; }
+    #rel-print td,#rel-print th{ padding-right:6px; }
+    #rel-print tfoot td{ border-top:1.5px solid #0E0D29; border-bottom:0; font-weight:800; padding-top:4px; }
   }
   .print-only{ display:none; }
 </style>
@@ -147,7 +157,7 @@
 
   <main id="painel" class="mx-auto max-w-[1400px] px-4 sm:px-6 pb-16" hidden>
 
-    <p class="print-only text-sm py-2">Biofarm · Painel de validade · emitido em <span id="print-data"></span></p>
+    <section id="rel-print" class="print-only"></section>
 
     <!-- HERO -->
     <section id="hero" class="card relative mt-5 rounded-3xl bg-navy text-white overflow-hidden p-5 sm:p-8" aria-labelledby="hero-titulo">
@@ -894,7 +904,6 @@ function atualizarTudo(){
   $('#vazio').hidden=true; $('#painel').hidden=false;
   enriquecer(); preencherFiltros(); atualizar();
   $('#rodape').innerHTML=`Dados da planilha “${esc(S.tituloPlanilha||'')}”: ${esc(S.dados.meta.arquivo)}, importado em ${new Date(S.dados.meta.importadoEm).toLocaleString('pt-BR')}${S.dados.meta.por?' por '+esc(S.dados.meta.por):''}. Relatório emitido em ${fData(S.dados.meta.emissao)}. Valores a preço de custo.`;
-  $('#print-data').textContent=new Date().toLocaleString('pt-BR');
 }
 function atualizar(){
   S.base=S.todos.filter(passaGlobais);
@@ -1072,7 +1081,31 @@ function cartaoLote(l){
 function cabecalho(){
   return `<thead><tr class="text-xs text-mute">${COLS.map(c=>{ const a=S.ordem.col===c.k; return `<th class="${c.k==='dias'?'pl-5':'px-4'} pr-4 py-3 ${c.r?'text-right':'text-left'} font-bold border-b border-line whitespace-nowrap" aria-sort="${a?(S.ordem.dir>0?'ascending':'descending'):'none'}"><button data-act="ordem" data-k="${c.k}" class="hover:text-ink inline-flex items-center gap-1">${c.n}<span aria-hidden="true" class="${a?'text-brand-700':'opacity-30'}">${a?(S.ordem.dir>0?'↑':'↓'):'↕'}</span></button></th>`; }).join('')}</tr></thead>`;
 }
+function renderRelatorio(){
+  const L=ordenar(S.lista), f=S.f, fl=[];
+  if(f.banda) fl.push(BANDA[f.banda].nome); if(f.mes) fl.push(mesLongo(f.mes)); if(f.ate!=null) fl.push('vence em até '+f.ate+' dias');
+  ['grupo','setor','fornecedor','filial'].forEach(k=>f[k]&&fl.push(k[0].toUpperCase()+k.slice(1)+': '+f[k]));
+  if(f.portaria) fl.push(f.portaria==='sim'?'Controlados':'Portaria '+f.portaria); if(f.situacao) fl.push(f.situacao==='A'?'Somente ativos':'Somente inativos');
+  if(f.prod) fl.push('Produto '+f.prod); if(f.busca) fl.push('Busca: '+f.busca);
+  const cont={venc:0,crit:0,alert:0,aten:0,ok:0}, val={venc:0,crit:0,alert:0,aten:0,ok:0};
+  L.forEach(l=>{ cont[l.banda]++; val[l.banda]+=l.total; });
+  const tv=L.reduce((a,l)=>a+l.total,0);
+  const resumo=BANDAS.map(b=>`<span style="display:inline-block;margin-right:12px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${b.cor};margin-right:4px"></span><b>${b.nome}</b> ${cont[b.id]} · ${brl(val[b.id])}</span>`).join('');
+  const st=l=>l.dias<0?`venceu há ${-l.dias} d`:l.dias===0?'vence hoje':`em ${l.dias} d`;
+  const d2=iso=>iso?iso.split('-').reverse().map((x,i)=>i===2?x.slice(2):x).join('/'):'—';
+  $('#rel-print').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #0E0D29;padding-bottom:3px">
+      <b style="font-size:12pt">Biofarm · Validade dos lotes</b><span class="sub" style="font-size:7.5pt">emitido em ${new Date().toLocaleString('pt-BR')} · referência ${fData(S.ref)} · ${esc(quem())}</span></div>
+    <p style="font-size:7.8pt;margin:4px 0 2px">${resumo}</p>
+    <p class="sub" style="font-size:7.5pt;margin:0 0 5px">${fl.length?'Filtros: '+esc(fl.join(' · '))+' — ':'Todos os lotes — '}${INTF.format(L.length)} ${plural(L.length,'lote')} · ${brl(tv)} a preço de custo</p>
+    <table><thead><tr><th>Venc.</th><th>Situação</th><th>Produto</th><th>Lote</th><th>Fornecedor</th><th class="r">Qtd.</th><th class="r">Valor</th></tr></thead><tbody>${L.map(l=>`<tr class="band-${l.banda}">
+      <td class="dt">${d2(l.val)}</td><td style="white-space:nowrap">${st(l)}</td>
+      <td><b>${esc(l.desc)}</b> <span class="sub">${esc(l.cod)}${l.portaria?' · '+esc(l.portaria):''}</span></td>
+      <td>${esc(l.lote||'—')}</td><td>${esc(l.fornecedor||'—')}</td>
+      <td class="r">${NUMF.format(l.qtd)} ${unid(l.unidade)}</td><td class="r"><b>${brl(l.total)}</b></td></tr>`).join('')}</tbody>
+      <tfoot><tr><td colspan="6">Total</td><td class="r">${brl(tv)}</td></tr></tfoot></table>`;
+}
 function renderTabela(){
+  renderRelatorio();
   { const nd=S.descAtivos.size; $('#btn-desc').textContent=nd?`Descartados (${nd})`:'Descartados';
     const nv=S.lista.filter(l=>l.dias<0).length, b=$('#btn-desc-lote'); b.hidden=!nv; b.textContent=`Descartar vencidos (${nv})`; }
   const n=S.lista.length, tv=S.lista.reduce((a,l)=>a+l.total,0);
