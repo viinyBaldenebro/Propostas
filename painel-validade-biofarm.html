@@ -1,0 +1,1065 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Biofarm · Painel de validade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400..800&family=Barlow+Condensed:wght@600;700;800&family=Lora:ital,wght@1,400..600&display=swap" rel="stylesheet">
+<!-- Tailwind CSS v4 (runtime). Requer internet na primeira abertura. -->
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style type="text/tailwindcss">
+@theme {
+  --color-navy: #282E47;
+  --color-navy-900: #1B2034;
+  --color-navy-700: #38406A;
+  --color-brand: #F58220;
+  --color-brand-700: #C4681A;
+  --color-brand-50: #FFF3E6;
+  --color-cream: #F7F4ED;
+  --color-ink: #0E0D29;
+  --color-line: #E4E0D5;
+  --color-mute: #5E6580;
+  --font-sans: 'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-serif: 'Lora', Georgia, 'Times New Roman', serif;
+  --font-num: 'Barlow Condensed', 'Archivo Narrow', 'Arial Narrow', Arial, sans-serif;
+}
+</style>
+<style>
+  /* Faixas de validade (paleta validada: separação CVD e visão normal) */
+  :root{
+    --b-venc:#9F1D14; --b-crit:#E5501E; --b-alert:#D9A800; --b-aten:#3A78C2; --b-ok:#2F8F5B;
+    --surface:#fff;
+  }
+  html{ -webkit-text-size-adjust:100%; }
+  body{ font-family:var(--font-sans); background:#F7F4ED; color:#0E0D29; }
+  [hidden]{ display:none !important; }
+  .num{ font-family:var(--font-num); font-weight:700; letter-spacing:.01em; font-variant-numeric:tabular-nums; }
+  .tab-num{ font-variant-numeric:tabular-nums; }
+  .chip{ --c:#888; display:inline-flex; align-items:center; gap:.35rem; padding:.15rem .5rem; border-radius:999px; font-size:.72rem; font-weight:700; line-height:1.25; white-space:nowrap;
+    background:color-mix(in srgb,var(--c) 13%,#fff); color:color-mix(in srgb,var(--c) 55%,#000); border:1px solid color-mix(in srgb,var(--c) 32%,#fff); }
+  .chip::before{ content:''; width:.5rem; height:.5rem; border-radius:50%; background:var(--c); flex:none; }
+  .chip-plain::before{ display:none; }
+  .band-venc{ --c:var(--b-venc);} .band-crit{ --c:var(--b-crit);} .band-alert{ --c:var(--b-alert);} .band-aten{ --c:var(--b-aten);} .band-ok{ --c:var(--b-ok);}
+  .focus-ring:focus-visible, button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible{ outline:3px solid #F58220; outline-offset:2px; border-radius:8px; }
+  /* Login: cápsulas flutuando (único movimento da página) */
+  .caps{ position:absolute; border:1.5px solid rgba(255,255,255,.12); border-radius:999px; animation:drift 22s ease-in-out infinite; }
+  .caps::after{ content:''; position:absolute; inset:0 50% 0 0; background:rgba(245,130,32,.14); border-radius:999px 0 0 999px; }
+  @keyframes drift{ 0%,100%{ transform:translateY(0) rotate(var(--r)); } 50%{ transform:translateY(-22px) rotate(calc(var(--r) + 8deg)); } }
+  @media (prefers-reduced-motion:reduce){ .caps{ animation:none; } * { scroll-behavior:auto !important; } }
+  /* Tabela */
+  .tbl th{ position:sticky; top:0; background:#fff; z-index:1; }
+  .scroll-x{ overflow-x:auto; }
+  .bar-seg{ transition:opacity .15s; }
+  .bar-seg:hover{ opacity:.85; }
+  #tip{ position:fixed; z-index:100; pointer-events:none; max-width:280px; background:#1B2034; color:#fff; border-radius:10px; padding:.55rem .7rem; font-size:.78rem; line-height:1.4; box-shadow:0 10px 30px rgba(14,13,41,.3); }
+  dialog::backdrop{ background:rgba(20,25,40,.6); backdrop-filter:blur(3px); }
+  dialog{ margin:auto; }
+  @media print{
+    @page{ size:A4 landscape; margin:10mm; }
+    body{ background:#fff; }
+    .no-print, header.app-head, #filtros, #pag, .tbl-tools{ display:none !important; }
+    .print-only{ display:block !important; }
+    .card{ break-inside:avoid; box-shadow:none !important; }
+    #hero{ background:#fff !important; color:#0E0D29 !important; border:1px solid #ccc; }
+    #hero *{ color:#0E0D29 !important; }
+    * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  }
+  .print-only{ display:none; }
+</style>
+</head>
+<body class="min-h-screen antialiased">
+
+<noscript><p style="padding:2rem;font-family:sans-serif">Este painel precisa de JavaScript para funcionar.</p></noscript>
+
+<!-- ============================ LOGIN ============================ -->
+<main id="login" class="relative min-h-screen overflow-hidden bg-navy-900 text-white flex items-center justify-center p-5" hidden>
+  <div class="caps" style="--r:-24deg; width:340px;height:120px;left:-60px;top:8%"></div>
+  <div class="caps" style="--r:18deg; width:220px;height:80px;right:6%;top:12%; animation-delay:-6s"></div>
+  <div class="caps" style="--r:-8deg; width:420px;height:150px;right:-90px;bottom:10%; animation-delay:-11s"></div>
+  <div class="caps" style="--r:30deg; width:180px;height:64px;left:12%;bottom:8%; animation-delay:-3s"></div>
+
+  <section class="relative w-full max-w-md" aria-labelledby="login-titulo">
+    <div class="flex justify-center mb-8">
+      <img src="https://images.tcdn.com.br/img/img_prod/1226832/1786940278_1785343841_logo_biofarm_by_gigi_carvalho_-_laranja_e_branco4x.png" alt="Biofarm Farmácia de Manipulação" class="h-11 w-auto" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'num text-4xl tracking-widest text-brand',textContent:'BIOFARM'}))">
+    </div>
+    <form id="form-login" class="bg-white text-ink rounded-3xl shadow-2xl p-7 sm:p-9" autocomplete="on" novalidate>
+      <h1 id="login-titulo" class="text-2xl font-extrabold tracking-tight">Painel de validade</h1>
+      <p class="font-serif italic text-mute mt-1 mb-6">Controle de lotes e vencimentos da manipulação.</p>
+
+      <label class="block text-sm font-semibold mb-1.5" for="lg-user">Usuário</label>
+      <input id="lg-user" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required
+             class="w-full rounded-xl border border-line bg-cream/60 px-4 py-3 text-base focus:bg-white focus:border-brand transition">
+
+      <label class="block text-sm font-semibold mt-4 mb-1.5" for="lg-pass">Senha</label>
+      <div class="relative">
+        <input id="lg-pass" name="password" type="password" autocomplete="current-password" required
+               class="w-full rounded-xl border border-line bg-cream/60 px-4 py-3 pr-20 text-base focus:bg-white focus:border-brand transition">
+        <button type="button" id="lg-ver" class="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-xs font-bold text-mute hover:text-navy rounded-lg" aria-pressed="false">Mostrar</button>
+      </div>
+
+      <p id="lg-erro" role="alert" class="mt-4 text-sm font-semibold text-b-venc" style="color:var(--b-venc)" hidden></p>
+
+      <button id="lg-ok" type="submit" class="mt-6 w-full rounded-xl bg-brand hover:bg-brand-700 text-navy font-extrabold py-3.5 text-base transition disabled:opacity-60 disabled:cursor-wait">Entrar</button>
+      <p class="mt-5 text-xs text-mute text-center">Acesso restrito à equipe Biofarm. Sua sessão termina ao recarregar a página.</p>
+    </form>
+  </section>
+</main>
+
+<!-- ============================ APP ============================ -->
+<div id="app" hidden>
+  <header class="app-head sticky top-0 z-40 bg-navy text-white shadow-lg">
+    <div class="mx-auto max-w-[1400px] px-4 sm:px-6 h-16 flex items-center gap-3">
+      <img src="https://images.tcdn.com.br/img/img_prod/1226832/1786940278_1785343841_logo_biofarm_by_gigi_carvalho_-_laranja_e_branco4x.png" alt="Biofarm" class="h-8 w-auto" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'num text-2xl tracking-widest text-brand',textContent:'BIOFARM'}))">
+      <span class="hidden md:block h-6 w-px bg-white/20"></span>
+      <h1 class="hidden md:block text-sm font-semibold text-white/80">Painel de validade</h1>
+      <div class="flex-1"></div>
+
+      <button id="btn-data" class="hidden sm:flex items-center gap-2 rounded-xl border border-white/20 hover:bg-white/10 px-3 py-2 text-sm" title="Data de referência dos cálculos">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+        <span id="data-ref-txt">Hoje</span>
+      </button>
+      <button id="btn-import" class="flex items-center gap-2 rounded-xl bg-brand hover:bg-brand-700 text-navy font-extrabold px-4 py-2 text-sm">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4m0 0L8 8m4-4 4 4M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg>
+        Importar
+      </button>
+      <div class="relative">
+        <button id="btn-user" class="flex items-center gap-2 rounded-xl border border-white/20 hover:bg-white/10 pl-1.5 pr-3 py-1.5 text-sm" aria-haspopup="true" aria-expanded="false">
+          <span id="user-ini" class="grid place-items-center w-7 h-7 rounded-full bg-brand text-navy font-extrabold text-xs">S</span>
+          <span id="user-nome" class="hidden sm:inline font-semibold"></span>
+        </button>
+        <div id="menu-user" class="absolute right-0 mt-2 w-72 rounded-2xl bg-white text-ink shadow-2xl border border-line p-4" hidden>
+          <p class="text-xs font-bold text-mute mb-2">Acessos recentes</p>
+          <ul id="lista-acessos" class="space-y-1.5 text-xs max-h-48 overflow-auto"></ul>
+          <div class="my-3 h-px bg-line"></div>
+          <button id="btn-dados" class="w-full text-left text-sm font-semibold hover:text-brand-700 py-1">Dados e importações</button>
+          <button id="btn-sair" class="w-full text-left text-sm font-semibold hover:text-brand-700 py-1">Sair</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div id="vazio" class="mx-auto max-w-3xl px-5 py-20 text-center" hidden>
+    <div class="mx-auto mb-6 grid place-items-center w-20 h-20 rounded-3xl bg-white border border-line">
+      <svg class="w-9 h-9 text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>
+    </div>
+    <h2 class="text-3xl font-extrabold tracking-tight">Nenhum relatório importado</h2>
+    <p class="font-serif italic text-mute text-lg mt-2">Envie o relatório de lotes por vencimento do sistema para montar o painel.</p>
+    <button data-act="importar" class="mt-8 rounded-xl bg-navy hover:bg-navy-700 text-white font-bold px-6 py-3.5">Importar relatório (TXT ou PDF)</button>
+  </div>
+
+  <main id="painel" class="mx-auto max-w-[1400px] px-4 sm:px-6 pb-16" hidden>
+
+    <p class="print-only text-sm py-2">Biofarm · Painel de validade · emitido em <span id="print-data"></span></p>
+
+    <!-- HERO -->
+    <section id="hero" class="card relative mt-5 rounded-3xl bg-navy text-white overflow-hidden p-5 sm:p-8" aria-labelledby="hero-titulo">
+      <div class="absolute -right-24 -top-24 w-80 h-80 rounded-full bg-brand/10 pointer-events-none no-print"></div>
+      <div class="relative flex flex-wrap items-start justify-between gap-4">
+        <div class="max-w-3xl">
+          <p id="hero-data" class="font-serif italic text-white/70 text-base"></p>
+          <h2 id="hero-titulo" class="mt-1 text-3xl sm:text-[2.6rem] font-extrabold leading-[1.1] tracking-tight"></h2>
+          <p id="hero-sub" class="mt-3 text-white/75 text-[.95rem] max-w-2xl"></p>
+        </div>
+        <div class="flex rounded-xl bg-white/10 p-1 text-sm no-print" role="group" aria-label="Medir por">
+          <button data-metrica="valor" class="px-3.5 py-1.5 rounded-lg font-bold">Valor (R$)</button>
+          <button data-metrica="lotes" class="px-3.5 py-1.5 rounded-lg font-bold">Lotes</button>
+        </div>
+      </div>
+
+      <div class="relative mt-7">
+        <div id="regua" class="flex h-5 w-full gap-0.5 rounded-full overflow-hidden" role="img" aria-label="Distribuição dos lotes por faixa de validade"></div>
+      </div>
+      <div id="bandas" class="relative mt-4 grid grid-cols-2 md:grid-cols-5 gap-3"></div>
+    </section>
+
+    <!-- FILTROS -->
+    <section id="filtros" class="md:sticky top-16 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-cream/95 backdrop-blur border-b border-line mt-5" aria-label="Filtros">
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="relative flex-1 min-w-[220px]">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mute" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="f-busca" type="search" placeholder="Buscar produto, código, lote ou fornecedor" class="w-full rounded-xl border border-line bg-white pl-9 pr-3 py-2.5 text-sm" aria-label="Buscar">
+        </div>
+        <select id="f-grupo" class="rounded-xl border border-line bg-white px-3 py-2.5 text-sm" aria-label="Grupo"></select>
+        <select id="f-setor" class="rounded-xl border border-line bg-white px-3 py-2.5 text-sm" aria-label="Setor"></select>
+        <select id="f-fornecedor" class="rounded-xl border border-line bg-white px-3 py-2.5 text-sm max-w-[200px]" aria-label="Fornecedor"></select>
+        <select id="f-filial" class="rounded-xl border border-line bg-white px-3 py-2.5 text-sm" aria-label="Filial"></select>
+        <select id="f-portaria" class="rounded-xl border border-line bg-white px-3 py-2.5 text-sm" aria-label="Controlados"></select>
+        <select id="f-situacao" class="rounded-xl border border-line bg-white px-3 py-2.5 text-sm" aria-label="Situação do produto"></select>
+      </div>
+      <div id="chips-filtro" class="flex flex-wrap items-center gap-2 mt-2 empty:hidden"></div>
+    </section>
+
+    <!-- LINHA DO TEMPO + ALERTAS -->
+    <div class="mt-5 grid grid-cols-1 xl:grid-cols-12 gap-5">
+      <section class="card xl:col-span-8 rounded-3xl bg-white border border-line p-5 sm:p-6" aria-labelledby="t-titulo">
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+          <div>
+            <h3 id="t-titulo" class="text-lg font-extrabold tracking-tight">Vencimentos mês a mês</h3>
+            <p id="t-sub" class="font-serif italic text-mute text-sm"></p>
+          </div>
+          <div id="t-legenda" class="flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold"></div>
+        </div>
+        <div id="timeline" class="mt-3 w-full"></div>
+      </section>
+
+      <section class="card xl:col-span-4 rounded-3xl bg-white border border-line p-5 sm:p-6" aria-labelledby="a-titulo">
+        <h3 id="a-titulo" class="text-lg font-extrabold tracking-tight">Alertas</h3>
+        <p class="font-serif italic text-mute text-sm mb-3">O que pede atenção agora.</p>
+        <ul id="alertas" class="space-y-2.5"></ul>
+      </section>
+    </div>
+
+    <!-- RANKING -->
+    <section class="card mt-5 rounded-3xl bg-white border border-line p-5 sm:p-6" aria-labelledby="r-titulo">
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h3 id="r-titulo" class="text-lg font-extrabold tracking-tight">Onde está concentrado</h3>
+          <p id="r-sub" class="font-serif italic text-mute text-sm"></p>
+        </div>
+        <div id="r-tabs" class="flex flex-wrap gap-1 rounded-xl bg-cream p-1 text-sm no-print" role="tablist"></div>
+      </div>
+      <div id="rank" class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-2.5"></div>
+    </section>
+
+    <!-- TABELA -->
+    <section id="sec-tabela" class="card mt-5 rounded-3xl bg-white border border-line overflow-hidden" aria-labelledby="l-titulo">
+      <div class="tbl-tools p-5 sm:p-6 pb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h3 id="l-titulo" class="text-lg font-extrabold tracking-tight">Lotes</h3>
+          <p id="l-sub" class="font-serif italic text-mute text-sm"></p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 text-sm">
+          <label class="flex items-center gap-2 font-semibold">Agrupar por
+            <select id="agrupar" class="rounded-xl border border-line bg-white px-3 py-2 font-normal">
+              <option value="">Sem agrupamento</option>
+              <option value="produto">Produto</option>
+              <option value="fornecedor">Fornecedor</option>
+              <option value="mes">Mês de vencimento</option>
+              <option value="setor">Setor</option>
+              <option value="filial">Filial</option>
+              <option value="grupo">Grupo</option>
+              <option value="banda">Faixa de validade</option>
+            </select>
+          </label>
+          <button id="btn-csv" class="rounded-xl border border-line hover:bg-cream px-3.5 py-2 font-semibold">Exportar CSV</button>
+          <button id="btn-print" class="rounded-xl border border-line hover:bg-cream px-3.5 py-2 font-semibold">Imprimir</button>
+        </div>
+      </div>
+      <div id="tabela" class="scroll-x"></div>
+      <div id="pag" class="p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 border-t border-line text-sm"></div>
+    </section>
+
+    <footer id="rodape" class="mt-8 text-xs text-mute text-center"></footer>
+  </main>
+</div>
+
+<!-- ============================ IMPORTAÇÃO ============================ -->
+<dialog id="dlg-import" class="w-[min(680px,calc(100vw-1.5rem))] max-h-[calc(100dvh-1.5rem)] rounded-3xl p-0 bg-white text-ink shadow-2xl border border-line">
+  <div class="p-6 sm:p-8">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h2 class="text-2xl font-extrabold tracking-tight">Importar relatório</h2>
+        <p class="font-serif italic text-mute mt-1">Arquivos TXT do sistema ou PDF.</p>
+      </div>
+      <button id="imp-fechar" class="rounded-full w-9 h-9 grid place-items-center border border-line hover:bg-cream" aria-label="Fechar">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+
+    <label id="dropzone" for="imp-arquivo" class="mt-6 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line bg-cream/60 hover:border-brand px-6 py-10 text-center cursor-pointer transition">
+      <svg class="w-9 h-9 text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4m0 0L8 8m4-4 4 4M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg>
+      <span class="font-bold">Arraste o arquivo aqui ou clique para escolher</span>
+      <span class="text-sm text-mute">.txt ou .pdf</span>
+      <input id="imp-arquivo" type="file" accept=".txt,.pdf,text/plain,application/pdf" class="sr-only">
+    </label>
+
+    <div class="mt-4 flex flex-wrap gap-4 text-sm">
+      <label class="flex items-center gap-2 font-semibold">Codificação do TXT
+        <select id="imp-enc" class="rounded-lg border border-line bg-white px-2.5 py-1.5 font-normal">
+          <option value="auto">Automática</option><option value="cp850">CP850 (DOS)</option><option value="windows-1252">Windows-1252</option><option value="utf-8">UTF-8</option>
+        </select>
+      </label>
+      <label class="flex items-center gap-2 font-semibold">Ao aplicar
+        <select id="imp-modo" class="rounded-lg border border-line bg-white px-2.5 py-1.5 font-normal">
+          <option value="substituir">Substituir a base atual</option><option value="mesclar">Mesclar com a base atual</option>
+        </select>
+      </label>
+    </div>
+
+    <div id="imp-status" class="mt-5" aria-live="polite"></div>
+
+    <div class="mt-6 flex flex-wrap justify-end gap-2">
+      <button id="imp-cancelar" class="rounded-xl border border-line hover:bg-cream px-5 py-3 font-semibold">Cancelar</button>
+      <button id="imp-aplicar" class="rounded-xl bg-brand hover:bg-brand-700 text-navy font-extrabold px-6 py-3 disabled:opacity-40 disabled:cursor-not-allowed" disabled>Aplicar importação</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- ============================ DADOS ============================ -->
+<dialog id="dlg-dados" class="w-[min(680px,calc(100vw-1.5rem))] max-h-[calc(100dvh-1.5rem)] rounded-3xl p-0 bg-white text-ink shadow-2xl border border-line">
+  <div class="p-6 sm:p-8">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h2 class="text-2xl font-extrabold tracking-tight">Dados e importações</h2>
+        <p class="font-serif italic text-mute mt-1">Guardados somente neste navegador.</p>
+      </div>
+      <button id="dados-fechar" class="rounded-full w-9 h-9 grid place-items-center border border-line hover:bg-cream" aria-label="Fechar">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div id="dados-corpo" class="mt-5"></div>
+  </div>
+</dialog>
+
+<div id="tip" hidden></div>
+<div id="toasts" class="fixed bottom-4 right-4 z-[120] space-y-2"></div>
+
+<!-- Usuários: senha nunca é guardada; apenas salt + hash PBKDF2-SHA256. -->
+<script id="usuarios-json" type="application/json">
+{
+  "usuarios": [
+    {
+      "usuario": "stefany",
+      "nome": "Stefany",
+      "iter": 50000,
+      "salt": "54d54ccae9ba47417ca2dd159bc2ec33",
+      "hash": "c413f23349c7806a63aecb9632a7ed86e06e4322ca9fb2092eab89e500c8e749"
+    }
+  ]
+}
+</script>
+
+<script>
+
+/* ====================================================================
+   UTILITÁRIOS
+   ==================================================================== */
+const $  = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const BRLF = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
+const NUMF = new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2});
+const INTF = new Intl.NumberFormat('pt-BR');
+const brl = v => BRLF.format(v||0);
+const brlC = v => { const a=Math.abs(v); if(a>=1e6) return 'R$ '+(v/1e6).toFixed(1).replace('.',',')+' mi'; if(a>=1e3) return 'R$ '+(v/1e3).toFixed(a>=1e4?0:1).replace('.',',')+' mil'; return 'R$ '+Math.round(v); };
+const fData = iso => iso ? iso.split('-').reverse().join('/') : '—';
+const pad = n => String(n).padStart(2,'0');
+const hojeIso = () => { const d=new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
+const utc = iso => { const [y,m,d]=iso.split('-').map(Number); return Date.UTC(y,m-1,d); };
+const diasAte = (iso,ref) => Math.round((utc(iso)-utc(ref))/864e5);
+const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const dataExtensa = iso => { const [y,m,d]=iso.split('-').map(Number); return `${d} de ${MESES[m-1]} de ${y}`; };
+const mesCurto = k => { const [y,m]=k.split('-'); return MESES[+m-1].slice(0,3)+'/'+y.slice(2); };
+const mesLongo = k => { const [y,m]=k.split('-'); return MESES[+m-1]+' de '+y; };
+const plural = (n,s,p) => n===1 ? s : (p||s+'s');
+const semAcento = s => String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+const UNID = {G:'g', ML:'mL', UN:'un', CAP:'cáps'};
+const unid = u => UNID[u] || (u||'').toLowerCase();
+const lerLS = (k,def) => { try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(e){ return def; } };
+const gravarLS = (k,v) => { try{ localStorage.setItem(k,JSON.stringify(v)); return true; }catch(e){ return false; } };
+
+function toast(msg,tipo){
+  const el=document.createElement('div');
+  el.className='rounded-xl px-4 py-3 text-sm font-semibold shadow-xl max-w-sm '+(tipo==='erro'?'bg-white border-2 text-ink':'bg-navy text-white');
+  if(tipo==='erro') el.style.borderColor='var(--b-venc)';
+  el.textContent=msg; $('#toasts').appendChild(el);
+  setTimeout(()=>el.remove(),4500);
+}
+
+/* ====================================================================
+   SEGURANÇA SIMPLES: PBKDF2-SHA256 (salt por usuário) + sessão
+   ==================================================================== */
+const hexToBytes = h => Uint8Array.from(h.match(/../g).map(x=>parseInt(x,16)));
+const bytesToHex = b => [...b].map(x=>x.toString(16).padStart(2,'0')).join('');
+
+/* SHA-256 / HMAC / PBKDF2 em JS puro (fallback para contextos sem crypto.subtle) */
+const SHA = (()=>{
+  const primes=[]; for(let n=2;primes.length<64;n++){ if(primes.every(p=>n%p)) primes.push(n); }
+  const frac = x => Math.floor((x-Math.floor(x))*4294967296)>>>0;
+  const K = new Uint32Array(primes.map(p=>frac(Math.cbrt(p))));
+  const H0 = new Uint32Array(primes.slice(0,8).map(p=>frac(Math.sqrt(p))));
+  const rotr=(x,n)=>(x>>>n)|(x<<(32-n));
+  function compress(H,w,W){
+    for(let i=0;i<16;i++) W[i]=w[i];
+    for(let i=16;i<64;i++){
+      const a=W[i-15],b=W[i-2];
+      W[i]=(W[i-16]+(rotr(a,7)^rotr(a,18)^(a>>>3))+W[i-7]+(rotr(b,17)^rotr(b,19)^(b>>>10)))>>>0;
+    }
+    let [a,b,c,d,e,f,g,h]=H;
+    for(let i=0;i<64;i++){
+      const t1=(h+(rotr(e,6)^rotr(e,11)^rotr(e,25))+((e&f)^(~e&g))+K[i]+W[i])>>>0;
+      const t2=((rotr(a,2)^rotr(a,13)^rotr(a,22))+((a&b)^(a&c)^(b&c)))>>>0;
+      h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0;
+    }
+    H[0]=(H[0]+a)>>>0;H[1]=(H[1]+b)>>>0;H[2]=(H[2]+c)>>>0;H[3]=(H[3]+d)>>>0;
+    H[4]=(H[4]+e)>>>0;H[5]=(H[5]+f)>>>0;H[6]=(H[6]+g)>>>0;H[7]=(H[7]+h)>>>0;
+  }
+  function sha256(msg){
+    const l=msg.length, total=((l+9+63)>>6)<<6, buf=new Uint8Array(total);
+    buf.set(msg); buf[l]=0x80;
+    const dv=new DataView(buf.buffer); dv.setUint32(total-4,(l*8)>>>0); dv.setUint32(total-8,Math.floor(l/536870912));
+    const H=new Uint32Array(H0), W=new Uint32Array(64), w=new Uint32Array(16);
+    for(let o=0;o<total;o+=64){ for(let i=0;i<16;i++) w[i]=dv.getUint32(o+i*4); compress(H,w,W); }
+    const out=new Uint8Array(32), odv=new DataView(out.buffer); for(let i=0;i<8;i++) odv.setUint32(i*4,H[i]); return out;
+  }
+  function hmac(key,msg){
+    if(key.length>64) key=sha256(key);
+    const ip=new Uint8Array(64+msg.length), op=new Uint8Array(96);
+    for(let i=0;i<64;i++){ const k=key[i]||0; ip[i]=k^0x36; op[i]=k^0x5c; }
+    ip.set(msg,64); op.set(sha256(ip),64); return sha256(op);
+  }
+  function pbkdf2(pw,salt,iter){
+    const s=new Uint8Array(salt.length+4); s.set(salt); s[salt.length+3]=1;
+    let u=hmac(pw,s); const t=new Uint8Array(u);
+    for(let i=1;i<iter;i++){ u=hmac(pw,u); for(let j=0;j<32;j++) t[j]^=u[j]; }
+    return t;
+  }
+  return {sha256,hmac,pbkdf2};
+})();
+
+async function derivarHash(senha,saltHex,iter){
+  const pw=new TextEncoder().encode(senha.normalize('NFC')), salt=hexToBytes(saltHex);
+  if(window.crypto && crypto.subtle){
+    try{
+      const k=await crypto.subtle.importKey('raw',pw,'PBKDF2',false,['deriveBits']);
+      const b=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt,iterations:iter},k,256);
+      return bytesToHex(new Uint8Array(b));
+    }catch(e){}
+  }
+  await new Promise(r=>setTimeout(r,20));
+  return bytesToHex(SHA.pbkdf2(pw,salt,iter));
+}
+const iguais = (a,b) => { if(a.length!==b.length) return false; let r=0; for(let i=0;i<a.length;i++) r|=a.charCodeAt(i)^b.charCodeAt(i); return r===0; };
+
+const USUARIOS = (()=>{ try{ return JSON.parse($('#usuarios-json').textContent).usuarios||[]; }catch(e){ return []; } })();
+const SESSAO_KEY='bf.sessao.v1', ACESSOS_KEY='bf.acessos.v1', TENT_KEY='bf.tentativas.v1';
+const OCIOSO_MS = 30*60*1000;
+let SESSAO = null;
+
+function registrarAcesso(usuario,nome,ok){
+  const l=lerLS(ACESSOS_KEY,[]); l.unshift({u:usuario,nome,ok,t:Date.now()}); gravarLS(ACESSOS_KEY,l.slice(0,40));
+}
+function lerSessao(){
+  /* Recarregar a página exige nova senha: a sessão só sobrevive a navegação, não a reload. */
+  let nav=''; try{ nav=(performance.getEntriesByType('navigation')[0]||{}).type||''; }catch(e){}
+  if(nav==='reload'){ sessionStorage.removeItem(SESSAO_KEY); return null; }
+  try{
+    const s=JSON.parse(sessionStorage.getItem(SESSAO_KEY)||'null');
+    if(!s || Date.now()-s.ativo>OCIOSO_MS) return null;
+    if(!USUARIOS.some(u=>u.usuario===s.u)) return null;
+    return s;
+  }catch(e){ return null; }
+}
+function gravarSessao(){ try{ sessionStorage.setItem(SESSAO_KEY,JSON.stringify(SESSAO)); }catch(e){} }
+function sair(){ sessionStorage.removeItem(SESSAO_KEY); SESSAO=null; location.reload(); }
+
+async function tentarLogin(usuario,senha){
+  const tent=lerLS(TENT_KEY,{n:0,ate:0});
+  if(Date.now()<tent.ate) return {ok:false,msg:`Muitas tentativas. Aguarde ${Math.ceil((tent.ate-Date.now())/1000)} s.`};
+  const u=USUARIOS.find(x=>semAcento(x.usuario)===semAcento(usuario.trim()));
+  // Sempre calcula um hash, para o tempo de resposta não revelar se o usuário existe.
+  const ref=u||USUARIOS[0]||{salt:'00',iter:50000,hash:''};
+  const h=await derivarHash(senha,ref.salt,ref.iter);
+  if(u && iguais(h,u.hash)){
+    gravarLS(TENT_KEY,{n:0,ate:0}); registrarAcesso(u.usuario,u.nome,true);
+    SESSAO={u:u.usuario,nome:u.nome,inicio:Date.now(),ativo:Date.now()}; gravarSessao();
+    return {ok:true};
+  }
+  const n=tent.n+1; const ate = n>=5 ? Date.now()+Math.min(300,30*(n-4))*1000 : 0;
+  gravarLS(TENT_KEY,{n,ate}); registrarAcesso(usuario.trim()||'(vazio)','',false);
+  return {ok:false,msg: n>=5 ? 'Muitas tentativas. Aguarde um pouco antes de tentar de novo.' : 'Usuário ou senha incorretos.'};
+}
+
+function montarLogin(){
+  $('#login').hidden=false; $('#app').hidden=true;
+  const f=$('#form-login'), erro=$('#lg-erro'), btn=$('#lg-ok');
+  $('#lg-ver').onclick=e=>{ const i=$('#lg-pass'); const v=i.type==='password'; i.type=v?'text':'password'; e.target.textContent=v?'Ocultar':'Mostrar'; e.target.setAttribute('aria-pressed',v); };
+  f.onsubmit=async ev=>{
+    ev.preventDefault(); erro.hidden=true;
+    const u=$('#lg-user').value, p=$('#lg-pass').value;
+    if(!u.trim()||!p){ erro.textContent='Informe usuário e senha.'; erro.hidden=false; return; }
+    btn.disabled=true; btn.textContent='Verificando…';
+    const r=await tentarLogin(u,p);
+    btn.disabled=false; btn.textContent='Entrar';
+    if(r.ok){ $('#lg-pass').value=''; iniciarApp(); }
+    else { erro.textContent=r.msg; erro.hidden=false; $('#lg-pass').select(); }
+  };
+  $('#lg-user').focus();
+}
+
+/* ====================================================================
+   IMPORTAÇÃO
+   ==================================================================== */
+/*<PARSER>*/
+const CP850 = "ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜø£Ø×ƒáíóúñÑªº¿®¬½¼¡«»░▒▓│┤ÁÂÀ©╣║╗╝¢¥┐└┴┬├─┼ãÃ╚╔╩╦╠═╬¤ðÐÊËÈıÍÎÏ┘┌█▄¦Ì▀ÓßÔÒõÕµþÞÚÛÙýÝ¯´­±‗¾¶§÷¸°¨·¹³²■ ";
+function decodeCp850(bytes){
+  const out=[]; let chunk='';
+  for(let i=0;i<bytes.length;i++){
+    const b=bytes[i];
+    chunk += b<128 ? String.fromCharCode(b) : CP850[b-128];
+    if(chunk.length>8192){ out.push(chunk); chunk=''; }
+  }
+  out.push(chunk); return out.join('');
+}
+/* Decodifica o arquivo: UTF-8 estrito -> CP850 (relatórios DOS) -> Windows-1252 */
+function decodificarTexto(buf, forcar){
+  const bytes = new Uint8Array(buf);
+  const f = forcar || 'auto';
+  if(f==='cp850') return {texto:decodeCp850(bytes), enc:'CP850'};
+  if(f==='windows-1252') return {texto:new TextDecoder('windows-1252').decode(bytes), enc:'Windows-1252'};
+  if(f==='utf-8') return {texto:new TextDecoder('utf-8').decode(bytes), enc:'UTF-8'};
+  try{ return {texto:new TextDecoder('utf-8',{fatal:true}).decode(bytes), enc:'UTF-8'}; }catch(e){}
+  // linhas de moldura em CP850: sequências longas de 0xC4 (─) / 0xCD (═) / 0xB3 (│)
+  let run=0, maxRun=0;
+  for(let i=0;i<bytes.length && i<400000;i++){
+    const b=bytes[i];
+    if(b===0xC4||b===0xCD||b===0xB3||b===0xBA){ run++; if(run>maxRun) maxRun=run; } else run=0;
+  }
+  if(maxRun>=8) return {texto:decodeCp850(bytes), enc:'CP850 (detectado)'};
+  return {texto:new TextDecoder('windows-1252').decode(bytes), enc:'Windows-1252 (detectado)'};
+}
+const pn = s => { const v=parseFloat(String(s).replace(/\./g,'').replace(',','.')); return Number.isFinite(v)?v:0; };
+const dIso = s => { const m=/^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s||''); return m?`${m[3]}-${m[2]}-${m[1]}`:null; };
+function repararAcentos(s){
+  return String(s||'').replace(/Matrias/g,'Matérias').replace(/Embalagens?/g,m=>m).trim();
+}
+const NUM = '(-?[\\d.]*\\d,\\d+)';
+const LOT_RE = new RegExp('^(\\d+)\\s+(.+?)\\s+(?:(\\d{2}/\\d{2}/\\d{4})\\s+)?(\\d{2}/\\d{2}/\\d{4})\\s+'+NUM+'\\s+'+NUM+'\\s+'+NUM+'$');
+const PROD_RE = /^(\d+)\s+(.+?)\s+([A-Z])\s+(\d+)\s+([A-Z])\s+(\S+)(?:\s+(.*))?$/;
+
+/* Importador: relatório "CONTROLE DE LOTES VENCIMENTO" do sistema */
+function parseLotesVencimento(texto){
+  const linhas = texto.replace(/�/g,'').split(/\r?\n/);
+  const meta = {titulo:'Controle de lotes - vencimento'};
+  const produtos = new Map();
+  const lotes = [];
+  const naoReconhecidas = [];
+  let grupo='', prod=null, itensRel=null, totalRel=null;
+  for(let i=0;i<linhas.length;i++){
+    const bruta = linhas[i];
+    const l = bruta.replace(/[─-╿³ºÄÍ]/g,' ').trim();
+    if(!l) continue;
+    let m;
+    if((m=/PAG\.\s*\d+/.exec(l)) ){
+      const d=/(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2}:\d{2})/.exec(l);
+      if(d && !meta.emissao){ meta.emissao = dIso(d[1]); meta.emissaoHora = d[2]; }
+      continue;
+    }
+    if(/CONTROLE DE LOTES/i.test(l)) continue;
+    if((m=/Vencimento:\s*(\d{2}\/\d{2}\/\d{4})\s*-\s*(\d{2}\/\d{2}\/\d{4})/.exec(l))){
+      meta.periodoIni=dIso(m[1]); meta.periodoFim=dIso(m[2]); continue; }
+    if((m=/GRUPO:\s*(.+?)(?:\s{2,}|$)/.exec(l))){ grupo=repararAcentos(m[1]); continue; }
+    if(/FILIAL\s+FORNECEDOR/.test(l) || (/CODIGO/.test(l) && /D E S C/.test(l))) continue;
+    if((m=/VALOR TOTAL\s*-->\s*(-?[\d.,]+)/.exec(l))){ if(prod) prod.totalRel=(prod.totalRel||0)+pn(m[1]); continue; }
+    if((m=/NUMERO DE ITENS\s*-->\s*\((\d+)\)/.exec(l))){ itensRel=+m[1]; continue; }
+    if((m=/TOTAL GERAL.*-->\s*(-?[\d.,]+)/.exec(l))){ totalRel=pn(m[1]); continue; }
+    if((m=LOT_RE.exec(l))){
+      if(!prod){ naoReconhecidas.push(i+1); continue; }
+      let meio=m[2].trim(), fornecedor=meio, lote='', nota='';
+      const partes = meio.split(/\s{2,}/);
+      if(partes.length>=3){ fornecedor=partes[0]; lote=partes[1]; nota=partes.slice(2).join(' '); }
+      else if(partes.length===2){
+        fornecedor=partes[0]; const t=partes[1].trim().split(/\s+/);
+        if(t.length>=2){ nota=t.pop(); lote=t.join(' '); } else lote=t[0];
+      }
+      lotes.push({
+        cod:prod.cod, filial:m[1], fornecedor, lote, nota,
+        fabr:dIso(m[3]), val:dIso(m[4]), qtd:pn(m[5]), custo:pn(m[6]), total:pn(m[7])
+      });
+      prod.nLotes++; prod.totalCalc+=pn(m[7]);
+      continue;
+    }
+    if((m=PROD_RE.exec(l))){
+      const cod=m[1];
+      let p=produtos.get(cod);
+      if(!p){
+        let fam='', portaria='';
+        (m[7]||'').split(/\s+/).filter(Boolean).forEach(t=>{ if(/^[A-Z]\d{1,2}$/.test(t)) portaria=t; else fam=t; });
+        p={cod, desc:m[2].trim().replace(/\s{2,}/g,' '), grupo, tipo:m[3], setor:m[4], situacao:m[5], unidade:m[6], fam, portaria, nLotes:0, totalCalc:0, totalRel:null};
+        produtos.set(cod,p);
+      }
+      prod=p; continue;
+    }
+    naoReconhecidas.push(i+1);
+  }
+  const lista=[...produtos.values()];
+  const prodMap={}; lista.forEach(p=>prodMap[p.cod]=p);
+  const totalCalc = lotes.reduce((a,b)=>a+b.total,0);
+  const divergentes = lista.filter(p=>p.totalRel!=null && Math.abs(p.totalRel-p.totalCalc)>0.05).map(p=>p.cod);
+  const conf = {
+    itensRel, itensCalc:lista.filter(p=>p.nLotes>0).length, produtosLidos:lista.length,
+    totalRel, totalCalc, divergentes, naoReconhecidas:naoReconhecidas.length, amostraNaoReconhecidas:naoReconhecidas.slice(0,8)
+  };
+  conf.ok = (itensRel==null || itensRel===conf.itensCalc) && (totalRel==null || Math.abs(totalRel-totalCalc)<0.05) && !divergentes.length;
+  return {meta, produtos:prodMap, lotes, conferencia:conf};
+}
+/* Registro de importadores: para ensinar um novo formato, acrescente um item aqui. */
+const IMPORTADORES = [
+  { id:'lotes-vencimento', nome:'Controle de lotes - vencimento', reconhece:t=>/CONTROLE DE LOTES/i.test(t) && /FILIAL\s+FORNECEDOR/.test(t), parse:parseLotesVencimento }
+];
+/*</PARSER>*/
+
+
+const mediana = a => { if(!a.length) return 0; const s=[...a].sort((x,y)=>x-y); return s[s.length>>1]; };
+async function carregarPdfJs(){
+  if(window.pdfjsLib) return window.pdfjsLib;
+  const base='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  await new Promise((ok,er)=>{ const s=document.createElement('script'); s.src=base+'pdf.min.js'; s.onload=ok; s.onerror=()=>er(new Error('Não foi possível carregar o leitor de PDF. Verifique a conexão com a internet.')); document.head.appendChild(s); });
+  const w=await fetch(base+'pdf.worker.min.js').then(r=>r.text());
+  pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(new Blob([w],{type:'text/javascript'}));
+  return pdfjsLib;
+}
+/* Reconstrói o texto do PDF preservando as colunas (posição X), para reaproveitar o parser do TXT. */
+async function pdfParaTexto(buf){
+  const lib=await carregarPdfJs();
+  const pdf=await lib.getDocument({data:new Uint8Array(buf)}).promise;
+  const paginas=[];
+  for(let p=1;p<=pdf.numPages;p++){
+    const tc=await (await pdf.getPage(p)).getTextContent();
+    const its=tc.items.filter(i=>i.str!=='').map(i=>({s:i.str,x:i.transform[4],y:i.transform[5],w:i.width}));
+    const cw=mediana(its.filter(i=>i.s.length>3).map(i=>i.w/i.s.length))||5;
+    its.sort((a,b)=>b.y-a.y||a.x-b.x);
+    const linhas=[]; let cur=null;
+    for(const it of its){ if(!cur||Math.abs(cur.y-it.y)>2.5){ cur={y:it.y,its:[]}; linhas.push(cur); } cur.its.push(it); }
+    paginas.push(linhas.map(l=>{
+      l.its.sort((a,b)=>a.x-b.x); let out='',col=0;
+      for(const it of l.its){
+        const alvo=Math.round(it.x/cw);
+        if(alvo>col){ out+=' '.repeat(alvo-col); col=alvo; } else if(out && !out.endsWith(' ')){ out+=' '; col++; }
+        out+=it.s; col+=it.s.length;
+      }
+      return out;
+    }).join('\n'));
+  }
+  return paginas.join('\n');
+}
+
+let IMP = null; // resultado pendente de aplicação
+async function processarArquivo(file){
+  const st=$('#imp-status'); IMP=null; $('#imp-aplicar').disabled=true;
+  st.innerHTML=`<p class="text-sm font-semibold text-mute">Lendo ${esc(file.name)}…</p>`;
+  try{
+    const buf=await file.arrayBuffer();
+    const head=new Uint8Array(buf.slice(0,5)); const ehPdf=String.fromCharCode(...head).startsWith('%PDF');
+    let texto, enc, formato;
+    if(ehPdf){ formato='PDF'; enc='texto do PDF'; texto=await pdfParaTexto(buf); }
+    else { formato='TXT'; const d=decodificarTexto(buf,$('#imp-enc').value); texto=d.texto; enc=d.enc; }
+    const imp=IMPORTADORES.find(i=>i.reconhece(texto));
+    if(!imp) throw new Error('Formato não reconhecido. Hoje o painel lê o relatório "Controle de lotes - vencimento". Envie um exemplo do novo relatório para ensiná-lo.');
+    const r=imp.parse(texto);
+    if(!r.lotes.length) throw new Error('O relatório foi reconhecido, mas nenhum lote foi encontrado.');
+    IMP={...r,arquivo:file.name,formato,enc,importador:imp.nome,tamanho:file.size};
+    const c=r.conferencia;
+    const linha=(ok,txt)=>`<li class="flex gap-2"><span class="chip ${ok?'band-ok':'band-crit'} chip-plain" style="padding:.05rem .45rem">${ok?'confere':'confira'}</span><span>${txt}</span></li>`;
+    st.innerHTML=`
+      <div class="rounded-2xl border border-line bg-cream/60 p-4 text-sm">
+        <p class="font-bold">${esc(file.name)} <span class="font-normal text-mute">· ${formato} · ${esc(enc)} · ${esc(imp.nome)}</span></p>
+        <div class="grid grid-cols-3 gap-3 mt-3 text-center">
+          <div class="rounded-xl bg-white border border-line py-2"><p class="num text-2xl">${INTF.format(r.lotes.length)}</p><p class="text-xs text-mute">lotes</p></div>
+          <div class="rounded-xl bg-white border border-line py-2"><p class="num text-2xl">${INTF.format(Object.keys(r.produtos).length)}</p><p class="text-xs text-mute">produtos</p></div>
+          <div class="rounded-xl bg-white border border-line py-2"><p class="num text-2xl">${brlC(c.totalCalc)}</p><p class="text-xs text-mute">em estoque</p></div>
+        </div>
+        <ul class="mt-3 space-y-1.5">
+          ${c.itensRel!=null?linha(c.itensRel===c.itensCalc,`Itens: ${c.itensCalc} lidos, ${c.itensRel} no rodapé do relatório`):''}
+          ${c.totalRel!=null?linha(Math.abs(c.totalRel-c.totalCalc)<0.05,`Total: ${brl(c.totalCalc)} lido, ${brl(c.totalRel)} no rodapé`):''}
+          ${c.divergentes.length?linha(false,`${c.divergentes.length} produto(s) com subtotal divergente`):''}
+          ${c.naoReconhecidas?linha(false,`${c.naoReconhecidas} linha(s) não reconhecida(s) (ex.: linhas ${c.amostraNaoReconhecidas.join(', ')})`):''}
+        </ul>
+        <p class="mt-3 text-xs text-mute">Emitido em ${r.meta.emissao?fData(r.meta.emissao)+(r.meta.emissaoHora?' às '+r.meta.emissaoHora:''):'—'} · vencimentos de ${fData(r.meta.periodoIni)} a ${fData(r.meta.periodoFim)}</p>
+      </div>`;
+    $('#imp-aplicar').disabled=false;
+  }catch(e){
+    st.innerHTML=`<p class="rounded-xl border-2 p-4 text-sm font-semibold" style="border-color:var(--b-venc)">${esc(e.message||e)}</p>`;
+  }
+}
+
+const chaveLote = l => [l.cod,l.filial,l.lote,l.nota,l.val].join('|');
+function aplicarImportacao(){
+  if(!IMP) return;
+  const modo=$('#imp-modo').value;
+  let lotes=IMP.lotes, produtos=IMP.produtos;
+  if(modo==='mesclar' && S.dados){
+    const m=new Map(S.dados.lotes.map(l=>[chaveLote(l),l])); IMP.lotes.forEach(l=>m.set(chaveLote(l),l));
+    lotes=[...m.values()]; produtos={...S.dados.produtos,...IMP.produtos};
+  }
+  const meta={arquivo:IMP.arquivo,formato:IMP.formato,importador:IMP.importador,importadoEm:Date.now(),por:SESSAO?.nome||'',emissao:IMP.meta.emissao,emissaoHora:IMP.meta.emissaoHora,periodoIni:IMP.meta.periodoIni,periodoFim:IMP.meta.periodoFim,conferencia:{ok:IMP.conferencia.ok,totalRel:IMP.conferencia.totalRel,totalCalc:IMP.conferencia.totalCalc,itensRel:IMP.conferencia.itensRel,itensCalc:IMP.conferencia.itensCalc},modo};
+  const dados={meta,lotes,produtos};
+  if(!gravarLS('bf.dados.v1',dados)){ toast('Não foi possível guardar os dados (armazenamento do navegador cheio).','erro'); return; }
+  const hist=lerLS('bf.hist.v1',[]); hist.unshift({arquivo:meta.arquivo,formato:meta.formato,quando:meta.importadoEm,por:meta.por,lotes:IMP.lotes.length,produtos:Object.keys(IMP.produtos).length,valor:IMP.conferencia.totalCalc,modo,ok:IMP.conferencia.ok,emissao:meta.emissao});
+  gravarLS('bf.hist.v1',hist.slice(0,30));
+  S.dados=dados; S.pag=1; S.f=filtrosVazios(); IMP=null;
+  const n=lotes.length; $('#dlg-import').close(); atualizarTudo(); toast(`${INTF.format(n)} lotes carregados.`);
+}
+
+/* ====================================================================
+   ESTADO E CÁLCULOS
+   ==================================================================== */
+const BANDAS = [
+  {id:'venc', nome:'Vencidos',    faixa:'já passaram da validade', cor:'var(--b-venc)'},
+  {id:'crit', nome:'Crítico',     faixa:'vencem em até 30 dias',   cor:'var(--b-crit)'},
+  {id:'alert',nome:'Alerta',      faixa:'31 a 60 dias',            cor:'var(--b-alert)'},
+  {id:'aten', nome:'Atenção',     faixa:'61 a 90 dias',            cor:'var(--b-aten)'},
+  {id:'ok',   nome:'Em dia',      faixa:'mais de 90 dias',         cor:'var(--b-ok)'}
+];
+const BANDA = Object.fromEntries(BANDAS.map(b=>[b.id,b]));
+const bandaDe = d => d<0?'venc':d<=30?'crit':d<=60?'alert':d<=90?'aten':'ok';
+const filtrosVazios = () => ({busca:'',grupo:'',setor:'',fornecedor:'',filial:'',portaria:'',situacao:'',banda:'',mes:'',ate:null,prod:''});
+const S = { dados:null, ref:hojeIso(), f:filtrosVazios(), metrica:'valor', rank:'fornecedor', agrupar:'', ordem:{col:'dias',dir:1}, pag:1, porPag:25, abertos:new Set(), todos:[], base:[], lista:[] };
+
+function chipBanda(l){
+  const b=BANDA[l.banda];
+  const txt = l.dias<0 ? `Venceu há ${-l.dias} ${plural(-l.dias,'dia')}` : l.dias===0 ? 'Vence hoje' : `Vence em ${l.dias} ${plural(l.dias,'dia')}`;
+  return `<span class="chip band-${l.banda}">${txt}</span>`;
+}
+function enriquecer(){
+  const {lotes,produtos}=S.dados;
+  S.todos=lotes.map((l,i)=>{ const p=produtos[l.cod]||{}; const dias=diasAte(l.val,S.ref);
+    return {...l,id:i,desc:p.desc||l.cod,grupo:p.grupo||'',setor:p.setor||'',situacao:p.situacao||'',unidade:p.unidade||'',portaria:p.portaria||'',dias,banda:bandaDe(dias),mes:l.val.slice(0,7)}; });
+}
+function passaGlobais(l){
+  const f=S.f;
+  if(f.grupo && l.grupo!==f.grupo) return false;
+  if(f.setor && l.setor!==f.setor) return false;
+  if(f.fornecedor && l.fornecedor!==f.fornecedor) return false;
+  if(f.filial && l.filial!==f.filial) return false;
+  if(f.portaria==='sim' && !l.portaria) return false;
+  if(f.portaria && f.portaria!=='sim' && l.portaria!==f.portaria) return false;
+  if(f.situacao && l.situacao!==f.situacao) return false;
+  if(f.prod && l.cod!==f.prod) return false;
+  if(f.busca){ const q=semAcento(f.busca); const alvo=semAcento(`${l.cod} ${l.desc} ${l.lote} ${l.nota} ${l.fornecedor}`); if(!q.split(/\s+/).every(t=>alvo.includes(t))) return false; }
+  return true;
+}
+function passaSelecao(l){
+  const f=S.f;
+  if(f.banda && l.banda!==f.banda) return false;
+  if(f.mes && l.mes!==f.mes) return false;
+  if(f.ate!=null && l.dias>f.ate) return false;
+  return true;
+}
+const metricaDe = l => S.metrica==='valor' ? l.total : 1;
+const fmtM = v => S.metrica==='valor' ? brlC(v) : INTF.format(v)+' '+plural(v,'lote');
+
+function agrupar(lista,chave){
+  const m=new Map();
+  for(const l of lista){
+    const k=chave(l); let g=m.get(k);
+    if(!g){ g={k,n:0,valor:0,min:Infinity,porBanda:{venc:0,crit:0,alert:0,aten:0,ok:0},nBanda:{venc:0,crit:0,alert:0,aten:0,ok:0},lotes:[]}; m.set(k,g); }
+    g.n++; g.valor+=l.total; g.min=Math.min(g.min,l.dias); g.porBanda[l.banda]+=metricaDe(l); g.nBanda[l.banda]++; g.lotes.push(l);
+  }
+  return [...m.values()];
+}
+
+/* ====================================================================
+   TOOLTIP
+   ==================================================================== */
+const tip=$('#tip');
+document.addEventListener('mousemove',e=>{
+  const t=e.target.closest?.('[data-tip]');
+  if(!t){ tip.hidden=true; return; }
+  tip.innerHTML=t.dataset.tip; tip.hidden=false;
+  const w=tip.offsetWidth,h=tip.offsetHeight; let x=e.clientX+14,y=e.clientY+14;
+  if(x+w>innerWidth-8) x=e.clientX-w-14; if(y+h>innerHeight-8) y=e.clientY-h-14;
+  tip.style.left=Math.max(8,x)+'px'; tip.style.top=Math.max(8,y)+'px';
+});
+document.addEventListener('scroll',()=>tip.hidden=true,true);
+const tipAttr = html => `data-tip="${esc(html)}"`;
+
+/* ====================================================================
+   RENDER
+   ==================================================================== */
+function atualizarTudo(){
+  if(!S.dados){ $('#vazio').hidden=false; $('#painel').hidden=true; return; }
+  $('#vazio').hidden=true; $('#painel').hidden=false;
+  enriquecer(); preencherFiltros(); atualizar();
+  $('#rodape').innerHTML=`Dados de <b>${esc(S.dados.meta.arquivo)}</b>, importados em ${new Date(S.dados.meta.importadoEm).toLocaleString('pt-BR')}${S.dados.meta.por?' por '+esc(S.dados.meta.por):''}. Relatório emitido em ${fData(S.dados.meta.emissao)}. Valores a preço de custo.`;
+  $('#print-data').textContent=new Date().toLocaleString('pt-BR');
+}
+function atualizar(){
+  S.base=S.todos.filter(passaGlobais);
+  S.lista=S.base.filter(passaSelecao);
+  renderHero(); renderChips(); renderTimeline(); renderAlertas(); renderRank(); renderTabela();
+  $$('[data-metrica]').forEach(b=>{ const a=b.dataset.metrica===S.metrica; b.className='px-3.5 py-1.5 rounded-lg font-bold '+(a?'bg-white text-navy':'text-white/80 hover:text-white'); b.setAttribute('aria-pressed',a); });
+  const ref=S.ref===hojeIso(); $('#data-ref-txt').textContent=(ref?'Hoje · ':'Simulando · ')+fData(S.ref);
+}
+
+function renderHero(){
+  const g=agrupar(S.base,()=>'x')[0]||{porBanda:{},nBanda:{venc:0,crit:0,alert:0,aten:0,ok:0},n:0,valor:0};
+  const nv=g.nBanda.venc, nc=g.nBanda.crit;
+  const vv=S.base.filter(l=>l.banda==='venc').reduce((a,l)=>a+l.total,0), vc=S.base.filter(l=>l.banda==='crit').reduce((a,l)=>a+l.total,0);
+  $('#hero-data').textContent=dataExtensa(S.ref);
+  const it=t=>`<span class="font-serif italic font-normal text-white/80">${t}</span>`;
+  $('#hero-titulo').innerHTML = (nv? `<span class="num text-[1.15em]" style="color:#FFB27A">${INTF.format(nv)}</span> ${plural(nv,'lote')} ${it(nv===1?'já venceu':'já venceram')}` : `Nenhum lote ${it('vencido')}`)
+    + `<br>${it('e')} <span class="num text-[1.15em]" style="color:#FFB27A">${INTF.format(nc)}</span> ${it(nc===1?'vence':'vencem')} ${it('em até 30 dias')}`;
+  $('#hero-sub').textContent=`${brl(vv)} em lotes vencidos e ${brl(vc)} vencendo no próximo mês, de ${INTF.format(g.n)} lotes e ${INTF.format(new Set(S.base.map(l=>l.cod)).size)} produtos acompanhados.`;
+  // régua
+  const tot=BANDAS.reduce((a,b)=>a+(g.porBanda[b.id]||0),0)||1;
+  $('#regua').innerHTML=BANDAS.map(b=>{ const v=g.porBanda[b.id]||0; if(!v) return ''; return `<div class="bar-seg h-full" style="width:${v/tot*100}%;min-width:6px;background:${b.cor}" ${tipAttr(`<b>${b.nome}</b><br>${fmtM(v)} · ${(v/tot*100).toFixed(1).replace('.',',')}%`)}></div>`; }).join('');
+  // cartões
+  $('#bandas').innerHTML=BANDAS.map(b=>{
+    const n=g.nBanda[b.id]||0, v=S.base.filter(l=>l.banda===b.id).reduce((a,l)=>a+l.total,0), sel=S.f.banda===b.id;
+    return `<button data-act="banda" data-id="${b.id}" aria-pressed="${sel}" class="text-left rounded-2xl bg-white text-ink p-4 relative overflow-hidden transition hover:-translate-y-0.5 ${sel?'ring-4 ring-brand':''}">
+      <span class="absolute left-0 top-0 bottom-0 w-1.5" style="background:${b.cor}"></span>
+      <span class="block text-sm font-bold pl-1">${b.nome}</span>
+      <span class="block text-xs text-mute pl-1">${b.faixa}</span>
+      <span class="block num text-4xl leading-none mt-2 pl-1">${INTF.format(n)} <span class="text-sm font-sans font-semibold text-mute">${plural(n,'lote')}</span></span>
+      <span class="block text-sm font-semibold mt-1 pl-1 tab-num">${brl(v)}</span></button>`;
+  }).join('');
+}
+
+function renderChips(){
+  const f=S.f, c=[];
+  const add=(k,txt)=>c.push(`<button data-act="rm" data-k="${k}" class="chip chip-plain" style="--c:#38406A">${esc(txt)} <span aria-hidden="true">×</span><span class="sr-only">remover filtro</span></button>`);
+  if(f.banda) add('banda','Faixa: '+BANDA[f.banda].nome);
+  if(f.mes) add('mes','Vence em '+mesLongo(f.mes));
+  if(f.ate!=null) add('ate','Até '+f.ate+' dias');
+  if(f.prod) add('prod','Produto '+f.prod);
+  if(c.length) c.push(`<button data-act="limpar" class="text-xs font-bold text-brand-700 hover:underline px-1">Limpar tudo</button>`);
+  else if(Object.entries(f).some(([k,v])=>v&&!['banda','mes','ate','prod'].includes(k)) ) c.push(`<button data-act="limpar" class="text-xs font-bold text-brand-700 hover:underline px-1">Limpar filtros</button>`);
+  $('#chips-filtro').innerHTML=c.join('');
+}
+
+/* ---------- Linha do tempo (SVG) ---------- */
+function ticksBonitos(max,n=4){
+  if(max<=0) return [0,1];
+  const raw=max/n, mag=Math.pow(10,Math.floor(Math.log10(raw))), r=raw/mag, passo=(r<=1?1:r<=2?2:r<=5?5:10)*mag;
+  const t=[]; for(let v=0;v<=max+passo*0.999;v+=passo) t.push(v); return t;
+}
+function renderTimeline(){
+  const el=$('#timeline');
+  $('#t-legenda').innerHTML=BANDAS.map(b=>`<span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background:${b.cor}"></span>${b.nome}</span>`).join('');
+  const mapa=new Map(); S.base.forEach(l=>{ let m=mapa.get(l.mes); if(!m){ m={k:l.mes,n:0,v:{venc:0,crit:0,alert:0,aten:0,ok:0},nb:{venc:0,crit:0,alert:0,aten:0,ok:0},valor:0}; mapa.set(l.mes,m); } m.n++; m.valor+=l.total; m.v[l.banda]+=metricaDe(l); m.nb[l.banda]++; });
+  if(!mapa.size){ el.innerHTML='<p class="py-10 text-center text-mute">Nenhum lote nos filtros atuais.</p>'; return; }
+  const ks=[...mapa.keys()].sort(); let [y,m]=ks[0].split('-').map(Number); const [y2,m2]=ks[ks.length-1].split('-').map(Number);
+  const meses=[]; while(y<y2||(y===y2&&m<=m2)){ const k=`${y}-${pad(m)}`; meses.push(mapa.get(k)||{k,n:0,v:{venc:0,crit:0,alert:0,aten:0,ok:0},nb:{venc:0,crit:0,alert:0,aten:0,ok:0},valor:0}); m++; if(m>12){m=1;y++;} }
+  $('#t-sub').textContent=`${fmtM(meses.reduce((a,x)=>a+BANDAS.reduce((s,b)=>s+x.v[b.id],0),0))} entre ${mesLongo(meses[0].k)} e ${mesLongo(meses[meses.length-1].k)}. Clique numa barra para filtrar o mês.`;
+  const W=Math.max(320,el.clientWidth||800), H=290, mg={l:S.metrica==='valor'?64:40,r:8,t:18,b:34};
+  const iw=W-mg.l-mg.r, ih=H-mg.t-mg.b, step=iw/meses.length, bw=Math.min(34,step*.68);
+  const tot=x=>BANDAS.reduce((s,b)=>s+x.v[b.id],0);
+  const max=Math.max(...meses.map(tot)), tk=ticksBonitos(max), top=tk[tk.length-1];
+  const Y=v=>mg.t+ih-(v/top)*ih;
+  let svg=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Vencimentos por mês" class="block">`;
+  tk.forEach(v=>{ svg+=`<line x1="${mg.l}" x2="${W-mg.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="#E4E0D5" stroke-width="1"/><text x="${mg.l-8}" y="${Y(v)+4}" text-anchor="end" font-size="11" fill="#5E6580">${S.metrica==='valor'?brlC(v).replace('R$ ',''):INTF.format(v)}</text>`; });
+  const rotulo = step<34 ? 3 : step<52 ? 2 : 1;
+  meses.forEach((x,i)=>{
+    const cx=mg.l+step*i+step/2, x0=cx-bw/2; let acc=0; const sel=S.f.mes===x.k;
+    const partes=BANDAS.filter(b=>x.v[b.id]>0);
+    partes.forEach((b,j)=>{ const v=x.v[b.id], y1=Y(acc+v), y0=Y(acc), h=Math.max(2,y0-y1); const ultimo=j===partes.length-1;
+      svg+= ultimo
+        ? `<path d="M${x0},${y0} V${y0-h+4} Q${x0},${y0-h} ${x0+4},${y0-h} H${x0+bw-4} Q${x0+bw},${y0-h} ${x0+bw},${y0-h+4} V${y0} Z" fill="${b.cor}" stroke="#fff" stroke-width="1.5" paint-order="stroke"/>`
+        : `<rect x="${x0}" y="${y0-h}" width="${bw}" height="${h}" fill="${b.cor}" stroke="#fff" stroke-width="1.5"/>`;
+      acc+=v; });
+    if(sel) svg+=`<rect x="${x0-3}" y="${mg.t}" width="${bw+6}" height="${ih}" fill="none" stroke="#F58220" stroke-width="2" rx="6"/>`;
+    const linhas=BANDAS.filter(b=>x.nb[b.id]).map(b=>`<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${b.cor};margin-right:6px"></span>${b.nome}: ${x.nb[b.id]} ${plural(x.nb[b.id],'lote')}`).join('<br>');
+    svg+=`<rect data-act="mes" data-k="${x.k}" x="${cx-step/2}" y="${mg.t}" width="${step}" height="${ih+mg.b}" fill="transparent" style="cursor:pointer" ${tipAttr(`<b>${mesLongo(x.k)}</b><br>${x.n} ${plural(x.n,'lote')} · ${brl(x.valor)}<br>${linhas||'Sem vencimentos'}`)}/>`;
+    if(i%rotulo===0) svg+=`<text x="${cx}" y="${H-12}" text-anchor="middle" font-size="11" font-weight="${sel?700:500}" fill="${sel?'#0E0D29':'#5E6580'}">${mesCurto(x.k)}</text>`;
+  });
+  // marcador de hoje
+  const [ry,rm,rd]=S.ref.split('-').map(Number), idx=meses.findIndex(x=>x.k===`${ry}-${pad(rm)}`);
+  if(idx>=0){ const dm=new Date(ry,rm,0).getDate(), hx=mg.l+step*(idx+(rd-1)/dm);
+    svg+=`<line x1="${hx}" x2="${hx}" y1="${mg.t-4}" y2="${mg.t+ih}" stroke="#F58220" stroke-width="2" stroke-dasharray="4 3"/><text x="${Math.min(hx+5,W-30)}" y="${mg.t+8}" font-size="11" font-weight="800" fill="#C4681A">hoje</text>`; }
+  svg+='</svg>'; el.innerHTML=svg;
+}
+
+/* ---------- Alertas ---------- */
+function renderAlertas(){
+  const b=S.base, A=[];
+  const soma=l=>l.reduce((a,x)=>a+x.total,0);
+  const venc=b.filter(l=>l.banda==='venc'), s7=b.filter(l=>l.dias>=0&&l.dias<=7), crit=b.filter(l=>l.banda==='crit'), ctrl=b.filter(l=>l.portaria&&l.dias<=90), inat=b.filter(l=>l.situacao==='I'&&l.dias<=180);
+  if(venc.length) A.push({sev:'venc',t:`${venc.length} ${plural(venc.length,'lote vencido','lotes vencidos')}`,d:`${brl(soma(venc))} parados. Separe do estoque e dê baixa.`,f:{banda:'venc'}});
+  if(s7.length) A.push({sev:'crit',t:`${s7.length} ${plural(s7.length,'lote vence','lotes vencem')} em até 7 dias`,d:`${brl(soma(s7))}. Use primeiro ou negocie troca.`,f:{banda:'crit',ate:7}});
+  if(crit.length>s7.length) A.push({sev:'crit',t:`${crit.length} ${plural(crit.length,'lote vence','lotes vencem')} em até 30 dias`,d:`${brl(soma(crit))} no total.`,f:{banda:'crit'}});
+  if(ctrl.length) A.push({sev:'alert',t:`${ctrl.length} ${plural(ctrl.length,'lote controlado','lotes controlados')} até 90 dias`,d:`Portaria 344: confira escrituração antes de descartar. ${ctrl.filter(l=>l.dias<0).length} já vencido(s).`,f:{portaria:'sim',ate:90}});
+  const prio=b.filter(l=>l.dias>=0&&l.dias<=90).sort((x,y)=>y.total-x.total)[0];
+  if(prio) A.push({sev:'aten',t:'Maior valor a vencer em 90 dias',d:`${prio.desc}, lote ${prio.lote||'—'}: ${brl(prio.total)} em ${fData(prio.val)}.`,f:{prod:prio.cod}});
+  if(inat.length) A.push({sev:'aten',t:`${inat.length} ${plural(inat.length,'lote')} de produto inativo`,d:`Vencidos ou vencendo em até 180 dias, com o produto já inativo no sistema.`,f:{situacaoI:1}});
+  if(!A.length) A.push({sev:'ok',t:'Nada crítico no momento',d:'Nenhum lote vencido ou vencendo em 30 dias nos filtros atuais.',f:null});
+  const ico={venc:'M12 9v4m0 4h.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',crit:'M12 6v6l4 2M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z',alert:'M12 9v4m0 4h.01M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z',aten:'M12 8h.01M11 12h1v5h1M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z',ok:'m5 12 5 5L20 7'};
+  $('#alertas').innerHTML=A.map((a,i)=>`<li><button ${a.f?`data-act="alerta" data-i="${i}"`:'disabled'} class="w-full text-left flex gap-3 rounded-2xl border border-line hover:border-navy/40 hover:bg-cream/60 p-3 transition disabled:hover:bg-transparent">
+    <span class="chip-plain grid place-items-center w-9 h-9 rounded-xl flex-none" style="background:color-mix(in srgb,${BANDA[a.sev]?.cor||'var(--b-ok)'} 14%,#fff);color:${BANDA[a.sev]?.cor||'var(--b-ok)'}"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${ico[a.sev]}"/></svg></span>
+    <span class="min-w-0"><span class="block text-sm font-bold leading-snug">${esc(a.t)}</span><span class="block text-[.8rem] text-mute leading-snug mt-0.5">${esc(a.d)}</span></span></button></li>`).join('');
+  S.alertas=A;
+}
+
+/* ---------- Ranking ---------- */
+const DIMS = {
+  fornecedor:{nome:'Fornecedor',chave:l=>l.fornecedor||'(sem fornecedor)',filtro:'fornecedor'},
+  produto:{nome:'Produto',chave:l=>l.cod,rot:(k,g)=>g.lotes[0].desc,filtro:'prod'},
+  setor:{nome:'Setor',chave:l=>l.setor||'—',rot:k=>'Setor '+k,filtro:'setor'},
+  filial:{nome:'Filial',chave:l=>l.filial||'—',rot:k=>'Filial '+k,filtro:'filial'},
+  grupo:{nome:'Grupo',chave:l=>l.grupo||'—',filtro:'grupo'}
+};
+function renderRank(){
+  $('#r-tabs').innerHTML=Object.entries(DIMS).map(([k,d])=>`<button role="tab" aria-selected="${S.rank===k}" data-act="rank" data-k="${k}" class="px-3.5 py-1.5 rounded-lg font-bold ${S.rank===k?'bg-navy text-white':'text-mute hover:text-ink'}">${d.nome}</button>`).join('');
+  const d=DIMS[S.rank];
+  const gs=agrupar(S.base,d.chave).sort((a,b)=>BANDAS.reduce((s,x)=>s+b.porBanda[x.id],0)-BANDAS.reduce((s,x)=>s+a.porBanda[x.id],0)).slice(0,10);
+  const max=Math.max(1,...gs.map(g=>BANDAS.reduce((s,x)=>s+g.porBanda[x.id],0)));
+  $('#r-sub').textContent=`Top ${gs.length} por ${S.metrica==='valor'?'valor em estoque':'número de lotes'}. Clique para filtrar.`;
+  $('#rank').innerHTML=gs.map(g=>{
+    const tot=BANDAS.reduce((s,x)=>s+g.porBanda[x.id],0), nome=d.rot?d.rot(g.k,g):g.k;
+    const segs=BANDAS.map(b=>g.porBanda[b.id]?`<div class="h-full bar-seg" style="width:${g.porBanda[b.id]/max*100}%;background:${b.cor};margin-right:1.5px;border-radius:2px" ${tipAttr(`<b>${esc(nome)}</b><br>${b.nome}: ${fmtM(g.porBanda[b.id])}`)}></div>`:'').join('');
+    return `<button data-act="rankf" data-k="${esc(g.k)}" class="text-left group"><div class="flex justify-between gap-3 text-sm"><span class="font-semibold truncate group-hover:text-brand-700">${esc(nome)}</span><span class="tab-num text-mute flex-none">${fmtM(tot)}</span></div><div class="mt-1 h-3 flex">${segs}</div></button>`;
+  }).join('') || '<p class="text-mute">Sem dados.</p>';
+}
+
+/* ---------- Tabela ---------- */
+const COLS = [
+  {k:'dias',n:'Situação'},{k:'desc',n:'Produto'},{k:'lote',n:'Lote'},{k:'fornecedor',n:'Fornecedor',cls:'hidden lg:table-cell'},{k:'filial',n:'Filial',cls:'hidden xl:table-cell'},
+  {k:'fabr',n:'Fabricação',cls:'hidden xl:table-cell'},{k:'val',n:'Validade'},{k:'qtd',n:'Quantidade',r:1},{k:'custo',n:'Custo un.',r:1,cls:'hidden xl:table-cell'},{k:'total',n:'Valor',r:1}
+];
+function ordenar(l){
+  const {col,dir}=S.ordem; const k=col==='val'?'dias':col;
+  return [...l].sort((a,b)=>{ const x=a[k],y=b[k]; const c=(typeof x==='number'&&typeof y==='number')?x-y:String(x??'').localeCompare(String(y??''),'pt-BR',{numeric:true}); return (c||a.dias-b.dias)*dir; });
+}
+function linhaLote(l){
+  const tags=(l.portaria?`<span class="chip chip-plain" style="--c:#38406A" title="Portaria 344/98">${esc(l.portaria)}</span> `:'')+(l.situacao==='I'?`<span class="chip chip-plain" style="--c:#5E6580">inativo</span>`:'');
+  return `<tr class="border-t border-line hover:bg-cream/50 align-top">
+    <td class="px-4 py-2.5">${chipBanda(l)}</td>
+    <td class="px-4 py-2.5 min-w-[220px]"><span class="font-semibold">${esc(l.desc)}</span> ${tags}<br><span class="text-xs text-mute tab-num">cód. ${esc(l.cod)} · ${esc(l.grupo)}${l.setor?' · setor '+esc(l.setor):''}</span></td>
+    <td class="px-4 py-2.5 tab-num"><span class="break-all">${esc(l.lote||'—')}</span>${l.nota?`<br><span class="text-xs text-mute">NF ${esc(l.nota)}</span>`:''}</td>
+    <td class="px-4 py-2.5 hidden lg:table-cell">${esc(l.fornecedor)}</td>
+    <td class="px-4 py-2.5 hidden xl:table-cell tab-num">${esc(l.filial)}</td>
+    <td class="px-4 py-2.5 hidden xl:table-cell tab-num">${fData(l.fabr)}</td>
+    <td class="px-4 py-2.5 tab-num font-semibold whitespace-nowrap">${fData(l.val)}</td>
+    <td class="px-4 py-2.5 tab-num text-right whitespace-nowrap">${NUMF.format(l.qtd)} ${unid(l.unidade)}</td>
+    <td class="px-4 py-2.5 tab-num text-right hidden xl:table-cell">${l.custo.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4})}</td>
+    <td class="px-4 py-2.5 tab-num text-right font-semibold">${brl(l.total)}</td></tr>`;
+}
+function cabecalho(){
+  return `<thead><tr class="text-xs text-mute">${COLS.map(c=>{ const a=S.ordem.col===c.k; return `<th class="${c.cls||''} px-4 py-3 ${c.r?'text-right':'text-left'} font-bold border-b border-line whitespace-nowrap" aria-sort="${a?(S.ordem.dir>0?'ascending':'descending'):'none'}"><button data-act="ordem" data-k="${c.k}" class="hover:text-ink inline-flex items-center gap-1">${c.n}<span aria-hidden="true" class="${a?'text-brand-700':'opacity-30'}">${a?(S.ordem.dir>0?'↑':'↓'):'↕'}</span></button></th>`; }).join('')}</tr></thead>`;
+}
+function renderTabela(){
+  const n=S.lista.length, tv=S.lista.reduce((a,l)=>a+l.total,0);
+  $('#l-sub').textContent=`${INTF.format(n)} ${plural(n,'lote')} · ${brl(tv)}`;
+  const ordenados=ordenar(S.lista);
+  if(!n){ $('#tabela').innerHTML='<p class="px-6 pb-10 text-center text-mute">Nenhum lote encontrado. Ajuste ou limpe os filtros.</p>'; $('#pag').innerHTML=''; return; }
+  let corpo='', total=0;
+  if(!S.agrupar){
+    total=n; const ini=(S.pag-1)*S.porPag; corpo=ordenados.slice(ini,ini+S.porPag).map(linhaLote).join('');
+  } else {
+    const chaves={produto:l=>l.cod,fornecedor:l=>l.fornecedor||'(sem fornecedor)',mes:l=>l.mes,setor:l=>l.setor||'—',filial:l=>l.filial||'—',grupo:l=>l.grupo||'—',banda:l=>l.banda};
+    const nome=(g)=>({produto:`${g.lotes[0].desc} <span class="text-xs text-mute font-normal">cód. ${esc(g.k)}</span>`,mes:esc(mesLongo(g.k)),setor:'Setor '+esc(g.k),filial:'Filial '+esc(g.k),banda:esc(BANDA[g.k]?.nome||g.k)}[S.agrupar]||esc(g.k));
+    const gs=agrupar(ordenados,chaves[S.agrupar]).sort((a,b)=> S.agrupar==='mes'||S.agrupar==='banda' ? String(a.k).localeCompare(String(b.k)) : a.min-b.min);
+    total=gs.length; const ini=(S.pag-1)*S.porPag;
+    corpo=gs.slice(ini,ini+S.porPag).map(g=>{
+      const id=S.agrupar+'|'+g.k, aberto=S.abertos.has(id), pior=bandaDe(g.min);
+      return `<tr class="border-t border-line bg-cream/70"><td colspan="${COLS.length}" class="px-4 py-3">
+        <button data-act="grupo" data-id="${esc(id)}" class="w-full flex flex-wrap items-center gap-x-4 gap-y-1 text-left" aria-expanded="${aberto}">
+          <span class="inline-block transition ${aberto?'rotate-90':''}" aria-hidden="true">▸</span>
+          <span class="font-bold flex-1 min-w-[180px]">${nome(g)}</span>
+          <span class="chip band-${pior}">${g.min<0?'Já venceu':'Vence em '+g.min+' '+plural(g.min,'dia')}</span>
+          <span class="text-sm text-mute tab-num">${g.n} ${plural(g.n,'lote')}</span>
+          <span class="font-bold tab-num">${brl(g.valor)}</span></button></td></tr>${aberto?g.lotes.map(linhaLote).join(''):''}`;
+    }).join('');
+  }
+  $('#tabela').innerHTML=`<table class="tbl w-full text-sm">${cabecalho()}<tbody>${corpo}</tbody></table>`;
+  const pgs=Math.max(1,Math.ceil(total/S.porPag)); if(S.pag>pgs) S.pag=pgs;
+  $('#pag').innerHTML=`<div class="flex items-center gap-2"><label class="text-mute">Por página</label><select id="por-pag" class="rounded-lg border border-line px-2 py-1.5">${[25,50,100].map(v=>`<option ${v===S.porPag?'selected':''}>${v}</option>`).join('')}</select><span class="text-mute">${INTF.format(total)} ${S.agrupar?plural(total,'grupo'):plural(total,'linha')}</span></div>
+    <div class="flex items-center gap-2"><button data-act="pag" data-d="-1" class="rounded-lg border border-line px-3 py-1.5 font-semibold hover:bg-cream disabled:opacity-40" ${S.pag<=1?'disabled':''}>Anterior</button><span class="tab-num">${S.pag} de ${pgs}</span><button data-act="pag" data-d="1" class="rounded-lg border border-line px-3 py-1.5 font-semibold hover:bg-cream disabled:opacity-40" ${S.pag>=pgs?'disabled':''}>Próxima</button></div>`;
+}
+
+/* ---------- Filtros (selects) ---------- */
+function preencherFiltros(){
+  const un=(fn)=>[...new Set(S.todos.map(fn).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'pt-BR',{numeric:true}));
+  const sel=(id,rot,vals,cur,fmt=(v=>v))=>{ $(id).innerHTML=`<option value="">${rot}</option>`+vals.map(v=>`<option value="${esc(v)}" ${v===cur?'selected':''}>${esc(fmt(v))}</option>`).join(''); };
+  sel('#f-grupo','Todos os grupos',un(l=>l.grupo),S.f.grupo);
+  sel('#f-setor','Todos os setores',un(l=>l.setor),S.f.setor,v=>'Setor '+v);
+  sel('#f-fornecedor','Todos os fornecedores',un(l=>l.fornecedor),S.f.fornecedor);
+  sel('#f-filial','Todas as filiais',un(l=>l.filial),S.f.filial,v=>'Filial '+v);
+  const pts=un(l=>l.portaria);
+  $('#f-portaria').innerHTML=`<option value="">Controlados: todos</option><option value="sim" ${S.f.portaria==='sim'?'selected':''}>Somente controlados</option>`+pts.map(p=>`<option value="${p}" ${S.f.portaria===p?'selected':''}>Portaria ${p}</option>`).join('');
+  $('#f-situacao').innerHTML=`<option value="">Ativos e inativos</option><option value="A" ${S.f.situacao==='A'?'selected':''}>Somente ativos</option><option value="I" ${S.f.situacao==='I'?'selected':''}>Somente inativos</option>`;
+  $('#f-busca').value=S.f.busca;
+}
+
+/* ---------- CSV ---------- */
+function exportarCSV(){
+  const cab=['Situação','Dias','Código','Produto','Grupo','Setor','Lote','Nota','Fornecedor','Filial','Fabricação','Validade','Quantidade','Unidade','Custo unitário','Valor total','Portaria'];
+  const q=v=>{ const s=String(v??''); return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
+  const nb=n=>String(n).replace('.',',');
+  const linhas=ordenar(S.lista).map(l=>[BANDA[l.banda].nome,l.dias,l.cod,l.desc,l.grupo,l.setor,l.lote,l.nota,l.fornecedor,l.filial,fData(l.fabr),fData(l.val),nb(l.qtd),l.unidade,nb(l.custo),nb(l.total.toFixed(2)),l.portaria].map(q).join(';'));
+  const blob=new Blob(['﻿'+cab.join(';')+'\n'+linhas.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`lotes-vencimento-${S.ref}.csv`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+/* ---------- Dados e importações ---------- */
+function abrirDados(){
+  const h=lerLS('bf.hist.v1',[]), m=S.dados?.meta;
+  $('#dados-corpo').innerHTML=`
+    ${m?`<div class="rounded-2xl bg-cream/70 border border-line p-4 text-sm"><p class="font-bold">Base atual: ${esc(m.arquivo)}</p><p class="text-mute mt-1">${INTF.format(S.dados.lotes.length)} lotes · ${INTF.format(Object.keys(S.dados.produtos).length)} produtos · emitido em ${fData(m.emissao)}</p></div>`:'<p class="text-mute">Nenhum dado guardado.</p>'}
+    <h3 class="mt-5 font-bold">Histórico de importações</h3>
+    <ul class="mt-2 divide-y divide-line text-sm">${h.map(x=>`<li class="py-2.5 flex flex-wrap justify-between gap-2"><span><b>${esc(x.arquivo)}</b> <span class="text-mute">· ${esc(x.formato)} · ${x.modo==='mesclar'?'mesclado':'substituiu'}</span></span><span class="text-mute tab-num">${new Date(x.quando).toLocaleString('pt-BR')} · ${esc(x.por||'')} · ${INTF.format(x.lotes)} lotes · ${x.ok?'conferido':'com ressalvas'}</span></li>`).join('')||'<li class="py-2 text-mute">Sem importações.</li>'}</ul>
+    <div class="mt-6 flex justify-end"><button id="btn-apagar" class="rounded-xl border-2 px-4 py-2.5 text-sm font-bold" style="border-color:var(--b-venc);color:var(--b-venc)">Apagar dados importados</button></div>`;
+  $('#btn-apagar')?.addEventListener('click',()=>{ if(!confirm('Apagar todos os dados importados deste navegador? Os usuários e senhas não são afetados.')) return; localStorage.removeItem('bf.dados.v1'); localStorage.removeItem('bf.hist.v1'); S.dados=null; $('#dlg-dados').close(); atualizarTudo(); toast('Dados apagados.'); });
+  $('#dlg-dados').showModal();
+}
+
+/* ====================================================================
+   EVENTOS
+   ==================================================================== */
+function ligarEventos(){
+  document.addEventListener('click',e=>{
+    const t=e.target.closest('[data-act]'); const act=t?.dataset.act;
+    if(!e.target.closest('#menu-user') && !e.target.closest('#btn-user')) { $('#menu-user').hidden=true; $('#btn-user').setAttribute('aria-expanded','false'); }
+    const mt=e.target.closest('[data-metrica]'); if(mt){ S.metrica=mt.dataset.metrica; atualizar(); return; }
+    if(!act) return;
+    if(act==='importar') abrirImport();
+    else if(act==='banda'){ S.f.banda=S.f.banda===t.dataset.id?'':t.dataset.id; S.f.ate=null; S.pag=1; atualizar(); }
+    else if(act==='mes'){ S.f.mes=S.f.mes===t.dataset.k?'':t.dataset.k; S.pag=1; atualizar(); }
+    else if(act==='rm'){ S.f[t.dataset.k]=t.dataset.k==='ate'?null:''; S.pag=1; atualizar(); }
+    else if(act==='limpar'){ S.f=filtrosVazios(); preencherFiltros(); S.pag=1; atualizar(); }
+    else if(act==='rank'){ S.rank=t.dataset.k; renderRank(); }
+    else if(act==='rankf'){ const d=DIMS[S.rank], k=t.dataset.k; if(d.filtro==='prod'){ S.f.prod=S.f.prod===k?'':k; } else S.f[d.filtro]=S.f[d.filtro]===k?'':k; preencherFiltros(); S.pag=1; atualizar(); $('#sec-tabela').scrollIntoView({behavior:'smooth',block:'start'}); }
+    else if(act==='alerta'){ const a=S.alertas[+t.dataset.i]; if(!a?.f) return; const f=S.f; const novo=a.f.situacaoI?{situacao:'I',ate:180}:a.f; S.f={...filtrosVazios(),busca:f.busca,grupo:f.grupo,setor:f.setor,fornecedor:f.fornecedor,filial:f.filial,...novo}; preencherFiltros(); S.pag=1; atualizar(); $('#sec-tabela').scrollIntoView({behavior:'smooth',block:'start'}); }
+    else if(act==='ordem'){ const k=t.dataset.k; S.ordem = S.ordem.col===k ? {col:k,dir:-S.ordem.dir} : {col:k,dir:1}; renderTabela(); }
+    else if(act==='pag'){ S.pag+=+t.dataset.d; renderTabela(); $('#sec-tabela').scrollIntoView({block:'start'}); }
+    else if(act==='grupo'){ const id=t.dataset.id; S.abertos.has(id)?S.abertos.delete(id):S.abertos.add(id); renderTabela(); }
+  });
+  document.addEventListener('change',e=>{
+    if(e.target.id==='por-pag'){ S.porPag=+e.target.value; S.pag=1; renderTabela(); }
+  });
+  const f=(id,k)=>$(id).addEventListener('change',e=>{ S.f[k]=e.target.value; S.pag=1; atualizar(); });
+  f('#f-grupo','grupo'); f('#f-setor','setor'); f('#f-fornecedor','fornecedor'); f('#f-filial','filial'); f('#f-portaria','portaria'); f('#f-situacao','situacao');
+  let tm; $('#f-busca').addEventListener('input',e=>{ clearTimeout(tm); tm=setTimeout(()=>{ S.f.busca=e.target.value; S.pag=1; atualizar(); },180); });
+  $('#agrupar').addEventListener('change',e=>{ S.agrupar=e.target.value; S.pag=1; S.abertos.clear(); renderTabela(); });
+  $('#btn-csv').onclick=exportarCSV; $('#btn-print').onclick=()=>window.print();
+  $('#btn-import').onclick=abrirImport; $('#btn-dados').onclick=()=>{ $('#menu-user').hidden=true; abrirDados(); };
+  $('#dados-fechar').onclick=()=>$('#dlg-dados').close();
+  $('#btn-sair').onclick=sair;
+  $('#btn-user').onclick=()=>{ const m=$('#menu-user'); m.hidden=!m.hidden; $('#btn-user').setAttribute('aria-expanded',!m.hidden);
+    $('#lista-acessos').innerHTML=lerLS(ACESSOS_KEY,[]).slice(0,8).map(a=>`<li class="flex justify-between gap-2"><span class="font-semibold">${esc(a.u)}</span><span class="${a.ok?'text-mute':''}" style="${a.ok?'':'color:var(--b-venc)'}">${a.ok?'':'falhou · '}${new Date(a.t).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span></li>`).join('')||'<li class="text-mute">Sem registros.</li>'; };
+  $('#btn-data').onclick=()=>{ const v=prompt('Data de referência (AAAA-MM-DD). Deixe vazio para usar hoje:',S.ref); if(v===null) return; const novo=v.trim()||hojeIso(); if(!/^\d{4}-\d{2}-\d{2}$/.test(novo)||isNaN(utc(novo))){ toast('Data inválida. Use AAAA-MM-DD.','erro'); return; } S.ref=novo; atualizarTudo(); };
+  // importação
+  const dz=$('#dropzone');
+  $('#imp-arquivo').addEventListener('change',e=>{ if(e.target.files[0]) processarArquivo(e.target.files[0]); });
+  $('#imp-enc').addEventListener('change',()=>{ const f=$('#imp-arquivo').files[0]; if(f) processarArquivo(f); });
+  ['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{ e.preventDefault(); dz.classList.add('border-brand'); }));
+  ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{ e.preventDefault(); dz.classList.remove('border-brand'); }));
+  dz.addEventListener('drop',e=>{ const f=e.dataTransfer.files[0]; if(f) processarArquivo(f); });
+  $('#imp-aplicar').onclick=aplicarImportacao;
+  $('#imp-cancelar').onclick=$('#imp-fechar').onclick=()=>$('#dlg-import').close();
+  let rt; window.addEventListener('resize',()=>{ clearTimeout(rt); rt=setTimeout(()=>{ if(S.dados) renderTimeline(); },150); });
+  // sessão ociosa
+  ['click','keydown','mousemove'].forEach(ev=>document.addEventListener(ev,()=>{ if(SESSAO && Date.now()-SESSAO.ativo>20000){ SESSAO.ativo=Date.now(); gravarSessao(); } },{passive:true}));
+  setInterval(()=>{ if(SESSAO && Date.now()-SESSAO.ativo>OCIOSO_MS){ sair(); } },30000);
+}
+function abrirImport(){ IMP=null; $('#imp-arquivo').value=''; $('#imp-status').innerHTML=''; $('#imp-aplicar').disabled=true; $('#dlg-import').showModal(); }
+
+function iniciarApp(){
+  $('#login').hidden=true; $('#app').hidden=false;
+  $('#user-nome').textContent=SESSAO.nome; $('#user-ini').textContent=SESSAO.nome.charAt(0).toUpperCase();
+  S.dados=lerLS('bf.dados.v1',null);
+  if(!iniciarApp.ligado){ ligarEventos(); iniciarApp.ligado=true; }
+  atualizarTudo();
+}
+
+/* ====================================================================
+   INÍCIO
+   ==================================================================== */
+SESSAO=lerSessao();
+if(SESSAO) iniciarApp(); else montarLogin();
+</script>
+</body>
+</html>
