@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Painel da Pousada</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23F47B20'/%3E%3Cpath d='M12 18h6v15h28c5 0 8 3 8 8v5h-6v-5H18v5h-6z' fill='white'/%3E%3Ccircle cx='26' cy='27' r='5' fill='white'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -100,7 +101,7 @@ dialog[open]{animation:pop .25s cubic-bezier(.2,.7,.2,1)}
   </div>
 </div>
 
-<dialog id="dlgForm"><div id="dlgFormBox" class="max-h-[94vh] w-[min(96vw,760px)] overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl sm:p-7"></div></dialog>
+<dialog id="dlgForm"><div id="dlgFormBox" class="max-h-[94vh] w-[min(96vw,760px)] overflow-y-auto overflow-x-hidden rounded-3xl bg-white p-4 shadow-2xl sm:p-7"></div></dialog>
 <dialog id="dlgConf">
   <div class="w-[min(92vw,440px)] rounded-3xl bg-white p-6 shadow-2xl">
     <h3 id="cfTitulo" class="font-serif text-xl font-extrabold"></h3>
@@ -206,6 +207,10 @@ document.addEventListener('input',e=>{ const t=e.target, k=t.dataset&&t.dataset.
 const validaPlaca = p => /^[A-Z]{3}-?\d{4}$/.test(p)||/^[A-Z]{3}\d[A-Z]\d{2}$/.test(p);
 function validaCpf(v){ const d=dig(v); if(d.length!==11||/^(\d)\1+$/.test(d)) return false;
   for(let t=9;t<=10;t++){ let s=0; for(let i=0;i<t;i++) s+=+d[i]*(t+1-i); if((s*10%11)%10!==+d[t]) return false; } return true; }
+const formaPadrao = () => { try{ return localStorage.getItem('formaPgto')||''; }catch(e){ return ''; } };
+const lembrarForma = f => { if(f){ try{ localStorage.setItem('formaPgto',f); }catch(e){} } };
+const formasLista = () => { const u=new Set(['Dinheiro','Pix','Cartão de débito','Cartão de crédito']); DB.reservas.forEach(r=>{ if(r.forma_pgto) u.add(r.forma_pgto); }); return [...u]; };
+const dlFormas = () => `<datalist id="dlFormas">${formasLista().map(f=>`<option value="${esc(f)}">`).join('')}</datalist>`;
 const pgPill = r => r.pago==='sim'
   ? '<span class="inline-flex items-center gap-1.5 rounded-full bg-leaf-soft px-3 py-1 text-xs font-semibold text-leaf"><i class="fa-solid fa-circle-check text-[10px]"></i>Pago</span>'
   : '<span class="inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-dark"><i class="fa-solid fa-hourglass-half text-[10px]"></i>Em aberto</span>';
@@ -347,7 +352,8 @@ const minhasPousadas = () => pousadasAtivas().filter(p=>EU.admin||EU.pousadas.in
 const nomeP = id => (DB.pousadas.find(p=>p.id===id)||{}).nome||id;
 const curtoP = id => { const p=DB.pousadas.find(p=>p.id===id); return p?(p.curto||p.nome):id; };
 const podeGerir = () => EU.admin || EU.perfil==='gerente';
-const podeGestao = () => EU.admin || EU.perfil==='gerente' || EU.podeGestao;
+const temGestao = u => u.perfil==='admin' || u.pode_gestao==='sim' || (u.pode_gestao!=='nao' && u.perfil==='gerente');
+const podeGestao = () => EU.admin || EU.podeGestao;
 const podePreco = () => EU.admin || EU.podePreco;
 const podeDesconto = () => EU.admin || EU.podeDesconto;
 async function definirUsuario(){
@@ -358,7 +364,7 @@ async function definirUsuario(){
   }
   const u=DB.usuarios.find(u=>u.email.toLowerCase()===email&&u.ativo!=='nao');
   if(!u) return false;
-  EU={email,nome:u.nome||SESSAO.nome,perfil:u.perfil||'atendente',admin:u.perfil==='admin',pousadas:String(u.pousadas).split(',').map(s=>s.trim()).filter(Boolean),podePreco:u.pode_preco==='sim',podeDesconto:u.pode_desconto==='sim',podeGestao:u.pode_gestao==='sim'};
+  EU={email,nome:u.nome||SESSAO.nome,perfil:u.perfil||'atendente',admin:u.perfil==='admin',pousadas:String(u.pousadas).split(',').map(s=>s.trim()).filter(Boolean),podePreco:u.pode_preco==='sim',podeDesconto:u.pode_desconto==='sim',podeGestao:temGestao(u)};
   return minhasPousadas().length>0;
 }
 
@@ -460,9 +466,8 @@ function cardQuarto(q,data,act){
   if(bl) return `<button data-act="${act}" data-q="${q.id}" class="rounded-3xl border-2 border-dashed border-neutral-300 bg-neutral-100 p-4 text-left opacity-60 transition hover:opacity-90">
       <div class="flex items-start justify-between gap-2"><span class="font-serif text-3xl font-extrabold text-neutral-500">${esc(q.numero)}</span><span class="inline-flex items-center gap-1 rounded-full bg-neutral-200 px-2.5 py-1 text-[11px] font-semibold text-neutral-600"><i class="fa-solid fa-lock text-[9px]"></i>Bloqueado</span></div>
       <div class="mt-1 text-xs text-neutral-500">${tn}</div><div class="mt-3 truncate text-sm font-semibold">${esc(bl.motivo)}</div><div class="text-xs">até ${fmtCurto(bl.fim)}</div></button>`;
-  return `<button data-act="${act}" data-q="${q.id}" class="group relative overflow-hidden rounded-3xl border-2 border-leaf bg-white p-4 text-left shadow-md shadow-leaf/20 transition duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-leaf/25">
-      <span class="absolute inset-x-0 top-0 h-1.5 bg-leaf"></span>
-      <div class="flex items-start justify-between gap-2 pt-1"><span class="font-serif text-3xl font-extrabold">${esc(q.numero)}</span><span class="inline-flex items-center gap-1 rounded-full bg-leaf px-2.5 py-1 text-[11px] font-bold text-white"><i class="fa-solid fa-check text-[9px]"></i>Disponível</span></div>
+  return `<button data-act="${act}" data-q="${q.id}" class="group rounded-3xl border border-leaf/40 bg-white p-4 text-left shadow-sm transition duration-300 hover:-translate-y-1.5 hover:border-leaf hover:shadow-xl hover:shadow-orange-900/10">
+      <div class="flex items-start justify-between gap-2"><span class="font-serif text-3xl font-extrabold">${esc(q.numero)}</span><span class="inline-flex items-center gap-1 rounded-full bg-leaf px-2.5 py-1 text-[11px] font-bold text-white"><i class="fa-solid fa-check text-[9px]"></i>Disponível</span></div>
       <div class="mt-1 text-xs text-neutral-500">${tn}</div>
       <div class="mt-3 font-serif text-xl font-extrabold text-brand-dark">${money(pn.preco)}</div><div class="text-xs text-neutral-500">${pn.especial?'<i class="fa-solid fa-star text-brand"></i> '+esc(pn.motivo||'preço especial'):'diária'}</div></button>`;
 }
@@ -554,36 +559,43 @@ function imprimirFicha(r){
 
 /* ============ RECIBO (não fiscal · impressora térmica 80 mm) ============ */
 function abrirRecibo(r){
-  abrirDialogo(`<div class="flex items-start justify-between gap-3"><h3 class="font-serif text-2xl font-extrabold">Gerar recibo</h3>${fechaX}</div>
-  <div class="mt-3 rounded-2xl bg-brand-cream p-4 text-sm"><b>Apto ${esc(r.quarto_num)}</b> · ${esc(r.nome)}<br>Total pago: <b class="text-brand-dark">${money(r.total)}</b></div>
-  <div class="mt-4">${campo('Forma de pagamento (opcional)',`<input id="rcForma" value="${esc(r.forma_pgto)}" placeholder="Ex.: Dinheiro, Pix, Cartão de débito…" class="${INP}">`)}</div>
-  <p class="mt-2 text-xs text-neutral-500">Impressão sem validade fiscal, formatada para impressora térmica de 80 mm.</p>
+  let modo='termica'; try{ modo=localStorage.getItem('reciboModo')||'termica'; }catch(e){}
+  const op=(v,t,ic,sub)=>`<label class="flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-neutral-200 p-3 has-[:checked]:border-brand has-[:checked]:bg-brand-soft"><input type="radio" name="rcModo" value="${v}" ${modo===v?'checked':''} class="h-4 w-4 accent-[#F47B20]"><i class="fa-solid ${ic} text-brand"></i><span><b class="block text-sm">${t}</b><span class="text-xs text-neutral-500">${sub}</span></span></label>`;
+  abrirDialogo(`<div class="flex items-start justify-between gap-3"><h3 class="font-serif text-xl font-extrabold sm:text-2xl">Gerar recibo</h3>${fechaX}</div>
+  <div class="mt-3 rounded-2xl bg-brand-cream p-3 text-sm"><b>Apto ${esc(r.quarto_num)}</b> · ${esc(r.nome)}<br>Total pago: <b class="text-brand-dark">${money(r.total)}</b></div>
+  <div class="mt-4">${campo('Forma de pagamento (opcional)',`<input id="rcForma" list="dlFormas" value="${esc(r.forma_pgto||formaPadrao())}" placeholder="Ex.: Dinheiro, Pix, Cartão de débito…" class="${INP}">${dlFormas()}`)}</div>
+  <div class="mt-4"><div class="${LBL}">Tipo de impressão</div><div class="grid gap-2 sm:grid-cols-2">${op('termica','Térmica (80 mm)','fa-receipt','Bobina da impressora térmica')}${op('normal','Impressão normal','fa-print','Folha A4 em impressora comum')}</div></div>
+  <p class="mt-3 text-xs text-neutral-500">Documento sem validade fiscal.</p>
   <div class="mt-5 flex justify-end gap-3"><button data-act="fechar" class="${BTNG}">Cancelar</button><button data-act="rcImprimir" data-id="${r.id}" class="${BTN}"><i class="fa-solid fa-print"></i> Imprimir recibo</button></div>`);
   setTimeout(()=>{ const i=$('#rcForma'); if(i) i.focus(); },60);
 }
 ACOES.recibo=d=>abrirRecibo(DB.reservas.find(x=>x.id===d.id));
 ACOES.rcImprimir=async d=>{
-  const r=DB.reservas.find(x=>x.id===d.id), f=$('#rcForma').value.trim();
+  const r=DB.reservas.find(x=>x.id===d.id), f=$('#rcForma').value.trim(), modo=(document.querySelector('input[name=rcModo]:checked')||{}).value||'termica';
+  try{ localStorage.setItem('reciboModo',modo); }catch(e){}
+  lembrarForma(f);
   if(f!==r.forma_pgto){ r.forma_pgto=f; await atualizar('reservas',r); }
-  fecharDialogo(); imprimirRecibo(r);
+  fecharDialogo(); imprimirRecibo(r,modo);
 };
-function imprimirRecibo(r){
-  const sub=precosList(r).reduce((a,b)=>a+b,0), desc=Number(r.desconto)||0, sep='<div style="border-top:1px dashed #000;margin:5px 0"></div>';
-  const L=(a,b,st='')=>`<div style="display:flex;justify-content:space-between;gap:6px;${st}"><span>${a}</span><span style="text-align:right">${b}</span></div>`;
+function imprimirRecibo(r,modo){
+  const t=modo!=='normal', sub=precosList(r).reduce((a,b)=>a+b,0), desc=Number(r.desconto)||0;
+  const sep=`<div style="border-top:1px dashed #000;margin:${t?5:9}px 0"></div>`;
+  const L=(a,b,st='')=>`<div style="display:flex;justify-content:space-between;gap:8px;${st}"><span>${a}</span><span style="text-align:right">${b}</span></div>`;
   const quando=r.pago_em?new Date(r.pago_em).toLocaleString('pt-BR'):new Date().toLocaleString('pt-BR');
-  imprimirHTML(`<div style="width:72mm;margin:0 auto;font-family:'Courier New',monospace;font-size:11px;line-height:1.4;color:#000">
-    <div style="text-align:center;font-weight:700;font-size:14px;text-transform:uppercase">${esc(cfg('empresa'))}</div>
+  const box=t?"width:72mm;margin:0 auto;font-family:'Courier New',monospace;font-size:11px;line-height:1.4;color:#000":"width:130mm;margin:6mm auto 0;font-family:Inter,sans-serif;font-size:13px;line-height:1.6;color:#000;border:1.5px solid #000;border-radius:8px;padding:9mm";
+  imprimirHTML(`<div style="${box}">
+    <div style="text-align:center;font-weight:700;font-size:${t?14:22}px;text-transform:uppercase">${esc(cfg('empresa'))}</div>
     <div style="text-align:center">${esc(cfg('subtitulo'))}</div><div style="text-align:center">${esc(nomeP(r.pousada))}</div>${sep}
-    <div style="text-align:center;font-weight:700;font-size:13px">RECIBO DE PAGAMENTO</div>
+    <div style="text-align:center;font-weight:700;font-size:${t?13:17}px">RECIBO DE PAGAMENTO</div>
     <div style="text-align:center">Nº ${esc(r.id)}</div><div style="text-align:center">${quando}</div>${sep}
     ${L('Hóspede:',esc(r.nome))}${r.cpf?L('CPF:',esc(r.cpf)):''}${L('Apto:',esc(r.quarto_num)+(r.tipo?' · '+esc(r.tipo):''))}
     ${L('Entrada:',fmtBR(r.entrada))}${L('Saída:',fmtBR(r.saida))}${L('Diárias:',r.diarias)}${sep}
     ${L('Subtotal',money(sub))}${desc>0?L('Desconto','- '+money(desc)):''}
-    ${L('TOTAL PAGO',money(r.total),'font-weight:700;font-size:14px;margin-top:2px')}${sep}
+    ${L('TOTAL PAGO',money(r.total),`font-weight:700;font-size:${t?14:18}px;margin-top:2px`)}${sep}
     ${r.forma_pgto?L('Forma pgto:',esc(r.forma_pgto)):''}${L('Atendente:',esc(r.pago_por||EU.email))}${sep}
     <div style="text-align:center;font-weight:700;margin-top:4px">*** SEM VALIDADE FISCAL ***</div>
-    <div style="text-align:center;font-size:10px;margin-top:2px">Documento não fiscal. Comprovante simples de pagamento; não substitui nota fiscal.</div>
-    <div style="text-align:center;margin-top:6px">Obrigado pela preferência!</div><div style="height:8mm"></div></div>`,true);
+    <div style="text-align:center;font-size:${t?10:11}px;margin-top:2px">Documento não fiscal. Comprovante simples de pagamento; não substitui nota fiscal.</div>
+    <div style="text-align:center;margin-top:6px">Obrigado pela preferência!</div>${t?'<div style="height:8mm"></div>':''}</div>`,t);
 }
 
 /* ============ ASSISTENTE DE RESERVA (modal em 2 etapas) ============ */
@@ -617,6 +629,7 @@ function capturar(){
   WZ.f={nome:g('fNome'),tel:g('fTel'),placa:g('fPla'),rg:g('fRg'),cpf:g('fCpf'),nasc:g('fNasc'),vei:g('fVei'),email:g('fEmail'),cid:g('fCid'),obs:g('fObs')};
   if(wz$('wzS')) WZ.saida=wz$('wzS').value;
   if(wz$('wzPago')) WZ.pago=wz$('wzPago').checked;
+  if(wz$('wzForma')) WZ.forma=wz$('wzForma').value;
   if(wz$('wzDV')){ WZ.descVal=+wz$('wzDV').value||0; WZ.descTipo=wz$('wzDT').value; }
 }
 function renderPasso2(){
@@ -641,9 +654,10 @@ function renderPasso2(){
     <div class="flex items-center justify-between gap-3"><div><div id="wzResumo" class="text-sm font-semibold"></div><button type="button" data-act="wzDet" class="text-xs font-semibold text-brand-dark underline">Ver detalhes</button></div><b id="wzTotal" class="font-serif text-3xl text-brand-dark"></b></div>
     <div id="wzDet" class="mt-3 hidden text-sm"></div>
     ${descTem?`<div class="mt-3 border-t border-orange-100 pt-3"><button type="button" data-act="wzDesc" class="${podeDesconto()?BTNG:'hidden'} !py-1.5 text-xs"><i class="fa-solid fa-tag"></i> ${WZ.descVal>0?'Alterar desconto':'Dar desconto'}</button>
-      <div id="wzDescBox" class="${WZ.descVal>0&&podeDesconto()?'':'hidden'} mt-2 flex items-center gap-2"><select id="wzDT" class="${INP} !w-24 !px-2" ${podeDesconto()?'':'disabled'}><option value="v" ${WZ.descTipo==='v'?'selected':''}>R$</option><option value="p" ${WZ.descTipo==='p'?'selected':''}>%</option></select><input id="wzDV" type="number" min="0" step="0.01" value="${WZ.descVal||''}" placeholder="0" class="${INP} !w-32" ${podeDesconto()?'':'disabled'}></div>
+      <div id="wzDescBox" class="${WZ.descVal>0&&podeDesconto()?'':'hidden'} mt-2 flex items-center gap-2"><select id="wzDT" class="${INP} !w-44 !px-2" ${podeDesconto()?'':'disabled'}><option value="v" ${WZ.descTipo==='v'?'selected':''}>R$ no total</option><option value="d" ${WZ.descTipo==='d'?'selected':''}>R$ por diária</option><option value="p" ${WZ.descTipo==='p'?'selected':''}>% no total</option></select><input id="wzDV" type="number" min="0" step="0.01" value="${WZ.descVal||''}" placeholder="0" class="${INP} !w-32" ${podeDesconto()?'':'disabled'}></div>
       <div id="wzDescInfo" class="mt-1 text-xs font-semibold text-leaf"></div></div>`:''}
-    <label class="mt-3 flex cursor-pointer items-center gap-2 border-t border-orange-100 pt-3 text-sm font-semibold"><input id="wzPago" type="checkbox" class="h-4 w-4 accent-[#F47B20]" ${(WZ.pago!==undefined?WZ.pago:(r&&r.pago==='sim'))?'checked':''}> Pagamento recebido (marcar como paga)</label>
+    <label class="mt-3 flex cursor-pointer items-center gap-2 border-t border-orange-100 pt-3 text-sm font-semibold"><input id="wzPago" data-chg="wzPagoChg" type="checkbox" class="h-4 w-4 accent-[#F47B20]" ${(WZ.pago!==undefined?WZ.pago:(r&&r.pago==='sim'))?'checked':''}> Pagamento recebido (marcar como paga)</label>
+    <div id="wzFormaBox" class="${(WZ.pago!==undefined?WZ.pago:(r&&r.pago==='sim'))?'':'hidden'} mt-2"><label class="${LBL}">Forma de pagamento (opcional)</label><input id="wzForma" list="dlFormas" value="${esc(WZ.forma!==undefined?WZ.forma:((r&&r.forma_pgto)||formaPadrao()))}" placeholder="Ex.: Pix, dinheiro, cartão…" class="${INP}">${dlFormas()}</div>
   </div>
   <div class="mt-5 flex items-center justify-between"><b class="text-xs font-bold uppercase tracking-[.2em] text-brand">Hóspede</b><span class="text-xs text-neutral-500">${OBR} obrigatório</span></div>
   <div class="mt-2 grid grid-cols-2 gap-3">
@@ -667,6 +681,7 @@ function renderPasso2(){
   ['wzDV','wzDT'].forEach(id=>{ const e=wz$(id); if(e){ e.addEventListener('input',atualizarPreco); e.addEventListener('change',atualizarPreco); } });
   atualizarPreco(); setTimeout(()=>{ if(!wz$('fNome').value) wz$('fNome').focus(); },60);
 }
+ACOES.wzPagoChg=(d,b)=>{ wz$('wzFormaBox').classList.toggle('hidden',!b.checked); if(b.checked) wz$('wzForma').focus(); };
 ACOES.wzNoites=d=>{ wz$('wzS').value=addDias(WZ.entrada,+d.n); atualizarPreco(); };
 ACOES.wzDet=()=>wz$('wzDet').classList.toggle('hidden');
 ACOES.wzDesc=()=>{ wz$('wzDescBox').classList.toggle('hidden'); const i=wz$('wzDV'); if(!wz$('wzDescBox').classList.contains('hidden')) i.focus(); };
@@ -678,7 +693,7 @@ function calcWZ(){
   if(!(sai>ent)) return {erro:'O check-out deve ser depois do check-in.',lim};
   if(lim&&sai>lim) return {erro:'Este quarto fica indisponível a partir de '+fmtBR(lim)+'. Check-out no máximo nessa data.',lim};
   const n=calcNoites(WZ.pousada,q,ent,sai,WZ.res), sub=n.reduce((s,x)=>s+x.preco,0);
-  let dv=0; if(wz$('wzDV')){ const v=+wz$('wzDV').value||0; dv=wz$('wzDT').value==='p'?sub*Math.min(v,100)/100:v; } else dv=WZ.descVal||0;
+  let dv=0; if(wz$('wzDV')){ const v=+wz$('wzDV').value||0; const tp=wz$('wzDT').value; dv=tp==='p'?sub*Math.min(v,100)/100:(tp==='d'?v*n.length:v); } else dv=WZ.descVal||0;
   dv=Math.max(0,Math.min(Math.round(dv*100)/100,sub));
   return {n,sub,desc:dv,total:sub-dv,lim,sai};
 }
@@ -694,7 +709,7 @@ function atualizarPreco(){
   wz$('wzTotal').textContent=money(c.total);
   wz$('wzDet').innerHTML=`<div class="flex flex-wrap gap-1.5">${c.n.map(x=>`<span class="rounded-full bg-white px-2.5 py-1 text-xs shadow-sm">${fmtCurto(x.data)} · ${money(x.preco)}${x.especial?' <i class="fa-solid fa-star text-brand" title="'+esc(x.motivo||'preço especial')+'"></i>':''}${x.fixo?' <i class="fa-solid fa-lock text-neutral-400" title="preço gravado na entrada"></i>':''}</span>`).join('')}</div>
     <div class="mt-2 text-xs text-neutral-600">Subtotal ${money(c.sub)}${c.desc>0?' − desconto '+money(c.desc)+' = <b>'+money(c.total)+'</b>':''}. O valor fica gravado nesta reserva; mudanças futuras de preço não a alteram.</div>`;
-  const di=wz$('wzDescInfo'); if(di) di.textContent=c.desc>0?'Desconto aplicado: '+money(c.desc):'';
+  const di=wz$('wzDescInfo'); if(di) di.textContent=c.desc>0?'Desconto aplicado: '+money(c.desc)+(wz$('wzDT')&&wz$('wzDT').value==='d'?' ('+money(+wz$('wzDV').value||0)+' × '+c.n.length+' diária'+(c.n.length>1?'s':'')+')':''):'';
 }
 ACOES.wzSalvar=async()=>{
   if(SALVANDO) return;
@@ -718,7 +733,8 @@ ACOES.wzSalvar=async()=>{
     const q=quartoDe(WZ.quartoId), old=r?DB.reservas.find(x=>x.id===r.id):null, n=calcNoites(WZ.pousada,q,ent,sai,old);
     const sub=n.reduce((s,x)=>s+x.preco,0);
     const pagoM=wz$('wzPago').checked, pg=pagoM?((old&&old.pago==='sim')?{pago:'sim',pago_em:old.pago_em,pago_por:old.pago_por}:{pago:'sim',pago_em:new Date().toISOString(),pago_por:EU.email}):{pago:'',pago_em:'',pago_por:''};
-    const campos={pousada:WZ.pousada,quarto_id:q.id,quarto_num:q.numero,tipo:(tipoDe(q.tipo)||{}).nome||'',status:st,entrada:ent,saida:sai,diarias:n.length,precos_noites:n.map(x=>x.preco).join(';'),total:sub-c.desc,desconto:c.desc,nome,rg:g('fRg'),cpf:g('fCpf'),nasc:g('fNasc'),telefone:tel,veiculo:g('fVei'),placa,cidade:g('fCid'),obs:g('fObs'),email:g('fEmail'),...pg};
+    const campos={pousada:WZ.pousada,quarto_id:q.id,quarto_num:q.numero,tipo:(tipoDe(q.tipo)||{}).nome||'',status:st,entrada:ent,saida:sai,diarias:n.length,precos_noites:n.map(x=>x.preco).join(';'),total:sub-c.desc,desconto:c.desc,nome,rg:g('fRg'),cpf:g('fCpf'),nasc:g('fNasc'),telefone:tel,veiculo:g('fVei'),placa,cidade:g('fCid'),obs:g('fObs'),email:g('fEmail'),...pg,forma_pgto:pagoM?wz$('wzForma').value.trim():''};
+    lembrarForma(campos.forma_pgto);
     let rr;
     if(old){ rr=old; Object.assign(rr,campos); if(st==='hospedado'&&!rr.checkin_em) rr.checkin_em=new Date().toISOString(); await atualizar('reservas',rr); await log(WZ.modo==='checkin'?'checkin':'editou_reserva',`${rr.id} · Apto ${rr.quarto_num} · ${rr.nome}`); }
     else { rr={id:uid('R'),...campos,criado_por:EU.email,criado_em:new Date().toISOString(),checkin_em:st==='hospedado'?new Date().toISOString():'',checkout_em:''}; await anexar('reservas',rr); await log(st==='hospedado'?'checkin':'reservou',`${rr.id} · ${nomeP(rr.pousada)} · Apto ${rr.quarto_num} · ${rr.nome} · ${fmtBR(ent)}→${fmtBR(sai)} · ${money(rr.total)}${c.desc>0?' · desc '+money(c.desc):''}`); }
@@ -734,34 +750,42 @@ ACOES.res=async d=>{
   await lerTab(['reservas']).catch(()=>{});
   const r=DB.reservas.find(x=>x.id===d.id); if(!r) return;
   const h=hojeISO(), pode=minhasPousadas().includes(r.pousada);
-  const li=(k,v)=>`<div><div class="${LBL}">${k}</div><div class="text-sm font-medium">${esc(v)||'<span class="text-neutral-400">—</span>'}</div></div>`;
+  const li=(k,v,c='')=>`<div class="min-w-0 ${c}"><div class="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">${k}</div><div class="break-words text-sm font-medium">${v?esc(v):'<span class="text-neutral-400">—</span>'}</div></div>`;
+  const sec=(t,corpo)=>`<div class="mt-4"><div class="mb-2 border-b border-neutral-100 pb-1 text-[11px] font-bold uppercase tracking-[.18em] text-brand">${t}</div>${corpo}</div>`;
+  const pr=precosList(r), sub=pr.reduce((a,b)=>a+b,0), desc=Number(r.desconto)||0, grp=[];
+  pr.forEach(v=>{ const g=grp[grp.length-1]; if(g&&g.v===v) g.n++; else grp.push({v,n:1}); });
+  const P=`${BTN} col-span-2 !px-4 !py-2.5 text-sm sm:col-span-1`, S=`${BTN2} !px-4 !py-2 text-sm`, G=`${BTNG} !py-2 text-sm`;
   const acoes=[];
   if(pode){
-    if(r.status!=='cancelada') acoes.push(r.pago==='sim'?`<button data-act="despagar" data-id="${r.id}" class="${BTNG}"><i class="fa-solid fa-rotate-left"></i> Desfazer pagamento</button>`:`<button data-act="pagar" data-id="${r.id}" class="${BTN2}"><i class="fa-solid fa-circle-check"></i> Marcar como paga</button>`);
-    if(r.status==='reservada') acoes.push(`<button data-act="checkin" data-id="${r.id}" ${r.entrada>h?'disabled title="Check-in só na data de entrada"':''} class="${BTN}"><i class="fa-solid fa-key"></i> Fazer check-in</button>`);
-    if(r.status==='hospedado') acoes.push(`<button data-act="checkout" data-id="${r.id}" class="${BTN}"><i class="fa-solid fa-right-from-bracket"></i> Check-out</button>`);
-    if(ativoRes(r)){ acoes.push(`<button data-act="editar" data-id="${r.id}" class="${BTN2}"><i class="fa-solid fa-pen"></i> Editar</button>`); acoes.push(`<button data-act="cancelar" data-id="${r.id}" class="inline-flex items-center gap-2 rounded-full border-2 border-[#D64545] px-5 py-2.5 text-sm font-semibold text-[#D64545] hover:bg-[#D64545] hover:text-white"><i class="fa-solid fa-ban"></i> Cancelar</button>`); }
+    if(r.status==='reservada') acoes.push(`<button data-act="checkin" data-id="${r.id}" ${r.entrada>h?'disabled title="Check-in só na data de entrada"':''} class="${P}"><i class="fa-solid fa-key"></i> Fazer check-in</button>`);
+    if(r.status==='hospedado') acoes.push(`<button data-act="checkout" data-id="${r.id}" class="${P}"><i class="fa-solid fa-right-from-bracket"></i> Check-out</button>`);
+    if(r.status!=='cancelada') acoes.push(r.pago==='sim'?`<button data-act="despagar" data-id="${r.id}" class="${G}"><i class="fa-solid fa-rotate-left"></i> Desfazer pgto.</button>`:`<button data-act="pagar" data-id="${r.id}" class="${S}"><i class="fa-solid fa-circle-check"></i> Marcar paga</button>`);
+    if(ativoRes(r)){ acoes.push(`<button data-act="editar" data-id="${r.id}" class="${S}"><i class="fa-solid fa-pen"></i> Editar</button>`); acoes.push(`<button data-act="cancelar" data-id="${r.id}" class="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#D64545] px-4 py-2 text-sm font-semibold text-[#D64545] hover:bg-[#D64545] hover:text-white"><i class="fa-solid fa-ban"></i> Cancelar</button>`); }
   }
-  if(r.pago==='sim') acoes.push(`<button data-act="recibo" data-id="${r.id}" class="${BTNG}"><i class="fa-solid fa-receipt"></i> Recibo</button>`);
-  acoes.push(`<button data-act="ficha" data-id="${r.id}" class="${BTNG}"><i class="fa-solid fa-print"></i> Imprimir ficha</button>`);
+  acoes.push(`<button data-act="ficha" data-id="${r.id}" class="${G}"><i class="fa-solid fa-print"></i> Ficha</button>`);
+  if(r.pago==='sim') acoes.push(`<button data-act="recibo" data-id="${r.id}" class="${G}"><i class="fa-solid fa-receipt"></i> Recibo</button>`);
   abrirDialogo(`
-  <div class="flex items-start justify-between gap-3"><div><span class="text-xs font-bold uppercase tracking-[.2em] text-brand">${esc(nomeP(r.pousada))}</span><h3 class="font-serif text-2xl font-extrabold">Apto ${esc(r.quarto_num)} · ${esc(r.nome)}</h3></div>${fechaX}</div>
-  <div class="mt-2 flex flex-wrap gap-2">${pill(r.status)}${r.status!=='cancelada'?pgPill(r):''}</div>
-  <div class="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
-    ${li('Check-in',fmtBR(r.entrada))}${li('Check-out',fmtBR(r.saida))}${li('Diárias',r.diarias)}
-    ${li('Tipo',r.tipo)}${li('Diária na entrada',precosList(r).length?money(precosList(r)[0]):'')}${li('Total'+(r.desconto>0?' (desc. '+money(r.desconto)+')':''),money(r.total))}
-    ${li('RG',r.rg)}${li('CPF',r.cpf)}${li('Nascimento',fmtBR(r.nasc))}
-    ${li('Telefone',r.telefone)}${li('Veículo',r.veiculo)}${li('Placa',r.placa)}
-    ${li('Cidade',r.cidade)}${li('Atendente',r.criado_por)}${li('Pagamento',r.pago==='sim'?'Pago em '+fmtBR(r.pago_em)+' · '+r.pago_por:'Em aberto')}${li('E-mail',r.email)}${li('Observações',r.obs)}
-  </div>
-  <div class="mt-6 flex flex-wrap justify-end gap-3">${acoes.join('')}</div>`);
+  <div class="flex items-start justify-between gap-2"><div class="min-w-0">
+    <div class="truncate text-[10px] font-bold uppercase tracking-[.15em] text-brand">${esc(nomeP(r.pousada))}</div>
+    <h3 class="font-serif text-xl font-extrabold leading-tight sm:text-2xl">Apto ${esc(r.quarto_num)}${r.tipo?` <span class="font-sans text-xs font-medium text-neutral-500 sm:text-sm">· ${esc(r.tipo)}</span>`:''}</h3>
+    <div class="break-words text-base font-semibold">${esc(r.nome)}</div></div>${fechaX}</div>
+  <div class="mt-2 flex flex-wrap items-center gap-2">${pill(r.status)}${r.status!=='cancelada'?pgPill(r):''}<span class="text-xs font-semibold text-neutral-600"><i class="fa-regular fa-calendar text-brand"></i> ${fmtCurto(r.entrada)} → ${fmtBR(r.saida)} · ${r.diarias} diária${r.diarias>1?'s':''}</span></div>
+  ${sec('Hóspede',`<div class="grid grid-cols-2 gap-x-4 gap-y-2.5">${li('Telefone',r.telefone)}${li('Placa',r.placa)}${li('Veículo',r.veiculo)}${li('Cidade',r.cidade)}${li('CPF',r.cpf)}${li('RG',r.rg)}${li('Nascimento',fmtBR(r.nasc))}${li('E-mail',r.email,'col-span-2')}${r.obs?li('Observações',r.obs,'col-span-2'):''}</div>`)}
+  ${sec('Valores',`<div class="rounded-2xl bg-brand-cream p-3 text-sm">
+    ${grp.map(g=>`<div class="flex items-center justify-between gap-2"><span>${g.n} × diária de ${money(g.v)}</span><span>${money(g.n*g.v)}</span></div>`).join('')}
+    ${desc>0?`<div class="flex items-center justify-between gap-2 font-semibold text-[#D64545]"><span>Desconto</span><span>− ${money(desc)}</span></div>`:''}
+    <div class="mt-1.5 flex items-baseline justify-between gap-2 border-t border-orange-100 pt-2"><b>Total</b><b class="font-serif text-2xl text-brand-dark">${money(r.total)}</b></div>
+    <div class="mt-1.5 break-words text-xs text-neutral-600">${r.pago==='sim'?'Pago em '+fmtBR(r.pago_em)+(r.forma_pgto?' · '+esc(r.forma_pgto):'')+' · '+esc(r.pago_por):'Pagamento em aberto'}</div></div>`)}
+  <div class="mt-1.5 text-[11px] text-neutral-500">Atendente: ${esc(r.criado_por)}</div>
+  <div class="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">${acoes.join('')}</div>`);
 };
 ACOES.pagar=async d=>{
   const r=DB.reservas.find(x=>x.id===d.id);
-  const ok=await modal({titulo:'Marcar como paga?',texto:'Confirma o recebimento do valor total desta reserva?',resumo:`<b>Apto ${esc(r.quarto_num)}</b> · ${esc(r.nome)}<br>Total: ${money(r.total)}`,ok:'Marcar como paga'});
-  if(!ok) return; fecharDialogo(); await registrarPagamento(r); await oferecerRecibo(r);
+  const ok=await modal({titulo:'Marcar como paga?',texto:'Confirma o recebimento do valor total desta reserva?',resumo:`<b>Apto ${esc(r.quarto_num)}</b> · ${esc(r.nome)}<br>Total: ${money(r.total)}`,campo:{rotulo:'Forma de pagamento (opcional)',valor:formaPadrao()},ok:'Marcar como paga'});
+  if(ok===null) return; fecharDialogo(); await registrarPagamento(r,ok.trim()); await oferecerRecibo(r);
 };
-async function registrarPagamento(r){
+async function registrarPagamento(r,forma=''){
+  if(forma){ r.forma_pgto=forma; lembrarForma(forma); }
   r.pago='sim'; r.pago_em=new Date().toISOString(); r.pago_por=EU.email;
   await atualizar('reservas',r); await log('pagamento',`${r.id} · Apto ${r.quarto_num} · ${r.nome} · ${money(r.total)}`); render(); toast('Reserva marcada como paga');
 }
@@ -788,8 +812,8 @@ ACOES.checkout=async d=>{
   await atualizar('reservas',r); await log('checkout',`${r.id} · Apto ${r.quarto_num} · ${r.nome} · ${money(r.total)}`);
   fecharDialogo(); render(); toast('Check-out realizado');
   if(r.pago!=='sim'){
-    const rec=await modal({titulo:'Confirmar pagamento?',texto:'O valor desta hospedagem foi recebido?',resumo:`<b>Apto ${esc(r.quarto_num)}</b> · ${esc(r.nome)}<br>Total a receber: <b>${money(r.total)}</b>`,ok:'Pagamento recebido',cancelarTxt:'Ainda em aberto'});
-    if(!rec) return; await registrarPagamento(r);
+    const rec=await modal({titulo:'Confirmar pagamento?',texto:'O valor desta hospedagem foi recebido?',resumo:`<b>Apto ${esc(r.quarto_num)}</b> · ${esc(r.nome)}<br>Total a receber: <b>${money(r.total)}</b>`,campo:{rotulo:'Forma de pagamento (opcional)',valor:formaPadrao()},ok:'Pagamento recebido',cancelarTxt:'Ainda em aberto'});
+    if(rec===null) return; await registrarPagamento(r,rec.trim());
   }
   await oferecerRecibo(r);
 };
@@ -1002,10 +1026,10 @@ VIEWS.gestao=()=>{
   const pend=DB.reservas.filter(r=>sel.includes(r.pousada)&&(r.status==='hospedado'||r.status==='finalizada')&&r.pago!=='sim').sort((a,b)=>a.saida.localeCompare(b.saida));
   const recB=per.buckets.map(b=>somar(m,b.i,b.f));
   const ocB=per.buckets.map((b,i)=>{ const c=capacidade(sel,b.i,b.f); return c?recB[i].n/c*100:0; });
-  const kpi=(t,v,ic,sub='')=>`<div class="${CARD} p-4 sm:p-5"><div class="flex items-center justify-between"><span class="text-xs font-semibold uppercase tracking-wider text-neutral-500">${t}</span><span class="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand"><i class="fa-solid ${ic}"></i></span></div><b class="mt-2 block font-serif text-3xl sm:text-4xl">${v}</b><span class="text-xs text-neutral-500">${sub}</span></div>`;
+  const kpi=(t,v,ic,sub='')=>`<div class="${CARD} min-w-0 p-3 sm:p-5"><div class="flex items-start justify-between gap-1"><span class="text-[10px] font-semibold uppercase leading-tight tracking-wider text-neutral-500 sm:text-xs">${t}</span><span class="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-brand-soft text-sm text-brand sm:h-10 sm:w-10 sm:text-base"><i class="fa-solid ${ic}"></i></span></div><b class="mt-1 block break-words font-serif text-lg leading-tight sm:mt-2 sm:text-3xl xl:text-4xl">${v}</b><span class="block break-words text-[10px] leading-snug text-neutral-500 sm:text-xs">${sub}</span></div>`;
   const seg=(v,t)=>`<button data-act="gPer" data-v="${v}" class="rounded-full px-4 py-2 text-sm font-semibold ${g.per===v?'bg-brand text-white shadow-lg shadow-brand/30':'border border-neutral-200 bg-white text-neutral-600 hover:border-brand hover:text-brand'}">${t}</button>`;
   const chips=ps.length>1?`<div class="flex flex-wrap items-center gap-2"><span class="${LBL} !mb-0">Postos:</span>${ps.map(p=>`<button data-act="gPos" data-p="${p}" class="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ${sel.includes(p)?'bg-brand-soft text-brand-dark ring-2 ring-brand':'border border-neutral-200 bg-white text-neutral-500'}"><i class="fa-solid ${sel.includes(p)?'fa-square-check':'fa-square'}"></i>${esc(curtoP(p))}</button>`).join('')}</div>`:'';
-  const linhasP=sel.map(p=>{ const t=somar(agregar([p]),per.ini,per.fim), c=capacidade([p],per.ini,per.fim); return `<tr class="border-t border-neutral-100"><td class="px-4 py-3 font-semibold">${esc(nomeP(p))}</td><td class="px-4 py-3">${money(t.rec)}</td><td class="px-4 py-3">${t.n}</td><td class="px-4 py-3">${c?Math.round(t.n/c*100):0}%</td></tr>`; }).join('');
+  const linhasP=sel.map(p=>{ const t=somar(agregar([p]),per.ini,per.fim), c=capacidade([p],per.ini,per.fim); return `<tr class="border-t border-neutral-100"><td class="whitespace-nowrap px-4 py-3 font-semibold">${esc(curtoP(p))}</td><td class="whitespace-nowrap px-4 py-3">${money(t.rec)}</td><td class="px-4 py-3">${t.n}</td><td class="px-4 py-3">${c?Math.round(t.n/c*100):0}%</td></tr>`; }).join('');
   return `
   ${chips}
   <div class="flex flex-wrap items-center gap-2">${seg('semana','Semana')}${seg('mes','Mês')}${seg('ano','Ano')}
@@ -1018,8 +1042,8 @@ VIEWS.gestao=()=>{
   </section>
   <section class="${CARD} p-5"><div class="flex flex-wrap items-end justify-between gap-2"><h3 class="font-serif text-lg font-extrabold">Pagamentos <span class="text-sm font-sans font-medium text-neutral-500">· reservas com check-in no período</span></h3><b class="text-sm text-leaf">${pctPago}% recebido</b></div>
     <div class="mt-3 h-3 overflow-hidden rounded-full bg-brand-soft"><div class="h-full rounded-full bg-leaf" style="width:${pctPago}%"></div></div>
-    <div class="mt-4 grid grid-cols-2 gap-3"><div class="rounded-2xl bg-leaf-soft p-4"><div class="text-xs font-semibold uppercase tracking-wider text-leaf"><i class="fa-solid fa-circle-check"></i> Pago</div><b class="font-serif text-2xl sm:text-3xl">${money(vPago)}</b><div class="text-xs text-neutral-600">${pagas.length} reserva${pagas.length!==1?'s':''}</div></div>
-      <div class="rounded-2xl bg-brand-soft p-4"><div class="text-xs font-semibold uppercase tracking-wider text-brand-dark"><i class="fa-solid fa-hourglass-half"></i> Em aberto</div><b class="font-serif text-2xl sm:text-3xl">${money(vAb)}</b><div class="text-xs text-neutral-600">${abertas.length} reserva${abertas.length!==1?'s':''}</div></div></div>
+    <div class="mt-4 grid grid-cols-2 gap-3"><div class="rounded-2xl bg-leaf-soft p-4"><div class="text-xs font-semibold uppercase tracking-wider text-leaf"><i class="fa-solid fa-circle-check"></i> Pago</div><b class="block break-words font-serif text-lg sm:text-3xl">${money(vPago)}</b><div class="text-xs text-neutral-600">${pagas.length} reserva${pagas.length!==1?'s':''}</div></div>
+      <div class="rounded-2xl bg-brand-soft p-4"><div class="text-xs font-semibold uppercase tracking-wider text-brand-dark"><i class="fa-solid fa-hourglass-half"></i> Em aberto</div><b class="block break-words font-serif text-lg sm:text-3xl">${money(vAb)}</b><div class="text-xs text-neutral-600">${abertas.length} reserva${abertas.length!==1?'s':''}</div></div></div>
     ${pend.length?`<div class="mt-4"><div class="${LBL}">Pendências: hospedados/finalizadas sem pagamento (${pend.length})</div><div class="divide-y divide-neutral-100">${pend.slice(0,10).map(r=>`<button data-act="res" data-id="${r.id}" class="flex w-full items-center justify-between gap-3 px-1 py-2 text-left text-sm hover:bg-brand-cream"><span><b>${esc(curtoP(r.pousada))} · Apto ${esc(r.quarto_num)}</b> · ${esc(r.nome)} <span class="text-xs text-neutral-500">saída ${fmtBR(r.saida)}</span></span><b class="text-brand-dark">${money(r.total)}</b></button>`).join('')}</div></div>`:''}
   </section>
   <section class="grid gap-4 lg:grid-cols-2">
@@ -1038,7 +1062,7 @@ ACOES.gNav=d=>{ const n=+d.n, r=new Date(UI.g.ref+'T12:00:00Z');
 
 /* ============ VIEW: Acessos ============ */
 const badge=(t,c)=>`<span class="rounded-full ${c} px-2.5 py-1 text-xs font-semibold">${t}</span>`;
-const permsU=u=>[(u.perfil==='admin'||u.pode_preco==='sim')&&'Preços',(u.perfil==='admin'||u.pode_desconto==='sim')&&'Desconto',(u.perfil!=='atendente'||u.pode_gestao==='sim')&&'Gestão'].filter(Boolean).map(t=>badge(t,'bg-leaf-soft text-leaf')).join(' ')||'<span class="text-neutral-500">—</span>';
+const permsU=u=>[(u.perfil==='admin'||u.pode_preco==='sim')&&'Preços',(u.perfil==='admin'||u.pode_desconto==='sim')&&'Desconto',temGestao(u)&&'Gestão'].filter(Boolean).map(t=>badge(t,'bg-leaf-soft text-leaf')).join(' ')||'<span class="text-neutral-500">—</span>';
 VIEWS.acessos=()=>`
   <div class="flex flex-wrap items-center justify-between gap-2"><p class="max-w-2xl text-sm text-neutral-600">Defina quem usa o painel, quais postos cada pessoa vê e quem pode cadastrar preços, dar desconto e ver a Gestão. Compartilhe também a planilha (Editor) com o e-mail.</p><button data-act="formUsuario" class="${BTN}"><i class="fa-solid fa-user-plus"></i> Novo acesso</button></div>
   <div class="hidden overflow-x-auto rounded-3xl border border-orange-100 bg-white md:block"><table class="w-full text-left text-sm"><thead class="bg-brand-cream text-xs uppercase tracking-wider text-neutral-500"><tr><th class="px-4 py-3">Usuário</th><th class="px-4 py-3">Perfil</th><th class="px-4 py-3">Postos</th><th class="px-4 py-3">Permissões</th><th class="px-4 py-3">Situação</th><th class="px-4 py-3"></th></tr></thead><tbody>${DB.usuarios.map(u=>`<tr class="border-t border-neutral-100 hover:bg-brand-cream/60"><td class="px-4 py-3"><b>${esc(u.nome)}</b><div class="text-xs text-neutral-500">${esc(u.email)}</div></td><td class="px-4 py-3 capitalize">${esc(u.perfil)}</td><td class="px-4 py-3">${u.perfil==='admin'?'Todos':esc(String(u.pousadas).split(',').map(curtoP).join(', '))}</td><td class="px-4 py-3">${permsU(u)}</td><td class="px-4 py-3">${u.ativo==='nao'?badge('Inativo','bg-[#FDECEC] text-[#D64545]'):badge('Ativo','bg-leaf-soft text-leaf')}</td><td class="px-4 py-3 text-right"><button data-act="formUsuario" data-e="${esc(u.email)}" class="grid h-9 w-9 place-items-center rounded-full text-brand hover:bg-brand-soft" aria-label="Editar"><i class="fa-solid fa-pen"></i></button></td></tr>`).join('')}</tbody></table></div>
@@ -1051,7 +1075,7 @@ ACOES.formUsuario=d=>{
     campo('Nome',`<input id="uNome" value="${esc(u?u.nome:'')}" class="${INP}">`)+
     campo('Perfil',`<select id="uPerfil" class="${INP}">${[['atendente','Atendente (reservas e check-in)'],['gerente','Gerente (+ quartos e gestão)'],['admin','Administrador (tudo)']].map(([v,t])=>`<option value="${v}" ${u&&u.perfil===v?'selected':''}>${t}</option>`).join('')}</select>`)+
     campo('Postos que pode ver',`<div class="flex flex-wrap gap-4 rounded-xl border-2 border-neutral-200 bg-neutral-50 px-4 py-3">${pousadasAtivas().map(p=>`<label class="flex items-center gap-2 text-sm"><input type="checkbox" class="uPos h-4 w-4 accent-[#F47B20]" value="${p.id}" ${sel.includes(p.id)?'checked':''}> ${esc(p.nome)}</label>`).join('')}</div>`,'sm:col-span-2')+
-    `<div class="grid gap-2 sm:col-span-2 sm:grid-cols-2">${chk('uPreco','Pode cadastrar preços',u&&u.pode_preco==='sim')}${chk('uDesc','Pode dar desconto',u&&u.pode_desconto==='sim')}${chk('uGest','Pode ver a Gestão',u&&u.pode_gestao==='sim')}${chk('uAtivo','Acesso ativo',!u||u.ativo!=='nao')}</div>`,'Salvar');
+    `<div class="grid gap-2 sm:col-span-2 sm:grid-cols-2">${chk('uPreco','Pode cadastrar preços',u&&u.pode_preco==='sim')}${chk('uDesc','Pode dar desconto',u&&u.pode_desconto==='sim')}${chk('uGest','Pode ver a Gestão',u&&temGestao(u))}${chk('uAtivo','Acesso ativo',!u||u.ativo!=='nao')}</div>`,'Salvar');
   box.querySelector('#fOk').onclick=async()=>{
     const c=id=>box.querySelector('#'+id).checked, email=(u?u.email:box.querySelector('#uEmail').value.trim()).toLowerCase(), perfil=box.querySelector('#uPerfil').value;
     const pous=[...box.querySelectorAll('.uPos:checked')].map(x=>x.value), ativo=c('uAtivo');
