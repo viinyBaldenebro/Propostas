@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel da Pousada · Rei do Suco</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style type="text/tailwindcss">
+@theme{
+  --color-brand:#F47B20; --color-brand-dark:#DB6510; --color-brand-soft:#FFF1E2; --color-brand-cream:#FFFAF4;
+  --color-leaf:#6E9B4A; --color-leaf-soft:#EEF5E8; --color-ink:#2B2825;
+  --font-sans:Inter,system-ui,sans-serif; --font-serif:Fraunces,Georgia,serif;
+}
+</style>
+<style>
+html{scroll-behavior:smooth}
+body{-webkit-font-smoothing:antialiased}
+.shine::after{content:"";position:absolute;top:0;left:-120%;width:60%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.45),transparent);transform:skewX(-20deg);transition:left .7s}
+.shine:hover::after{left:140%}
+dialog{margin:auto;border:0;background:transparent;padding:0;max-width:100vw}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+dialog[open]{animation:pop .25s cubic-bezier(.2,.7,.2,1)}
+@keyframes pop{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+@keyframes pulse2{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.94)}}
+.pulsar{animation:pulse2 1.6s ease-in-out infinite}
+#rel-print{display:none}
+@media print{
+  @page{size:A4 portrait;margin:14mm}
+  body>*:not(#rel-print){display:none!important}
+  #rel-print{display:block!important;color:#000}
+  body{background:#fff!important}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body class="bg-brand-cream font-sans text-ink antialiased">
+
+<!-- LOGIN -->
+<section id="login" class="grid min-h-screen place-items-center bg-white px-5">
+  <div class="w-full max-w-md text-center">
+    <div class="mb-6 flex justify-center" id="loginLogo"></div>
+    <h1 class="font-serif text-3xl font-extrabold sm:text-4xl">Painel da <span class="italic text-brand">Pousada</span></h1>
+    <p class="mt-3 text-sm text-neutral-600">Reservas, quartos, preços e limpeza dos hotéis Posto Rei do Suco.</p>
+    <button id="btnLogin" disabled class="shine relative mt-8 inline-flex w-full items-center justify-center gap-3 overflow-hidden rounded-full bg-brand px-8 py-4 font-semibold text-white shadow-lg shadow-brand/30 transition hover:-translate-y-1 hover:bg-brand-dark disabled:opacity-50">
+      <i class="fa-brands fa-google text-lg"></i> Entrar com Google
+    </button>
+    <p id="loginErro" class="mt-4 hidden rounded-2xl bg-[#FDECEC] px-4 py-3 text-sm font-medium text-[#D64545]"></p>
+    <p class="mt-6 text-xs text-neutral-500">O acesso é liberado pelo administrador. Use o e-mail cadastrado.</p>
+  </div>
+</section>
+
+<!-- CARREGANDO -->
+<section id="carregando" class="fixed inset-0 z-[200] hidden place-items-center bg-white px-5">
+  <div class="text-center">
+    <div class="pulsar mx-auto mb-4 grid h-16 w-16 place-items-center rounded-3xl bg-brand text-3xl text-white"><i class="fa-solid fa-hotel"></i></div>
+    <p id="carregandoTxt" class="font-serif text-xl font-extrabold">Carregando dados da planilha…</p>
+    <div id="carregandoErro" class="mt-4 hidden max-w-md text-sm text-[#D64545]"></div>
+  </div>
+</section>
+
+<!-- ACESSO NEGADO -->
+<section id="negado" class="hidden min-h-screen place-items-center bg-white px-5">
+  <div class="max-w-md text-center">
+    <div class="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-3xl bg-brand-soft text-2xl text-brand"><i class="fa-solid fa-lock"></i></div>
+    <h2 class="font-serif text-2xl font-extrabold">Sem acesso ao painel</h2>
+    <p class="mt-3 text-sm text-neutral-600">O e-mail <b id="negadoEmail"></b> não está cadastrado (ou está inativo). Peça ao administrador para liberar o acesso.</p>
+    <button data-act="sair" class="mt-6 rounded-full border-2 border-brand px-6 py-3 font-semibold text-brand hover:bg-brand hover:text-white">Sair</button>
+  </div>
+</section>
+
+<!-- APP -->
+<div id="app" class="hidden min-h-screen">
+  <div class="flex min-h-screen">
+    <div id="veu" data-act="menu" class="fixed inset-0 z-30 hidden bg-black/30 lg:hidden"></div>
+    <aside id="menu" class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-neutral-200 bg-white p-4 transition lg:sticky lg:top-0 lg:h-screen lg:translate-x-0">
+      <div class="mb-6" id="menuLogo"></div>
+      <nav id="nav" class="flex-1 space-y-1"></nav>
+      <div class="mt-4 border-t border-neutral-200 pt-4 text-xs text-neutral-500">
+        <div class="flex items-center gap-3">
+          <span id="avatar" class="grid h-9 w-9 place-items-center rounded-full bg-brand-soft font-bold text-brand-dark"></span>
+          <div class="min-w-0"><b id="uNome" class="block truncate text-sm text-ink"></b><span id="uPerfil"></span></div>
+        </div>
+        <button data-act="sair" class="mt-3 w-full rounded-full border border-neutral-200 py-2 font-semibold text-neutral-600 hover:border-brand hover:text-brand"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
+      </div>
+    </aside>
+    <div class="min-w-0 flex-1">
+      <header class="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 py-3 lg:px-8">
+        <div class="flex items-center gap-3">
+          <button data-act="menu" class="grid h-10 w-10 place-items-center rounded-xl text-brand hover:bg-brand-soft lg:hidden" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
+          <h1 id="titulo" class="font-serif text-xl font-extrabold sm:text-2xl"></h1>
+        </div>
+        <div class="flex items-center gap-2">
+          <button data-act="sync" class="grid h-10 w-10 place-items-center rounded-full border border-neutral-200 text-brand hover:bg-brand-soft" title="Atualizar"><i class="fa-solid fa-rotate"></i></button>
+          <button data-act="novaRes" class="shine relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand/30 transition hover:-translate-y-0.5 hover:bg-brand-dark"><i class="fa-solid fa-plus"></i><span class="hidden sm:inline">Nova reserva</span><span class="sm:hidden">Reservar</span></button>
+        </div>
+      </header>
+      <main id="conteudo" class="space-y-6 p-4 lg:p-8"></main>
+    </div>
+  </div>
+</div>
+
+<!-- DIÁLOGOS -->
+<dialog id="dlgForm"><div id="dlgFormBox" class="max-h-[92vh] w-[min(96vw,760px)] overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl sm:p-7"></div></dialog>
+<dialog id="dlgConf">
+  <div class="w-[min(92vw,440px)] rounded-3xl bg-white p-6 shadow-2xl">
+    <h3 id="cfTitulo" class="font-serif text-xl font-extrabold"></h3>
+    <p id="cfTexto" class="mt-2 text-sm text-neutral-600"></p>
+    <div id="cfResumo" class="mt-3 hidden rounded-2xl bg-brand-cream p-3 text-sm"></div>
+    <div id="cfCampoBox" class="mt-4 hidden"><label id="cfRotulo" class="mb-1 block text-xs font-semibold uppercase tracking-wider text-neutral-500"></label><input id="cfCampo" class="w-full rounded-xl border-2 border-neutral-200 bg-neutral-50 px-4 py-2.5 outline-none focus:border-brand"></div>
+    <div class="mt-6 flex justify-end gap-3">
+      <button id="cfCancelar" class="rounded-full border border-neutral-200 px-5 py-2.5 text-sm font-semibold text-neutral-600 hover:bg-neutral-50">Cancelar</button>
+      <button id="cfOk" class="rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark">Confirmar</button>
+    </div>
+  </div>
+</dialog>
+<div id="toasts" class="fixed bottom-5 left-1/2 z-[300] flex -translate-x-1/2 flex-col items-center gap-2"></div>
+<div id="rel-print"></div>
+
+<script>
+/* ============ CONFIG (única parte que muda entre painéis) ============ */
+const CONFIG = {
+  clientId: '207417529230-hq8uo76kqr49g89nqs5fh48p3otuniv0.apps.googleusercontent.com',
+  planilhaId: '1e8-7dIiLrELLOlit4IFD0_TY7ehMkstDlVGe4GidqFU',
+  escopos: 'https://www.googleapis.com/auth/spreadsheets openid email profile',
+  urlPublicacao: 'https://github.com/viinyBaldenebro',
+  logo: '',                 // coloque aqui a URL/arquivo do logo oficial (ex.: 'logo-rei-do-suco.png')
+  inatividadeMin: 30,
+  empresa: 'Hotel Pousada Rei do Suco',
+  pousadas: [
+    { id:'P1', nome:'Hotel - Posto Rei do Suco 1', curto:'Posto 1', quartos:10 },
+    { id:'P2', nome:'Hotel - Posto Rei do Suco 2', curto:'Posto 2', quartos:11 }
+  ],
+  tiposIniciais: [
+    { id:'T1', nome:'Solteiro (1 pessoa)', capacidade:1, preco:75 },
+    { id:'T2', nome:'Casal (2 pessoas)',   capacidade:2, preco:130 }
+  ]
+};
+const ABA = { quartos:'Quartos', tipos:'Tipos', precos:'PrecosEspeciais', usuarios:'Usuarios', reservas:'Reservas', limpeza:'Limpeza', hist:'Historico' };
+const COLS = {
+  quartos:['id','pousada','numero','tipo','ativo'],
+  tipos:['id','nome','capacidade','preco','ativo'],
+  precos:['id','pousada','tipo','inicio','fim','preco','motivo','criado_por','criado_em','ativo'],
+  usuarios:['email','nome','perfil','pousadas','pode_preco','ativo'],
+  reservas:['id','pousada','quarto_id','quarto_num','tipo','status','entrada','saida','diarias','precos_noites','total','nome','rg','cpf','nasc','telefone','veiculo','placa','cidade','obs','criado_por','criado_em','checkin_em','checkout_em'],
+  limpeza:['data','pousada','quarto_id','acao','por','quando'],
+  hist:['quando','por','acao','detalhe']
+};
+const NUMCOLS = ['capacidade','preco','diarias','total'];
+const DB = { quartos:[], tipos:[], precos:[], usuarios:[], reservas:[], limpeza:[] };
+
+/* ============ utilidades ============ */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2,'0');
+const hojeISO = () => { const d=new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); };
+const addDias = (iso,n) => { const d=new Date(iso+'T12:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); };
+const diffDias = (a,b) => Math.round((new Date(b+'T12:00:00Z')-new Date(a+'T12:00:00Z'))/864e5);
+const fmtBR = iso => iso ? String(iso).slice(0,10).split('-').reverse().join('/') : '';
+const fmtCurto = iso => iso ? fmtBR(iso).slice(0,5) : '';
+const DIAS = ['dom','seg','ter','qua','qui','sex','sáb'];
+const diaSem = iso => DIAS[new Date(iso+'T12:00:00Z').getUTCDay()];
+const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const money = v => Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const natural = (a,b) => String(a).localeCompare(String(b),'pt-BR',{numeric:true});
+const colLetter = n => { let s=''; while(n>0){ const m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; };
+
+const BTN='shine relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full bg-brand px-6 py-3 font-semibold text-white shadow-lg shadow-brand/30 transition hover:-translate-y-0.5 hover:bg-brand-dark disabled:opacity-50';
+const BTN2='inline-flex items-center justify-center gap-2 rounded-full border-2 border-brand px-5 py-2.5 text-sm font-semibold text-brand transition hover:bg-brand hover:text-white';
+const BTNG='inline-flex items-center justify-center gap-2 rounded-full border border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-600 transition hover:border-brand hover:text-brand';
+const INP='w-full rounded-xl border-2 border-neutral-200 bg-neutral-50 px-4 py-2.5 outline-none transition focus:border-brand';
+const LBL='mb-1 block text-xs font-semibold uppercase tracking-wider text-neutral-500';
+const CARD='rounded-3xl border border-orange-100 bg-white shadow-sm';
+const ST = {
+  reservada:['bg-brand-soft text-brand-dark','fa-clock','Reservada'],
+  hospedado:['bg-leaf-soft text-leaf','fa-key','Hospedado'],
+  finalizada:['bg-neutral-100 text-neutral-600','fa-flag-checkered','Finalizada'],
+  cancelada:['bg-[#FDECEC] text-[#D64545]','fa-ban','Cancelada']
+};
+const pill = st => { const s=ST[st]||ST.finalizada; return `<span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${s[0]}"><i class="fa-solid ${s[1]} text-[10px]"></i>${s[2]}</span>`; };
+const campo = (rot,html,cls='') => `<div class="${cls}"><label class="${LBL}">${rot}</label>${html}</div>`;
+
+function logoHTML(h='h-12'){
+  if(CONFIG.logo) return `<img src="${esc(CONFIG.logo)}" alt="Rei do Suco" class="${h}">`;
+  return `<div class="flex items-center gap-2"><span class="grid h-11 w-11 place-items-center rounded-2xl bg-brand text-xl text-white"><i class="fa-solid fa-hotel"></i></span><div class="text-left leading-none"><b class="block font-serif text-xl font-extrabold text-brand">REI DO SUCO</b><span class="text-[10px] font-bold uppercase tracking-[.2em] text-ink">Hotel Pousada</span></div></div>`;
+}
+
+function toast(msg,tipo='ok'){
+  const t=document.createElement('div');
+  t.className='max-w-[92vw] rounded-2xl px-5 py-3 text-sm font-semibold shadow-xl '+(tipo==='erro'?'bg-[#FDECEC] text-[#D64545]':'bg-white text-ink border border-orange-100');
+  t.innerHTML=`<i class="fa-solid ${tipo==='erro'?'fa-circle-exclamation':'fa-circle-check text-leaf'} mr-2"></i>`+esc(msg);
+  $('#toasts').appendChild(t); setTimeout(()=>t.remove(), tipo==='erro'?7000:3200);
+}
+
+/* modal de confirmação único (Promise → valor | true | null) */
+function modal({titulo,texto='',resumo='',campo:c=null,ok='Confirmar',perigo=false}){
+  return new Promise(res=>{
+    const d=$('#dlgConf');
+    $('#cfTitulo').textContent=titulo; $('#cfTexto').textContent=texto;
+    const r=$('#cfResumo'); r.classList.toggle('hidden',!resumo); r.innerHTML=resumo;
+    const cb=$('#cfCampoBox'), ci=$('#cfCampo'); cb.classList.toggle('hidden',!c);
+    if(c){ $('#cfRotulo').textContent=c.rotulo; ci.type=c.tipo||'text'; ci.value=c.valor??''; }
+    const bo=$('#cfOk'); bo.textContent=ok;
+    bo.className='rounded-full px-6 py-2.5 text-sm font-semibold text-white '+(perigo?'bg-[#D64545] hover:bg-[#b83a3a]':'bg-brand hover:bg-brand-dark');
+    let fim=false;
+    const fechar=v=>{ if(fim)return; fim=true; d.removeEventListener('close',onc); d.removeEventListener('click',onclk); d.removeEventListener('keydown',onk); $('#cfCancelar').onclick=bo.onclick=null; if(d.open)d.close(); res(v); };
+    const onc=()=>fechar(null);
+    const onclk=e=>{ if(e.target===d)fechar(null); };
+    const onk=e=>{ if(e.key==='Enter'&&e.target.tagName!=='BUTTON'){ e.preventDefault(); bo.click(); } };
+    d.addEventListener('close',onc); d.addEventListener('click',onclk); d.addEventListener('keydown',onk);
+    $('#cfCancelar').onclick=()=>fechar(null);
+    bo.onclick=()=>fechar(c?ci.value:true);
+    d.showModal(); if(c) ci.focus();
+  });
+}
+function abrirDialogo(html){
+  const d=$('#dlgForm'); $('#dlgFormBox').innerHTML=html;
+  if(!d.open) d.showModal();
+  return $('#dlgFormBox');
+}
+const fecharDialogo=()=>{ const d=$('#dlgForm'); if(d.open)d.close(); };
+$('#dlgForm').addEventListener('click',e=>{ if(e.target.id==='dlgForm')fecharDialogo(); });
+
+/* ============ Google: login e token (só em memória) ============ */
+let TOKEN=null, TOKEN_EXP=0, TC=null, SESSAO=null, EU=null, PEND=null;
+function loginErro(m){ const e=$('#loginErro'); e.textContent=m; e.classList.toggle('hidden',!m); }
+function iniciarGoogle(){
+  TC=google.accounts.oauth2.initTokenClient({
+    client_id:CONFIG.clientId, scope:CONFIG.escopos,
+    callback:onToken,
+    error_callback:e=>{ const m=e&&e.type==='popup_closed'?'Login cancelado.':'Erro no login Google ('+(e&&e.type||'desconhecido')+').'; if(PEND){PEND.rej({status:401,message:m});PEND=null;} else loginErro(m); }
+  });
+  $('#btnLogin').disabled=false;
+}
+async function onToken(r){
+  if(r.error){ const m=r.error==='origin_mismatch'?'Origem não autorizada no Google Cloud (origin_mismatch). Cadastre a origem '+location.origin+' no cliente OAuth.':'Erro de autorização: '+(r.error_description||r.error); if(PEND){PEND.rej({status:401,message:m});PEND=null;} else loginErro(m); return; }
+  TOKEN=r.access_token; TOKEN_EXP=Date.now()+(r.expires_in||3600)*1000;
+  if(PEND){ PEND.res(); PEND=null; return; }
+  try{
+    const u=await (await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:'Bearer '+TOKEN}})).json();
+    SESSAO={u:u.email,nome:u.name||u.email,ativo:Date.now()};
+    iniciar();
+  }catch(e){ loginErro('Não foi possível ler seu perfil Google.'); }
+}
+function renovar(){
+  return new Promise((res,rej)=>{ PEND={res,rej}; TC.requestAccessToken({prompt:''}); setTimeout(()=>{ if(PEND){PEND.rej({status:401,message:'Tempo esgotado renovando a sessão'});PEND=null;} },25000); });
+}
+async function garantirToken(){ if(TOKEN && Date.now()<TOKEN_EXP-60000) return; await renovar(); }
+async function SHEETS(path,opts={},retry=true){
+  await garantirToken();
+  const r=await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+CONFIG.planilhaId+path,{...opts,headers:{Authorization:'Bearer '+TOKEN,'Content-Type':'application/json'}});
+  if(r.status===401&&retry){ TOKEN=null; return SHEETS(path,opts,false); }
+  if(!r.ok){ let m=''; try{ m=(await r.json()).error.message; }catch{} throw {status:r.status,message:m||r.statusText}; }
+  return r.json();
+}
+function dica(e){
+  if(e.status===403) return 'Sem acesso à planilha. Peça para compartilhá-la com seu e-mail como Editor';
+  if(e.status===401) return 'Sessão expirou. Recarregue e entre novamente';
+  if(e.status===404) return 'Planilha não encontrada. Confira o ID da planilha';
+  return 'Erro ao falar com o Google Sheets';
+}
+const erroGeral = e => { console.error(e); toast(dica(e)+' — '+(e.message||e),'erro'); };
+
+/* inatividade */
+['click','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>{ if(SESSAO)SESSAO.ativo=Date.now(); },{passive:true}));
+setInterval(()=>{ if(SESSAO && Date.now()-SESSAO.ativo>CONFIG.inatividadeMin*60000) location.reload(); },30000);
+
+/* ============ camada de dados ============ */
+function paraObj(tab,row,i){
+  const o={_row:i+2};
+  COLS[tab].forEach((c,j)=>{ const v=row[j]; o[c]=NUMCOLS.includes(c)?(v===''||v==null?0:Number(v)):(v==null?'':String(v)); });
+  return o;
+}
+const linha = (tab,o) => COLS[tab].map(c=>o[c]??'');
+async function garantirAbas(){
+  const info=await SHEETS('?fields=sheets.properties.title');
+  const tem=info.sheets.map(s=>s.properties.title);
+  const falta=Object.values(ABA).filter(a=>!tem.includes(a));
+  if(falta.length) await SHEETS(':batchUpdate',{method:'POST',body:JSON.stringify({requests:falta.map(title=>({addSheet:{properties:{title}}}))})});
+  const keys=Object.keys(ABA);
+  const hd=await SHEETS('/values:batchGet?'+keys.map(k=>'ranges='+encodeURIComponent(ABA[k]+'!A1:'+colLetter(COLS[k].length)+'1')).join('&'));
+  for(let i=0;i<keys.length;i++){
+    const vr=hd.valueRanges[i];
+    if(!vr.values||!vr.values[0]||!vr.values[0].length){
+      await SHEETS('/values/'+encodeURIComponent(ABA[keys[i]]+'!A1')+'?valueInputOption=RAW',{method:'PUT',body:JSON.stringify({values:[COLS[keys[i]]]})});
+    }
+  }
+}
+async function lerTab(ks){
+  const r=await SHEETS('/values:batchGet?valueRenderOption=UNFORMATTED_VALUE&majorDimension=ROWS&'+ks.map(k=>'ranges='+encodeURIComponent(ABA[k]+'!A2:'+colLetter(COLS[k].length))).join('&'));
+  r.valueRanges.forEach((vr,i)=>{ const k=ks[i]; DB[k]=(vr.values||[]).map((row,j)=>paraObj(k,row,j)).filter(o=>o[COLS[k][0]]!==''); });
+}
+const lerTudo = () => lerTab(Object.keys(DB));
+async function anexar(tab,o){
+  const r=await SHEETS('/values/'+encodeURIComponent(ABA[tab]+'!A1')+':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS',{method:'POST',body:JSON.stringify({values:[linha(tab,o)]})});
+  const m=/!A(\d+)/.exec(r.updates?.updatedRange||''); if(m) o._row=+m[1];
+  if(DB[tab]) DB[tab].push(o);
+  return o;
+}
+async function anexarVarios(tab,objs){
+  await SHEETS('/values/'+encodeURIComponent(ABA[tab]+'!A1')+':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS',{method:'POST',body:JSON.stringify({values:objs.map(o=>linha(tab,o))})});
+}
+async function atualizar(tab,o){
+  const L=colLetter(COLS[tab].length);
+  await SHEETS('/values/'+encodeURIComponent(ABA[tab]+'!A'+o._row+':'+L+o._row)+'?valueInputOption=RAW',{method:'PUT',body:JSON.stringify({values:[linha(tab,o)]})});
+}
+async function log(acao,detalhe){
+  try{ await anexar('hist',{quando:new Date().toISOString(),por:EU?EU.email:SESSAO.u,acao,detalhe}); }catch(e){ console.warn('log falhou',e); }
+}
+async function semear(){
+  if(!DB.tipos.length) await anexarVarios('tipos',CONFIG.tiposIniciais.map(t=>({...t,ativo:'sim'})));
+  if(!DB.quartos.length){
+    const L=[]; CONFIG.pousadas.forEach(p=>{ for(let i=1;i<=p.quartos;i++) L.push({id:uid('Q'),pousada:p.id,numero:String(i),tipo:CONFIG.tiposIniciais[1].id,ativo:'sim'}); });
+    await anexarVarios('quartos',L);
+  }
+}
+
+/* ============ acesso ============ */
+const minhasPousadas = () => EU.admin ? CONFIG.pousadas.map(p=>p.id) : EU.pousadas;
+const nomeP = id => (CONFIG.pousadas.find(p=>p.id===id)||{}).nome||id;
+const curtoP = id => (CONFIG.pousadas.find(p=>p.id===id)||{}).curto||id;
+const podeGerir = () => EU.admin || EU.perfil==='gerente';
+const podePreco = () => EU.admin || EU.podePreco;
+async function definirUsuario(){
+  const email=SESSAO.u.toLowerCase();
+  if(!DB.usuarios.length){
+    const novo={email,nome:SESSAO.nome,perfil:'admin',pousadas:CONFIG.pousadas.map(p=>p.id).join(','),pode_preco:'sim',ativo:'sim'};
+    await anexar('usuarios',novo); await log('primeiro_acesso','Administrador inicial: '+email);
+  }
+  const u=DB.usuarios.find(u=>u.email.toLowerCase()===email&&u.ativo!=='nao');
+  if(!u) return false;
+  EU={email,nome:u.nome||SESSAO.nome,perfil:u.perfil||'atendente',admin:u.perfil==='admin',pousadas:String(u.pousadas).split(',').map(s=>s.trim()).filter(Boolean),podePreco:u.pode_preco==='sim'||u.perfil==='admin'};
+  return true;
+}
+
+/* ============ regras de negócio ============ */
+const ativoRes = r => r.status==='reservada'||r.status==='hospedado';
+const quartosDe = p => DB.quartos.filter(q=>q.pousada===p&&q.ativo!=='nao').sort((a,b)=>natural(a.numero,b.numero));
+const tipoDe = id => DB.tipos.find(t=>t.id===id);
+const quartoDe = id => DB.quartos.find(q=>q.id===id);
+function ocupacao(q,data){
+  const h=hojeISO();
+  return DB.reservas.find(r=>r.quarto_id===q.id&&ativoRes(r)&&((r.entrada<=data&&data<r.saida)||(data===h&&r.status==='hospedado'&&r.saida<=data&&r.entrada<=data)));
+}
+const livre = (qid,ent,sai,ignorar) => !DB.reservas.some(r=>r.id!==ignorar&&r.quarto_id===qid&&ativoRes(r)&&r.entrada<sai&&ent<r.saida);
+function precoNoite(pousada,tipoId,data){
+  const esp=DB.precos.filter(p=>p.ativo!=='nao'&&(p.pousada==='*'||p.pousada===pousada)&&p.tipo===tipoId&&p.inicio<=data&&data<=p.fim)
+    .sort((a,b)=>((b.pousada!=='*')-(a.pousada!=='*'))||String(b.criado_em).localeCompare(String(a.criado_em)));
+  if(esp.length) return {preco:+esp[0].preco,motivo:esp[0].motivo,especial:true};
+  const t=tipoDe(tipoId); return {preco:t?+t.preco:0,especial:false};
+}
+/* noites: preço das noites já gravadas em `old` é preservado (snapshot); só noites novas usam o preço atual */
+function calcNoites(pousada,quarto,ent,sai,old){
+  const mapa={};
+  if(old&&quartoDe(old.quarto_id)&&quartoDe(old.quarto_id).tipo===quarto.tipo)
+    String(old.precos_noites).split(';').filter(x=>x!=='').forEach((v,i)=>{ mapa[addDias(old.entrada,i)]=+v; });
+  const out=[]; const n=diffDias(ent,sai);
+  for(let i=0;i<n;i++){ const d=addDias(ent,i); out.push(mapa[d]!==undefined?{data:d,preco:mapa[d],fixo:true}:{data:d,...precoNoite(pousada,quarto.tipo,d)}); }
+  return out;
+}
+const precosList = r => String(r.precos_noites).split(';').filter(x=>x!=='').map(Number);
+
+/* ============ estado da interface ============ */
+const UI={view:'hoje',pousada:null,data:hojeISO(),dataL:hojeISO(),f:{p:'todas',s:'ativas',q:''},g:{per:'mes',ref:hojeISO(),p:'todas'}};
+const VIEWS={}; const ACOES={};
+const NAV=[
+  {v:'hoje',ic:'fa-door-open',t:'Quartos'},
+  {v:'reservas',ic:'fa-calendar-check',t:'Reservas'},
+  {v:'limpeza',ic:'fa-broom',t:'Limpeza'},
+  {v:'precos',ic:'fa-tags',t:'Preços'},
+  {v:'quartos',ic:'fa-bed',t:'Gerir quartos',ok:()=>podeGerir()},
+  {v:'gestao',ic:'fa-chart-line',t:'Gestão',ok:()=>podeGerir()},
+  {v:'acessos',ic:'fa-user-shield',t:'Acessos',ok:()=>EU.admin}
+];
+function render(){
+  const itens=NAV.filter(n=>!n.ok||n.ok());
+  if(!itens.find(n=>n.v===UI.view)) UI.view='hoje';
+  $('#nav').innerHTML=itens.map(n=>`<button data-act="nav" data-v="${n.v}" class="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left transition ${n.v===UI.view?'bg-brand-soft font-semibold text-brand-dark':'text-neutral-600 hover:bg-brand-soft hover:text-brand-dark'}"><i class="fa-solid ${n.ic} w-5 text-center"></i>${n.t}</button>`).join('');
+  $('#titulo').textContent=(itens.find(n=>n.v===UI.view)||{}).t||'';
+  $('#conteudo').innerHTML=VIEWS[UI.view]();
+  if(UI.view==='reservas') renderListaRes();
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]'); if(!b) return;
+  const f=ACOES[b.dataset.act]; if(f){ Promise.resolve(f(b.dataset,b,e)).catch(erroGeral); }
+});
+document.addEventListener('change',e=>{ const b=e.target.closest('[data-chg]'); if(b&&ACOES[b.dataset.chg]) Promise.resolve(ACOES[b.dataset.chg](b.dataset,b,e)).catch(erroGeral); });
+document.addEventListener('input',e=>{ const b=e.target.closest('[data-inp]'); if(b&&ACOES[b.dataset.inp]) ACOES[b.dataset.inp](b.dataset,b,e); });
+
+ACOES.nav=d=>{ UI.view=d.v; $('#menu').classList.add('-translate-x-full'); $('#veu').classList.add('hidden'); render(); window.scrollTo(0,0); };
+ACOES.menu=()=>{ $('#menu').classList.toggle('-translate-x-full'); $('#veu').classList.toggle('hidden'); };
+ACOES.sair=()=>{ TOKEN=null; SESSAO=null; location.reload(); };
+ACOES.sync=async()=>{ await lerTudo(); render(); toast('Dados atualizados'); };
+
+/* ============ VIEW: Quartos (hoje) ============ */
+VIEWS.hoje=()=>{
+  const ps=minhasPousadas(); if(!ps.includes(UI.pousada)) UI.pousada=ps[0];
+  const data=UI.data, h=hojeISO(), qs=quartosDe(UI.pousada);
+  const info=qs.map(q=>({q,r:ocupacao(q,data)}));
+  const oc=info.filter(x=>x.r).length;
+  const kpi=(t,v,ic,sub='')=>`<div class="${CARD} p-5"><div class="flex items-center justify-between"><span class="text-xs font-semibold uppercase tracking-wider text-neutral-500">${t}</span><span class="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand"><i class="fa-solid ${ic}"></i></span></div><b class="mt-2 block font-serif text-4xl">${v}</b><span class="text-xs text-neutral-500">${sub}</span></div>`;
+  const tabs=ps.map(p=>{ const n=quartosDe(p).filter(q=>ocupacao(q,data)).length, t=quartosDe(p).length;
+    return `<button data-act="pousada" data-p="${p}" class="rounded-full px-4 py-2 text-sm font-semibold transition ${p===UI.pousada?'bg-brand text-white shadow-lg shadow-brand/30':'border border-neutral-200 bg-white text-neutral-600 hover:border-brand hover:text-brand'}">${esc(curtoP(p))} <span class="ml-1 text-xs opacity-80">${n}/${t} ocupados</span></button>`; }).join('');
+  const cards=info.map(({q,r})=>{
+    const t=tipoDe(q.tipo), pn=precoNoite(q.pousada,q.tipo,data);
+    const st=r?(r.status==='hospedado'?['bg-leaf-soft text-leaf','fa-key','Ocupado']:['bg-brand-soft text-brand-dark','fa-clock','Reservado']):['bg-leaf-soft text-leaf','fa-check','Disponível'];
+    const atras=r&&r.status==='hospedado'&&r.saida<=data&&data===h;
+    return `<button data-act="card" data-q="${q.id}" class="group rounded-3xl border p-4 text-left shadow-sm transition duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-orange-900/10 ${r?'border-brand/40 bg-brand-soft':'border-leaf/30 bg-white'}">
+      <div class="flex items-start justify-between gap-2"><span class="font-serif text-3xl font-extrabold">${esc(q.numero)}</span><span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${st[0]}"><i class="fa-solid ${st[1]} text-[9px]"></i>${st[2]}</span></div>
+      <div class="mt-1 text-xs text-neutral-500">${esc(t?t.nome:'Sem tipo')}</div>
+      ${r?`<div class="mt-3 truncate text-sm font-semibold">${esc(r.nome||'—')}</div><div class="text-xs text-neutral-600">até ${fmtCurto(r.saida)}${atras?' · <b class="text-[#D64545]">saída pendente</b>':''}</div>`
+        :`<div class="mt-3 font-serif text-xl font-extrabold text-brand-dark">${money(pn.preco)}</div><div class="text-xs text-neutral-500">${pn.especial?'<i class="fa-solid fa-star text-brand"></i> '+esc(pn.motivo||'preço especial'):'diária'}</div>`}
+    </button>`; }).join('');
+  const chega=DB.reservas.filter(r=>r.pousada===UI.pousada&&r.status==='reservada'&&r.entrada===data);
+  const sai=DB.reservas.filter(r=>r.pousada===UI.pousada&&r.status==='hospedado'&&r.saida<=data&&(r.saida===data||data===h));
+  const lista=(arr,vazio)=>arr.length?arr.map(r=>`<button data-act="res" data-id="${r.id}" class="flex w-full items-center justify-between gap-3 rounded-2xl px-3 py-2 text-left text-sm hover:bg-brand-cream"><span><b>Apto ${esc(r.quarto_num)}</b> · ${esc(r.nome)}</span><i class="fa-solid fa-chevron-right text-xs text-brand"></i></button>`).join(''):`<p class="px-3 py-2 text-sm text-neutral-500">${vazio}</p>`;
+  return `
+  <div class="flex flex-wrap items-center gap-2">${tabs}</div>
+  <div class="flex flex-wrap items-end gap-3">
+    <div class="flex items-center gap-2">
+      <button data-act="dia" data-n="-1" class="grid h-11 w-11 place-items-center rounded-full border-2 border-brand text-brand hover:bg-brand hover:text-white" aria-label="Dia anterior"><i class="fa-solid fa-chevron-left"></i></button>
+      <input type="date" value="${data}" data-chg="dataHoje" class="${INP} !w-auto">
+      <button data-act="dia" data-n="1" class="grid h-11 w-11 place-items-center rounded-full border-2 border-brand text-brand hover:bg-brand hover:text-white" aria-label="Próximo dia"><i class="fa-solid fa-chevron-right"></i></button>
+    </div>
+    <button data-act="dia" data-n="0" class="${BTNG}">Hoje</button>
+    <span class="text-sm font-semibold text-neutral-600">${diaSem(data)}, ${fmtBR(data)}${data<h?' · <span class="text-[#D64545]">data passada (só consulta)</span>':''}</span>
+  </div>
+  <section class="grid grid-cols-2 gap-4 xl:grid-cols-4">
+    ${kpi('Quartos',qs.length,'fa-bed',esc(nomeP(UI.pousada)))}${kpi('Ocupados',oc,'fa-key','no dia selecionado')}${kpi('Disponíveis',qs.length-oc,'fa-check','prontos para locar')}${kpi('Ocupação',qs.length?Math.round(oc/qs.length*100)+'%':'—','fa-percent','')}
+  </section>
+  <section class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">${cards||'<p class="col-span-full text-neutral-500">Nenhum quarto cadastrado neste posto.</p>'}</section>
+  <section class="grid gap-4 lg:grid-cols-2">
+    <div class="${CARD} p-5"><h3 class="mb-2 font-serif text-lg font-extrabold"><i class="fa-solid fa-arrow-right-to-bracket mr-2 text-brand"></i>Chegadas previstas</h3>${lista(chega,'Nenhuma chegada prevista.')}</div>
+    <div class="${CARD} p-5"><h3 class="mb-2 font-serif text-lg font-extrabold"><i class="fa-solid fa-arrow-right-from-bracket mr-2 text-brand"></i>Saídas</h3>${lista(sai,'Nenhuma saída pendente.')}</div>
+  </section>`;
+};
+ACOES.pousada=d=>{ UI.pousada=d.p; render(); };
+ACOES.dia=d=>{ UI.data=+d.n===0?hojeISO():addDias(UI.data,+d.n); render(); };
+ACOES.dataHoje=(d,b)=>{ if(b.value){ UI.data=b.value; render(); } };
+ACOES.card=d=>{
+  const q=quartoDe(d.q), r=ocupacao(q,UI.data);
+  if(r) return ACOES.res({id:r.id});
+  if(UI.data<hojeISO()) return toast('Data passada: só é possível consultar.','erro');
+  abrirForm({pousada:q.pousada,quartoId:q.id,entrada:UI.data});
+};
+ACOES.novaRes=()=>abrirForm({pousada:minhasPousadas().includes(UI.pousada)?UI.pousada:minhasPousadas()[0],entrada:hojeISO()});
+
+/* ============ FORMULÁRIO DE RESERVA / FICHA DE CHECK-IN ============ */
+let SALVANDO=false;
+function abrirForm({res=null,pousada,quartoId=null,entrada,saida=null,modo=null}){
+  const h=hojeISO(), edit=!!res, ps=minhasPousadas();
+  const p0=res?res.pousada:pousada, ent0=res?res.entrada:(entrada||h), sai0=res?res.saida:(saida||addDias(ent0,1));
+  const v=k=>esc(res?res[k]:'');
+  const trava=edit&&res.status==='hospedado';
+  const html=`
+  <div class="flex items-start justify-between gap-3"><h3 class="font-serif text-2xl font-extrabold">${modo==='checkin'?'Check-in · ficha do hóspede':(edit?'Editar reserva':'Nova reserva')}</h3><button data-act="fechar" class="grid h-9 w-9 place-items-center rounded-full text-neutral-500 hover:bg-brand-soft hover:text-brand" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button></div>
+  <form id="fRes" class="mt-4 grid gap-4 sm:grid-cols-2" onsubmit="return false">
+    ${campo('Pousada',`<select id="fP" class="${INP}" ${edit?'disabled':''}>${ps.map(p=>`<option value="${p}" ${p===p0?'selected':''}>${esc(nomeP(p))}</option>`).join('')}</select>`)}
+    ${campo('Apto (quarto) — só aparecem os livres no período',`<select id="fQ" class="${INP}"></select>`)}
+    ${campo('Data do check-in',`<input id="fE" type="date" value="${ent0}" ${trava?'disabled':''} class="${INP}">`)}
+    ${campo('Data do check-out',`<input id="fS" type="date" value="${sai0}" class="${INP}">`)}
+    <div id="fPreco" class="rounded-2xl bg-brand-cream p-4 text-sm sm:col-span-2"></div>
+    <div class="sm:col-span-2 border-t border-neutral-100 pt-2"><b class="text-xs font-bold uppercase tracking-[.2em] text-brand">Dados do hóspede</b></div>
+    ${campo('Nome *',`<input id="fNome" value="${v('nome')}" class="${INP}" autocomplete="off">`,'sm:col-span-2')}
+    ${campo('RG',`<input id="fRg" value="${v('rg')}" class="${INP}">`)}
+    ${campo('CPF',`<input id="fCpf" value="${v('cpf')}" inputmode="numeric" class="${INP}">`)}
+    ${campo('Data de nascimento',`<input id="fNasc" type="date" value="${v('nasc')}" class="${INP}">`)}
+    ${campo('Telefone',`<input id="fTel" value="${v('telefone')}" inputmode="tel" class="${INP}">`)}
+    ${campo('Veículo',`<input id="fVei" value="${v('veiculo')}" class="${INP}">`)}
+    ${campo('Placa',`<input id="fPla" value="${v('placa')}" class="${INP} uppercase">`)}
+    ${campo('Cidade',`<input id="fCid" value="${v('cidade')}" class="${INP}">`,'sm:col-span-2')}
+    ${campo('Observações',`<textarea id="fObs" rows="2" class="${INP}">${v('obs')}</textarea>`,'sm:col-span-2')}
+    <p id="fErro" class="hidden rounded-2xl bg-[#FDECEC] px-4 py-3 text-sm font-medium text-[#D64545] sm:col-span-2"></p>
+    <div class="flex flex-wrap justify-end gap-3 sm:col-span-2" id="fBtns"></div>
+  </form>`;
+  const box=abrirDialogo(html);
+  const g=id=>box.querySelector('#'+id);
+  const salvarPara=(st)=>salvarReserva({res,st,modo});
+  const botoes=()=>{
+    const ent=g('fE').value; let b='';
+    if(edit&&modo==='checkin') b=`<button type="button" data-st="hospedado" class="${BTN}"><i class="fa-solid fa-key"></i> Confirmar check-in</button>`;
+    else if(edit) b=`<button type="button" data-st="${res.status}" class="${BTN}"><i class="fa-solid fa-floppy-disk"></i> Salvar alterações</button>`;
+    else if(ent===hojeISO()) b=`<button type="button" data-st="reservada" class="${BTN2}">Só reservar</button><button type="button" data-st="hospedado" class="${BTN}"><i class="fa-solid fa-key"></i> Check-in agora</button>`;
+    else b=`<button type="button" data-st="reservada" class="${BTN}"><i class="fa-solid fa-calendar-check"></i> Salvar reserva</button>`;
+    g('fBtns').innerHTML=`<button type="button" data-act="fechar" class="${BTNG}">Cancelar</button>`+b;
+    g('fBtns').querySelectorAll('[data-st]').forEach(x=>x.onclick=()=>salvarPara(x.dataset.st));
+  };
+  const atualizarQuartos=()=>{
+    const p=g('fP').value, ent=g('fE').value, sai=g('fS').value;
+    const sel=g('fQ'), atual=sel.value||(res?res.quarto_id:quartoId)||'';
+    const ok=ent&&sai&&sai>ent;
+    const op=quartosDe(p).filter(q=>ok&&livre(q.id,ent,sai,res&&res.id)).map(q=>{ const t=tipoDe(q.tipo); return `<option value="${q.id}">Apto ${esc(q.numero)} · ${esc(t?t.nome:'sem tipo')}</option>`; });
+    sel.innerHTML=op.length?op.join(''):'<option value="">Nenhum quarto livre neste período</option>';
+    if([...sel.options].some(o=>o.value===atual)) sel.value=atual;
+    atualizarPreco(); botoes();
+  };
+  const atualizarPreco=()=>{
+    const p=g('fP').value, ent=g('fE').value, sai=g('fS').value, q=quartoDe(g('fQ').value), el=g('fPreco');
+    if(!q||!(sai>ent)){ el.innerHTML='<span class="text-neutral-500">Selecione datas e um quarto para ver o valor.</span>'; return; }
+    const n=calcNoites(p,q,ent,sai,res); const tot=n.reduce((s,x)=>s+x.preco,0);
+    el.innerHTML=`<div class="flex flex-wrap items-center justify-between gap-2"><b>${n.length} diária${n.length>1?'s':''}</b><b class="font-serif text-2xl text-brand-dark">${money(tot)}</b></div>
+      <div class="mt-2 flex flex-wrap gap-1.5">${n.map(x=>`<span class="rounded-full bg-white px-2.5 py-1 text-xs shadow-sm">${fmtCurto(x.data)} · ${money(x.preco)}${x.especial?' <i class="fa-solid fa-star text-brand" title="'+esc(x.motivo||'preço especial')+'"></i>':''}${x.fixo?' <i class="fa-solid fa-lock text-neutral-400" title="preço gravado na entrada"></i>':''}</span>`).join('')}</div>
+      <div class="mt-2 text-xs text-neutral-500">O valor das diárias fica gravado nesta reserva; mudanças futuras de preço não a alteram.</div>`;
+  };
+  ['fP','fE','fS'].forEach(id=>g(id).addEventListener('change',()=>{ if(id==='fE'&&!edit){ const e=g('fE').value,s=g('fS').value; if(e&&(!s||s<=e)) g('fS').value=addDias(e,1); } if(id==='fP')g('fQ').value=''; atualizarQuartos(); }));
+  g('fQ').addEventListener('change',atualizarPreco);
+  if(quartoId&&!edit) g('fQ').value=quartoId;
+  atualizarQuartos();
+  if(quartoId&&!edit){ const s=g('fQ'); if([...s.options].some(o=>o.value===quartoId)) s.value=quartoId; atualizarPreco(); }
+  setTimeout(()=>g('fNome').focus(),50);
+}
+ACOES.fechar=()=>fecharDialogo();
+
+async function salvarReserva({res,st,modo}){
+  if(SALVANDO) return; const g=id=>$('#dlgFormBox #'+id);
+  const erro=m=>{ const e=g('fErro'); e.textContent=m; e.classList.remove('hidden'); };
+  const h=hojeISO(), edit=!!res;
+  const pousada=g('fP').value, ent=g('fE').value, sai=g('fS').value, qid=g('fQ').value;
+  const nome=g('fNome').value.trim(), rg=g('fRg').value.trim(), cpf=g('fCpf').value.trim(), tel=g('fTel').value.trim();
+  if(!qid) return erro('Selecione um quarto livre.');
+  if(!ent||!sai||sai<=ent) return erro('A saída deve ser depois da entrada.');
+  if((!edit||ent!==res.entrada)&&ent<h) return erro('Reservas só podem começar de hoje em diante.');
+  if(!nome) return erro('Informe o nome do hóspede.');
+  if(st==='hospedado'){ if(!rg&&!cpf) return erro('Para o check-in informe RG ou CPF.'); if(!tel) return erro('Para o check-in informe o telefone.'); if(ent>h) return erro('Check-in só pode ser feito a partir da data de entrada.'); }
+  SALVANDO=true; document.querySelectorAll('#fBtns button').forEach(b=>b.disabled=true);
+  try{
+    await lerTab(['reservas']);
+    if(!livre(qid,ent,sai,res&&res.id)){ SALVANDO=false; document.querySelectorAll('#fBtns button').forEach(b=>b.disabled=false); return erro('Este quarto acabou de ser ocupado por outro atendente. Escolha outro.'); }
+    const q=quartoDe(qid), old=edit?DB.reservas.find(r=>r.id===res.id):null;
+    const noites=calcNoites(pousada,q,ent,sai,old);
+    const campos={pousada,quarto_id:qid,quarto_num:q.numero,tipo:(tipoDe(q.tipo)||{}).nome||'',status:st,entrada:ent,saida:sai,diarias:noites.length,precos_noites:noites.map(n=>n.preco).join(';'),total:noites.reduce((s,n)=>s+n.preco,0),nome,rg,cpf,nasc:g('fNasc').value,telefone:tel,veiculo:g('fVei').value.trim(),placa:g('fPla').value.trim().toUpperCase(),cidade:g('fCid').value.trim(),obs:g('fObs').value.trim()};
+    let r;
+    if(edit){ r=old; Object.assign(r,campos); if(st==='hospedado'&&!r.checkin_em) r.checkin_em=new Date().toISOString(); await atualizar('reservas',r); await log(modo==='checkin'?'checkin':'editou_reserva',`${r.id} · Apto ${r.quarto_num} · ${r.nome}`); }
+    else { r={id:uid('R'),...campos,criado_por:EU.email,criado_em:new Date().toISOString(),checkin_em:st==='hospedado'?new Date().toISOString():'',checkout_em:''}; await anexar('reservas',r); await log(st==='hospedado'?'checkin':'reservou',`${r.id} · ${nomeP(pousada)} · Apto ${r.quarto_num} · ${r.nome} · ${fmtBR(ent)}→${fmtBR(sai)} · ${money(r.total)}`); }
+    fecharDialogo(); render(); toast(st==='hospedado'?'Check-in registrado':'Reserva salva');
+    if(st==='hospedado'&&(modo==='checkin'||!edit)){ const ok=await modal({titulo:'Imprimir a ficha de cadastro?',texto:'A ficha do apto '+r.quarto_num+' está pronta para impressão e assinatura.',ok:'Imprimir ficha'}); if(ok) imprimirFicha(r); }
+  }catch(e){ erroGeral(e); }
+  finally{ SALVANDO=false; document.querySelectorAll('#fBtns button').forEach(b=>b.disabled=false); }
+}
+
+/* ============ DETALHE DA RESERVA ============ */
+ACOES.res=async d=>{
+  await lerTab(['reservas']).catch(()=>{});
+  const r=DB.reservas.find(x=>x.id===d.id); if(!r) return;
+  const h=hojeISO(), ps=minhasPousadas().includes(r.pousada);
+  const li=(k,v)=>`<div><div class="${LBL}">${k}</div><div class="text-sm font-medium">${esc(v)||'<span class="text-neutral-400">—</span>'}</div></div>`;
+  const acoes=[];
+  if(ps){
+    if(r.status==='reservada') acoes.push(`<button data-act="checkin" data-id="${r.id}" ${r.entrada>h?'disabled title="Check-in só na data de entrada"':''} class="${BTN}"><i class="fa-solid fa-key"></i> Fazer check-in</button>`);
+    if(r.status==='hospedado') acoes.push(`<button data-act="checkout" data-id="${r.id}" class="${BTN}"><i class="fa-solid fa-right-from-bracket"></i> Check-out</button>`);
+    if(ativoRes(r)){ acoes.push(`<button data-act="editar" data-id="${r.id}" class="${BTN2}"><i class="fa-solid fa-pen"></i> Editar</button>`); acoes.push(`<button data-act="cancelar" data-id="${r.id}" class="inline-flex items-center gap-2 rounded-full border-2 border-[#D64545] px-5 py-2.5 text-sm font-semibold text-[#D64545] hover:bg-[#D64545] hover:text-white"><i class="fa-solid fa-ban"></i> Cancelar</button>`); }
+  }
+  acoes.push(`<button data-act="ficha" data-id="${r.id}" class="${BTNG}"><i class="fa-solid fa-print"></i> Imprimir ficha</button>`);
+  abrirDialogo(`
+  <div class="flex items-start justify-between gap-3"><div><span class="text-xs font-bold uppercase tracking-[.2em] text-brand">${esc(nomeP(r.pousada))}</span><h3 class="font-serif text-2xl font-extrabold">Apto ${esc(r.quarto_num)} · ${esc(r.nome)}</h3></div><button data-act="fechar" class="grid h-9 w-9 place-items-center rounded-full text-neutral-500 hover:bg-brand-soft hover:text-brand" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button></div>
+  <div class="mt-2">${pill(r.status)}</div>
+  <div class="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
+    ${li('Check-in',fmtBR(r.entrada))}${li('Check-out',fmtBR(r.saida))}${li('Diárias',r.diarias)}
+    ${li('Tipo',r.tipo)}${li('Diária na entrada',precosList(r).length?money(precosList(r)[0]):'')}${li('Total',money(r.total))}
+    ${li('RG',r.rg)}${li('CPF',r.cpf)}${li('Nascimento',fmtBR(r.nasc))}
+    ${li('Telefone',r.telefone)}${li('Veículo',r.veiculo)}${li('Placa',r.placa)}
+    ${li('Cidade',r.cidade)}${li('Atendente',r.criado_por)}${li('Observações',r.obs)}
+  </div>
+  <div class="mt-6 flex flex-wrap justify-end gap-3">${acoes.join('')}</div>`);
+};
+ACOES.editar=d=>{ const r=DB.reservas.find(x=>x.id===d.id); abrirForm({res:r}); };
+ACOES.checkin=d=>{ const r=DB.reservas.find(x=>x.id===d.id); abrirForm({res:r,modo:'checkin'}); };
+ACOES.ficha=d=>{ imprimirFicha(DB.reservas.find(x=>x.id===d.id)); };
+ACOES.checkout=async d=>{
+  const r=DB.reservas.find(x=>x.id===d.id), h=hojeISO();
+  const antecipado=h<r.saida&&h>r.entrada;
+  const ok=await modal({titulo:'Confirmar check-out',texto:antecipado?'Saída antecipada: as diárias após hoje serão removidas do total.':'O quarto será liberado e entrará na lista de limpeza.',resumo:`<b>Apto ${esc(r.quarto_num)}</b> · ${esc(r.nome)}<br>Total atual: ${money(r.total)}`,ok:'Fazer check-out'});
+  if(!ok) return;
+  if(antecipado){ const p=precosList(r).slice(0,diffDias(r.entrada,h)); r.saida=h; r.precos_noites=p.join(';'); r.diarias=p.length; r.total=p.reduce((s,x)=>s+x,0); }
+  r.status='finalizada'; r.checkout_em=new Date().toISOString();
+  await atualizar('reservas',r); await log('checkout',`${r.id} · Apto ${r.quarto_num} · ${r.nome} · ${money(r.total)}`);
+  fecharDialogo(); render(); toast('Check-out realizado');
+};
+ACOES.cancelar=async d=>{
+  const r=DB.reservas.find(x=>x.id===d.id);
+  const ok=await modal({titulo:'Cancelar reserva?',texto:'O quarto volta a ficar disponível no período. A reserva continua no histórico como cancelada.',resumo:`<b>Apto ${esc(r.quarto_num)}</b> · ${esc(r.nome)}<br>${fmtBR(r.entrada)} → ${fmtBR(r.saida)}`,ok:'Cancelar reserva',perigo:true});
+  if(!ok) return;
+  r.status='cancelada'; await atualizar('reservas',r); await log('cancelou',`${r.id} · Apto ${r.quarto_num} · ${r.nome}`);
+  fecharDialogo(); render(); toast('Reserva cancelada');
+};
+
+/* ============ IMPRESSÃO ============ */
+function imprimirHTML(html){ $('#rel-print').innerHTML=html; setTimeout(()=>window.print(),150); }
+function imprimirFicha(r){
+  const linhaF=(k,v,cls='')=>`<div class="${cls}" style="border-bottom:1px solid #444;padding:4px 0"><span style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#555">${k}</span><div style="min-height:20px;font-size:14px;font-weight:600">${esc(v)}</div></div>`;
+  const pr=precosList(r);
+  imprimirHTML(`
+  <div style="font-family:Inter,sans-serif">
+    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #F47B20;padding-bottom:10px">
+      <div><div style="font-family:Fraunces,serif;font-size:24px;font-weight:800;color:#F47B20">${esc(CONFIG.empresa)}</div><div style="font-size:12px">${esc(nomeP(r.pousada))}</div></div>
+      <div style="text-align:right;font-size:11px">Reserva nº <b>${esc(r.id)}</b><br>Impresso em ${fmtBR(hojeISO())}</div>
+    </div>
+    <h2 style="font-family:Fraunces,serif;font-size:20px;margin:16px 0 8px">Ficha de cadastro de hóspede</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 24px">
+      ${linhaF('Nome',r.nome,'grid-column:span 2')}
+      ${linhaF('RG',r.rg)}${linhaF('CPF',r.cpf)}
+      ${linhaF('Data de nascimento',fmtBR(r.nasc))}${linhaF('Telefone',r.telefone)}
+      ${linhaF('Veículo',r.veiculo)}${linhaF('Placa',r.placa)}
+      ${linhaF('Cidade',r.cidade)}${linhaF('APTO',r.quarto_num+(r.tipo?' · '+r.tipo:''))}
+      ${linhaF('Data do check-in',fmtBR(r.entrada))}${linhaF('Data do check-out',fmtBR(r.saida))}
+      ${linhaF('Valor da diária (na entrada)',pr.length?money(pr[0]):'')}${linhaF('Total ('+r.diarias+' diária'+(r.diarias>1?'s':'')+')',money(r.total))}
+      ${r.obs?linhaF('Observações',r.obs,'grid-column:span 2'):''}
+    </div>
+    <p style="margin-top:18px;font-size:11px;color:#444">Declaro que as informações acima são verdadeiras e que li e concordo com as normas da pousada.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:60px;font-size:11px;text-align:center">
+      <div style="border-top:1px solid #000;padding-top:4px">Assinatura do hóspede</div><div style="border-top:1px solid #000;padding-top:4px">Atendente</div>
+    </div>
+  </div>`);
+}
+
+/* ============ VIEW: Reservas ============ */
+VIEWS.reservas=()=>{
+  const ps=minhasPousadas();
+  return `
+  <div class="${CARD} grid gap-3 p-4 sm:grid-cols-3">
+    <div><label class="${LBL}">Buscar</label><input data-inp="filtroQ" value="${esc(UI.f.q)}" placeholder="Nome, CPF, placa ou apto" class="${INP}"></div>
+    <div><label class="${LBL}">Pousada</label><select data-chg="filtroP" class="${INP}"><option value="todas">Todas</option>${ps.map(p=>`<option value="${p}" ${UI.f.p===p?'selected':''}>${esc(nomeP(p))}</option>`).join('')}</select></div>
+    <div><label class="${LBL}">Situação</label><select data-chg="filtroS" class="${INP}">${[['ativas','Ativas (reservadas e hospedados)'],['todas','Todas'],['reservada','Reservadas'],['hospedado','Hospedados'],['finalizada','Finalizadas'],['cancelada','Canceladas']].map(([v,t])=>`<option value="${v}" ${UI.f.s===v?'selected':''}>${t}</option>`).join('')}</select></div>
+  </div>
+  <div id="listaRes"></div>`;
+};
+function renderListaRes(){
+  const ps=minhasPousadas(), f=UI.f, q=f.q.trim().toLowerCase();
+  let L=DB.reservas.filter(r=>ps.includes(r.pousada)&&(f.p==='todas'||r.pousada===f.p)&&(f.s==='todas'||(f.s==='ativas'?ativoRes(r):r.status===f.s))&&(!q||[r.nome,r.cpf,r.rg,r.placa,r.quarto_num,r.telefone].join(' ').toLowerCase().includes(q)));
+  L.sort((a,b)=>f.s==='ativas'?a.entrada.localeCompare(b.entrada):b.entrada.localeCompare(a.entrada));
+  const tot=L.length; L=L.slice(0,200);
+  if(!L.length){ $('#listaRes').innerHTML=`<div class="${CARD} p-10 text-center"><div class="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-3xl bg-brand-soft text-3xl text-brand"><i class="fa-solid fa-calendar-xmark"></i></div><h3 class="font-serif text-xl font-extrabold">Nenhuma reserva encontrada</h3><p class="mt-1 text-sm text-neutral-600">Ajuste os filtros ou crie uma nova reserva.</p></div>`; return; }
+  const tabela=`<div class="hidden overflow-x-auto rounded-3xl border border-orange-100 bg-white md:block"><table class="w-full text-left text-sm"><thead class="bg-brand-cream text-xs uppercase tracking-wider text-neutral-500"><tr><th class="px-4 py-3">Apto</th><th class="px-4 py-3">Hóspede</th><th class="px-4 py-3">Período</th><th class="px-4 py-3">Total</th><th class="px-4 py-3">Situação</th><th class="px-4 py-3"></th></tr></thead><tbody>${L.map(r=>`<tr class="border-t border-neutral-100 hover:bg-brand-cream/60"><td class="px-4 py-3"><b class="font-serif text-lg">${esc(r.quarto_num)}</b><div class="text-xs text-neutral-500">${esc(curtoP(r.pousada))}</div></td><td class="px-4 py-3"><b>${esc(r.nome)}</b><div class="text-xs text-neutral-500">${esc(r.telefone)}</div></td><td class="px-4 py-3">${fmtBR(r.entrada)} → ${fmtBR(r.saida)}<div class="text-xs text-neutral-500">${r.diarias} diária${r.diarias>1?'s':''}</div></td><td class="px-4 py-3 font-semibold">${money(r.total)}</td><td class="px-4 py-3">${pill(r.status)}</td><td class="px-4 py-3 text-right"><button data-act="res" data-id="${r.id}" class="grid h-9 w-9 place-items-center rounded-full text-brand hover:bg-brand-soft" aria-label="Abrir"><i class="fa-solid fa-eye"></i></button></td></tr>`).join('')}</tbody></table></div>`;
+  const cards=`<div class="space-y-3 md:hidden">${L.map(r=>`<button data-act="res" data-id="${r.id}" class="${CARD} block w-full p-4 text-left"><div class="flex items-center justify-between"><span><b class="font-serif text-xl">Apto ${esc(r.quarto_num)}</b> <span class="text-xs text-neutral-500">${esc(curtoP(r.pousada))}</span></span>${pill(r.status)}</div><div class="mt-1 font-semibold">${esc(r.nome)}</div><div class="text-sm text-neutral-600">${fmtBR(r.entrada)} → ${fmtBR(r.saida)} · ${money(r.total)}</div></button>`).join('')}</div>`;
+  $('#listaRes').innerHTML=tabela+cards+(tot>200?`<p class="mt-2 text-xs text-neutral-500">Mostrando 200 de ${tot}. Use a busca para refinar.</p>`:'');
+}
+ACOES.filtroQ=(d,b)=>{ UI.f.q=b.value; renderListaRes(); };
+ACOES.filtroP=(d,b)=>{ UI.f.p=b.value; renderListaRes(); };
+ACOES.filtroS=(d,b)=>{ UI.f.s=b.value; renderListaRes(); };
+
+/* ============ VIEW: Limpeza ============ */
+function estadoLimpeza(data){
+  const m={}; DB.limpeza.filter(l=>l.data===data).sort((a,b)=>String(a.quando).localeCompare(String(b.quando))).forEach(l=>{ m[l.quarto_id]=l.acao==='limpou'?l:null; }); return m;
+}
+VIEWS.limpeza=()=>{
+  const data=UI.dataL, est=estadoLimpeza(data), h=hojeISO();
+  const secoes=minhasPousadas().map(p=>{
+    const oc=quartosDe(p).map(q=>({q,r:ocupacao(q,data)})).filter(x=>x.r);
+    const sai=DB.reservas.filter(r=>r.pousada===p&&r.saida===data&&(r.status==='hospedado'||r.status==='finalizada'));
+    const feitos=oc.filter(x=>est[x.q.id]).length;
+    const linhas=oc.map(({q,r})=>{ const e=est[q.id]; return `<label class="flex cursor-pointer items-center gap-3 rounded-2xl px-3 py-3 hover:bg-brand-cream"><input type="checkbox" data-chg="limpar" data-q="${q.id}" data-p="${p}" ${e?'checked':''} class="h-5 w-5 accent-[#F47B20]"><span class="font-serif text-xl font-extrabold">${esc(q.numero)}</span><span class="min-w-0 flex-1 truncate text-sm">${esc(r.nome)}<span class="text-neutral-500"> · até ${fmtCurto(r.saida)}</span></span>${e?`<span class="rounded-full bg-leaf-soft px-3 py-1 text-xs font-semibold text-leaf"><i class="fa-solid fa-check"></i> Limpo</span>`:'<span class="rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-dark">Limpar</span>'}</label>`; }).join('');
+    return `<section class="${CARD} p-5"><div class="flex flex-wrap items-center justify-between gap-2"><h3 class="font-serif text-xl font-extrabold">${esc(nomeP(p))}</h3><span class="rounded-full bg-brand-soft px-3 py-1 text-xs font-bold text-brand-dark">${oc.length} quarto${oc.length!==1?'s':''} alugado${oc.length!==1?'s':''} · ${feitos}/${oc.length} limpos</span></div>
+      <div class="mt-3 divide-y divide-neutral-100">${linhas||'<p class="px-3 py-3 text-sm text-neutral-500">Nenhum quarto ocupado neste dia.</p>'}</div>
+      ${sai.length?`<div class="mt-4 rounded-2xl bg-brand-cream p-3 text-sm"><b><i class="fa-solid fa-arrow-right-from-bracket text-brand"></i> Saídas do dia (limpeza completa):</b> ${sai.map(r=>'Apto '+esc(r.quarto_num)).join(', ')}</div>`:''}</section>`; });
+  return `<div class="flex flex-wrap items-end gap-3"><div><label class="${LBL}">Data</label><input type="date" value="${data}" data-chg="dataL" class="${INP}"></div><button data-act="dataLHoje" class="${BTNG}">Hoje</button><button data-act="imprimirLimpeza" class="${BTN2}"><i class="fa-solid fa-print"></i> Imprimir lista</button><span class="text-sm text-neutral-600">${diaSem(data)}, ${fmtBR(data)}${data===h?' (hoje)':''}</span></div>
+  <div class="grid gap-4 xl:grid-cols-2">${secoes.join('')}</div>`;
+};
+ACOES.dataL=(d,b)=>{ if(b.value){ UI.dataL=b.value; render(); } };
+ACOES.dataLHoje=()=>{ UI.dataL=hojeISO(); render(); };
+ACOES.limpar=async(d,b)=>{
+  const ev={data:UI.dataL,pousada:d.p,quarto_id:d.q,acao:b.checked?'limpou':'desfez',por:EU.email,quando:new Date().toISOString()};
+  await anexar('limpeza',ev); render();
+};
+ACOES.imprimirLimpeza=()=>{
+  const data=UI.dataL, est=estadoLimpeza(data);
+  const blocos=minhasPousadas().map(p=>{ const oc=quartosDe(p).map(q=>({q,r:ocupacao(q,data)})).filter(x=>x.r);
+    return `<h3 style="font-family:Fraunces,serif;font-size:16px;margin:16px 0 6px">${esc(nomeP(p))} — ${oc.length} quarto(s) alugado(s)</h3><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#FFF1E2"><th style="text-align:left;padding:4px 6px;border:1px solid #bbb">Apto</th><th style="text-align:left;padding:4px 6px;border:1px solid #bbb">Hóspede</th><th style="text-align:left;padding:4px 6px;border:1px solid #bbb">Saída</th><th style="padding:4px 6px;border:1px solid #bbb;width:60px">Limpo</th></tr></thead><tbody>${oc.map(({q,r})=>`<tr><td style="padding:4px 6px;border:1px solid #bbb"><b>${esc(q.numero)}</b></td><td style="padding:4px 6px;border:1px solid #bbb">${esc(r.nome)}</td><td style="padding:4px 6px;border:1px solid #bbb">${fmtCurto(r.saida)}</td><td style="padding:4px 6px;border:1px solid #bbb;text-align:center">${est[q.id]?'✔':'☐'}</td></tr>`).join('')||'<tr><td colspan="4" style="padding:6px;border:1px solid #bbb">Nenhum quarto ocupado.</td></tr>'}</tbody></table>`; }).join('');
+  imprimirHTML(`<div style="font-family:Inter,sans-serif"><div style="border-bottom:3px solid #F47B20;padding-bottom:8px"><b style="font-family:Fraunces,serif;font-size:22px;color:#F47B20">${esc(CONFIG.empresa)}</b><div style="font-size:12px">Lista de limpeza — ${diaSem(data)}, ${fmtBR(data)}</div></div>${blocos}</div>`);
+};
+
+/* ============ VIEW: Preços ============ */
+VIEWS.precos=()=>{
+  const pp=podePreco(), h=hojeISO(), ps=minhasPousadas();
+  const tipos=DB.tipos.filter(t=>t.ativo!=='nao');
+  const esp=DB.precos.filter(p=>p.ativo!=='nao'&&(p.pousada==='*'||ps.includes(p.pousada))).sort((a,b)=>b.inicio.localeCompare(a.inicio));
+  return `
+  ${pp?'':`<div class="rounded-2xl bg-brand-soft px-4 py-3 text-sm font-medium text-brand-dark"><i class="fa-solid fa-lock mr-2"></i>Você pode consultar os preços, mas só usuários autorizados podem alterá-los.</div>`}
+  <section class="${CARD} p-5"><div class="flex flex-wrap items-center justify-between gap-2"><h3 class="font-serif text-xl font-extrabold">Tipos de quarto e diária padrão</h3>${pp?`<button data-act="formTipo" class="${BTN2}"><i class="fa-solid fa-plus"></i> Novo tipo</button>`:''}</div>
+    <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">${tipos.map(t=>`<div class="rounded-2xl border border-orange-100 bg-brand-cream p-4"><div class="flex items-start justify-between"><div><b>${esc(t.nome)}</b><div class="text-xs text-neutral-500">${t.capacidade} pessoa${t.capacidade>1?'s':''}</div></div>${pp?`<button data-act="formTipo" data-id="${t.id}" class="grid h-8 w-8 place-items-center rounded-full text-brand hover:bg-brand-soft" aria-label="Editar"><i class="fa-solid fa-pen"></i></button>`:''}</div><div class="mt-2 font-serif text-3xl font-extrabold text-brand-dark">${money(t.preco)}</div></div>`).join('')||'<p class="text-neutral-500">Nenhum tipo cadastrado.</p>'}</div></section>
+  <section class="${CARD} p-5"><div class="flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-serif text-xl font-extrabold">Preços para datas específicas</h3><p class="text-sm text-neutral-600">Promoções, feriados e alta temporada. Valem apenas no período informado.</p></div>${pp?`<button data-act="formPreco" class="${BTN}"><i class="fa-solid fa-plus"></i> Novo preço</button>`:''}</div>
+    <div class="mt-4 space-y-2">${esp.map(p=>{ const t=tipoDe(p.tipo); const enc=p.fim<h; return `<div class="flex flex-wrap items-center gap-3 rounded-2xl border border-neutral-100 px-4 py-3 ${enc?'opacity-60':''}"><div class="min-w-0 flex-1"><b>${esc(t?t.nome:'—')}</b> · <span class="text-sm">${p.pousada==='*'?'Todos os postos':esc(curtoP(p.pousada))}</span><div class="text-xs text-neutral-500">${fmtBR(p.inicio)} a ${fmtBR(p.fim)} · ${esc(p.motivo||'sem motivo')} · por ${esc(p.criado_por)}</div></div><span class="font-serif text-xl font-extrabold text-brand-dark">${money(p.preco)}</span>${enc?'<span class="rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-neutral-600">Encerrado</span>':(p.inicio<=h?'<span class="rounded-full bg-leaf-soft px-3 py-1 text-xs font-semibold text-leaf">Em vigor</span>':'<span class="rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-dark">Futuro</span>')}${pp?`<button data-act="formPreco" data-id="${p.id}" class="grid h-8 w-8 place-items-center rounded-full text-brand hover:bg-brand-soft" aria-label="Editar"><i class="fa-solid fa-pen"></i></button><button data-act="rmPreco" data-id="${p.id}" class="grid h-8 w-8 place-items-center rounded-full text-[#D64545] hover:bg-[#FDECEC]" aria-label="Remover"><i class="fa-solid fa-trash"></i></button>`:''}</div>`; }).join('')||'<p class="text-sm text-neutral-500">Nenhum preço especial cadastrado.</p>'}</div></section>`;
+};
+function formShell(titulo,corpo,botao){
+  const box=abrirDialogo(`<div class="flex items-start justify-between gap-3"><h3 class="font-serif text-2xl font-extrabold">${titulo}</h3><button data-act="fechar" class="grid h-9 w-9 place-items-center rounded-full text-neutral-500 hover:bg-brand-soft hover:text-brand" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button></div><div class="mt-4 grid gap-4 sm:grid-cols-2">${corpo}<p id="fErro" class="hidden rounded-2xl bg-[#FDECEC] px-4 py-3 text-sm font-medium text-[#D64545] sm:col-span-2"></p><div class="flex justify-end gap-3 sm:col-span-2"><button data-act="fechar" class="${BTNG}">Cancelar</button><button id="fOk" class="${BTN}">${botao}</button></div></div>`);
+  box.erro=m=>{ const e=box.querySelector('#fErro'); e.textContent=m; e.classList.remove('hidden'); };
+  return box;
+}
+ACOES.formTipo=d=>{
+  if(!podePreco()) return toast('Sem permissão para cadastrar preços.','erro');
+  const t=d.id?tipoDe(d.id):null;
+  const box=formShell(t?'Editar tipo de quarto':'Novo tipo de quarto',
+    campo('Nome',`<input id="tNome" value="${esc(t?t.nome:'')}" placeholder="Ex.: Casal com ar" class="${INP}">`,'sm:col-span-2')+campo('Capacidade (pessoas)',`<input id="tCap" type="number" min="1" value="${t?t.capacidade:2}" class="${INP}">`)+campo('Diária padrão (R$)',`<input id="tPreco" type="number" min="0" step="0.01" value="${t?t.preco:''}" class="${INP}">`),'Salvar');
+  box.querySelector('#fOk').onclick=async()=>{
+    const nome=box.querySelector('#tNome').value.trim(), cap=+box.querySelector('#tCap').value, pr=+box.querySelector('#tPreco').value;
+    if(!nome||!(cap>=1)||!(pr>0)) return box.erro('Informe nome, capacidade e um preço maior que zero.');
+    try{ if(t){ Object.assign(t,{nome,capacidade:cap,preco:pr}); await atualizar('tipos',t); await log('editou_tipo',`${nome} · ${money(pr)}`); } else { await anexar('tipos',{id:uid('T'),nome,capacidade:cap,preco:pr,ativo:'sim'}); await log('criou_tipo',`${nome} · ${money(pr)}`); }
+      fecharDialogo(); render(); toast('Tipo salvo'); }catch(e){ erroGeral(e); }
+  };
+};
+ACOES.formPreco=d=>{
+  if(!podePreco()) return toast('Sem permissão para cadastrar preços.','erro');
+  const p=d.id?DB.precos.find(x=>x.id===d.id):null, ps=minhasPousadas();
+  const box=formShell(p?'Editar preço especial':'Novo preço para datas específicas',
+    campo('Posto',`<select id="pPos" class="${INP}">${ps.length>1?'<option value="*">Todos os postos</option>':''}${ps.map(x=>`<option value="${x}" ${p&&p.pousada===x?'selected':''}>${esc(nomeP(x))}</option>`).join('')}</select>`)+
+    campo('Tipo de quarto',`<select id="pTipo" class="${INP}">${DB.tipos.filter(t=>t.ativo!=='nao').map(t=>`<option value="${t.id}" ${p&&p.tipo===t.id?'selected':''}>${esc(t.nome)}</option>`).join('')}</select>`)+
+    campo('De',`<input id="pIni" type="date" value="${p?p.inicio:hojeISO()}" class="${INP}">`)+campo('Até (inclusive)',`<input id="pFim" type="date" value="${p?p.fim:hojeISO()}" class="${INP}">`)+
+    campo('Diária no período (R$)',`<input id="pPreco" type="number" min="0" step="0.01" value="${p?p.preco:''}" class="${INP}">`)+campo('Motivo',`<input id="pMot" value="${esc(p?p.motivo:'')}" placeholder="Feriado, promoção, alta temporada…" class="${INP}">`),'Salvar');
+  if(p&&p.pousada==='*'&&ps.length<2) box.querySelector('#pPos').value=ps[0];
+  box.querySelector('#fOk').onclick=async()=>{
+    const g=id=>box.querySelector('#'+id).value, ini=g('pIni'), fim=g('pFim'), pr=+g('pPreco');
+    if(!ini||!fim||fim<ini) return box.erro('A data final deve ser igual ou depois da inicial.');
+    if(!(pr>0)) return box.erro('Informe um preço maior que zero.');
+    try{ const campos={pousada:g('pPos'),tipo:g('pTipo'),inicio:ini,fim,preco:pr,motivo:g('pMot').trim()};
+      if(p){ Object.assign(p,campos); await atualizar('precos',p); await log('editou_preco',`${campos.motivo} · ${money(pr)} · ${ini}→${fim}`); }
+      else { await anexar('precos',{id:uid('E'),...campos,criado_por:EU.email,criado_em:new Date().toISOString(),ativo:'sim'}); await log('criou_preco',`${campos.motivo} · ${money(pr)} · ${ini}→${fim}`); }
+      fecharDialogo(); render(); toast('Preço salvo'); }catch(e){ erroGeral(e); }
+  };
+};
+ACOES.rmPreco=async d=>{
+  if(!podePreco()) return;
+  const p=DB.precos.find(x=>x.id===d.id);
+  const ok=await modal({titulo:'Remover preço especial?',texto:'Reservas já feitas mantêm o valor gravado. Novas reservas voltam ao preço padrão.',resumo:`${fmtBR(p.inicio)} a ${fmtBR(p.fim)} · ${money(p.preco)} · ${esc(p.motivo)}`,ok:'Remover',perigo:true});
+  if(!ok) return; p.ativo='nao'; await atualizar('precos',p); await log('removeu_preco',`${p.motivo} · ${p.inicio}→${p.fim}`); render(); toast('Preço removido');
+};
+
+/* ============ VIEW: Gerir quartos ============ */
+VIEWS.quartos=()=>minhasPousadas().map(p=>{
+  const qs=quartosDe(p);
+  return `<section class="${CARD} p-5"><div class="flex flex-wrap items-center justify-between gap-2"><h3 class="font-serif text-xl font-extrabold">${esc(nomeP(p))} <span class="text-sm font-sans font-medium text-neutral-500">· ${qs.length} quartos</span></h3><button data-act="formQuarto" data-p="${p}" class="${BTN2}"><i class="fa-solid fa-plus"></i> Adicionar quarto</button></div>
+  <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">${qs.map(q=>{ const t=tipoDe(q.tipo); return `<div class="flex items-center gap-3 rounded-2xl border border-orange-100 bg-brand-cream px-4 py-3"><span class="font-serif text-2xl font-extrabold">${esc(q.numero)}</span><span class="min-w-0 flex-1 truncate text-sm text-neutral-600">${esc(t?t.nome:'sem tipo')}</span><button data-act="formQuarto" data-id="${q.id}" class="grid h-8 w-8 place-items-center rounded-full text-brand hover:bg-brand-soft" aria-label="Editar"><i class="fa-solid fa-pen"></i></button><button data-act="rmQuarto" data-id="${q.id}" class="grid h-8 w-8 place-items-center rounded-full text-[#D64545] hover:bg-[#FDECEC]" aria-label="Remover"><i class="fa-solid fa-trash"></i></button></div>`; }).join('')}</div></section>`; }).join('');
+ACOES.formQuarto=d=>{
+  const q=d.id?quartoDe(d.id):null, p=q?q.pousada:d.p;
+  const box=formShell(q?'Editar quarto':'Novo quarto — '+esc(curtoP(p)),
+    campo('Número / identificação',`<input id="qNum" value="${esc(q?q.numero:'')}" class="${INP}">`)+campo('Tipo',`<select id="qTipo" class="${INP}">${DB.tipos.filter(t=>t.ativo!=='nao').map(t=>`<option value="${t.id}" ${q&&q.tipo===t.id?'selected':''}>${esc(t.nome)} · ${money(t.preco)}</option>`).join('')}</select>`),'Salvar');
+  box.querySelector('#fOk').onclick=async()=>{
+    const num=box.querySelector('#qNum').value.trim(), tipo=box.querySelector('#qTipo').value;
+    if(!num) return box.erro('Informe o número do quarto.');
+    if(quartosDe(p).some(x=>x.numero===num&&(!q||x.id!==q.id))) return box.erro('Já existe um quarto com esse número neste posto.');
+    try{ if(q){ Object.assign(q,{numero:num,tipo}); await atualizar('quartos',q); await log('editou_quarto',`${curtoP(p)} · ${num}`); } else { await anexar('quartos',{id:uid('Q'),pousada:p,numero:num,tipo,ativo:'sim'}); await log('criou_quarto',`${curtoP(p)} · ${num}`); }
+      fecharDialogo(); render(); toast('Quarto salvo'); }catch(e){ erroGeral(e); }
+  };
+};
+ACOES.rmQuarto=async d=>{
+  const q=quartoDe(d.id), h=hojeISO();
+  if(DB.reservas.some(r=>r.quarto_id===q.id&&ativoRes(r)&&r.saida>h)) return toast('Este quarto tem reservas ativas ou futuras. Cancele-as antes de remover.','erro');
+  const ok=await modal({titulo:'Remover quarto?',texto:'O quarto deixa de aparecer no painel. O histórico de reservas é mantido.',resumo:`Apto <b>${esc(q.numero)}</b> · ${esc(nomeP(q.pousada))}`,ok:'Remover',perigo:true});
+  if(!ok) return; q.ativo='nao'; await atualizar('quartos',q); await log('removeu_quarto',`${curtoP(q.pousada)} · ${q.numero}`); render(); toast('Quarto removido');
+};
+
+/* ============ VIEW: Gestão ============ */
+function periodo(){
+  const g=UI.g, r=new Date(g.ref+'T12:00:00Z'); let ini,fim,rot,buckets;
+  if(g.per==='semana'){ const dow=(r.getUTCDay()+6)%7; ini=addDias(g.ref,-dow); fim=addDias(ini,6); rot='Semana '+fmtCurto(ini)+' – '+fmtCurto(fim); buckets=Array.from({length:7},(_,i)=>{const d=addDias(ini,i);return {l:diaSem(d)+' '+d.slice(8),i:d,f:d};}); }
+  else if(g.per==='mes'){ const y=r.getUTCFullYear(), m=r.getUTCMonth(); ini=y+'-'+pad(m+1)+'-01'; const n=new Date(Date.UTC(y,m+1,0)).getUTCDate(); fim=y+'-'+pad(m+1)+'-'+pad(n); rot=MESES[m]+' de '+y; buckets=Array.from({length:n},(_,i)=>{const d=y+'-'+pad(m+1)+'-'+pad(i+1);return {l:String(i+1),i:d,f:d};}); }
+  else { const y=r.getUTCFullYear(); ini=y+'-01-01'; fim=y+'-12-31'; rot=String(y); buckets=Array.from({length:12},(_,m)=>{const n=new Date(Date.UTC(y,m+1,0)).getUTCDate();return {l:MESES[m].slice(0,3),i:y+'-'+pad(m+1)+'-01',f:y+'-'+pad(m+1)+'-'+pad(n)};}); }
+  return {ini,fim,rot,buckets,dias:diffDias(ini,fim)+1};
+}
+function agregar(pids){
+  const m={}; DB.reservas.filter(r=>r.status!=='cancelada'&&pids.includes(r.pousada)).forEach(r=>precosList(r).forEach((v,i)=>{ const d=addDias(r.entrada,i); const o=(m[d]=m[d]||{rec:0,n:0}); o.rec+=v; o.n++; })); return m;
+}
+function somar(m,i,f){ let rec=0,n=0; Object.keys(m).forEach(d=>{ if(d>=i&&d<=f){ rec+=m[d].rec; n+=m[d].n; } }); return {rec,n}; }
+function barras(vals,labels,fmt){
+  const W=640,H=210,pl=44,pb=26,pt=10,max=Math.max(...vals,1)*1.1, bw=(W-pl)/vals.length;
+  let s=`<svg viewBox="0 0 ${W} ${H}" class="w-full" role="img">`;
+  for(let k=0;k<=4;k++){ const y=pt+(H-pb-pt)*(1-k/4); s+=`<line x1="${pl}" x2="${W}" y1="${y}" y2="${y}" stroke="#EFEAE3"/><text x="${pl-6}" y="${y+3}" text-anchor="end" font-size="9" fill="#737373" font-family="Inter">${fmt(max*k/4)}</text>`; }
+  const passo=Math.ceil(vals.length/12);
+  vals.forEach((v,i)=>{ const h=(H-pb-pt)*v/max, x=pl+i*bw+bw*.15; s+=`<rect x="${x}" y="${H-pb-h}" width="${bw*.7}" height="${Math.max(h,0)}" rx="3" fill="#F47B20"><title>${esc(labels[i])}: ${fmt(v)}</title></rect>`; if(i%passo===0) s+=`<text x="${x+bw*.35}" y="${H-8}" text-anchor="middle" font-size="9" fill="#737373" font-family="Inter">${esc(labels[i])}</text>`; });
+  return s+'</svg>';
+}
+VIEWS.gestao=()=>{
+  const g=UI.g, ps=minhasPousadas(), sel=g.p==='todas'?ps:[g.p], per=periodo(), h=hojeISO();
+  const m=agregar(sel), tot=somar(m,per.ini,per.fim), real=somar(m,per.ini,per.fim<h?per.fim:h);
+  const quartos=sel.reduce((s,p)=>s+quartosDe(p).length,0), cap=quartos*per.dias;
+  const resPer=DB.reservas.filter(r=>sel.includes(r.pousada)&&r.entrada>=per.ini&&r.entrada<=per.fim);
+  const val=resPer.filter(r=>r.status!=='cancelada'), canc=resPer.filter(r=>r.status==='cancelada').length;
+  const recB=per.buckets.map(b=>somar(m,b.i,b.f));
+  const ocB=per.buckets.map(b=>{ const d=diffDias(b.i,b.f)+1; return quartos?recB[per.buckets.indexOf(b)].n/(quartos*d)*100:0; });
+  const kpi=(t,v,ic,sub='')=>`<div class="${CARD} p-5"><div class="flex items-center justify-between"><span class="text-xs font-semibold uppercase tracking-wider text-neutral-500">${t}</span><span class="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand"><i class="fa-solid ${ic}"></i></span></div><b class="mt-2 block font-serif text-3xl sm:text-4xl">${v}</b><span class="text-xs text-neutral-500">${sub}</span></div>`;
+  const seg=(v,t)=>`<button data-act="gPer" data-v="${v}" class="rounded-full px-4 py-2 text-sm font-semibold ${g.per===v?'bg-brand text-white shadow-lg shadow-brand/30':'border border-neutral-200 bg-white text-neutral-600 hover:border-brand hover:text-brand'}">${t}</button>`;
+  const linhasP=ps.map(p=>{ const mp=agregar([p]), t=somar(mp,per.ini,per.fim), q=quartosDe(p).length; return `<tr class="border-t border-neutral-100"><td class="px-4 py-3 font-semibold">${esc(nomeP(p))}</td><td class="px-4 py-3">${money(t.rec)}</td><td class="px-4 py-3">${t.n}</td><td class="px-4 py-3">${q?Math.round(t.n/(q*per.dias)*100):0}%</td></tr>`; }).join('');
+  return `
+  <div class="flex flex-wrap items-center gap-2">${seg('semana','Semana')}${seg('mes','Mês')}${seg('ano','Ano')}
+    <div class="ml-auto flex items-center gap-2"><button data-act="gNav" data-n="-1" class="grid h-10 w-10 place-items-center rounded-full border-2 border-brand text-brand hover:bg-brand hover:text-white" aria-label="Anterior"><i class="fa-solid fa-chevron-left"></i></button><b class="min-w-[9rem] text-center font-serif text-lg">${esc(per.rot)}</b><button data-act="gNav" data-n="1" class="grid h-10 w-10 place-items-center rounded-full border-2 border-brand text-brand hover:bg-brand hover:text-white" aria-label="Próximo"><i class="fa-solid fa-chevron-right"></i></button></div>
+    ${ps.length>1?`<select data-chg="gPos" class="${INP} !w-auto"><option value="todas">Todos os postos</option>${ps.map(p=>`<option value="${p}" ${g.p===p?'selected':''}>${esc(curtoP(p))}</option>`).join('')}</select>`:''}</div>
+  <section class="grid grid-cols-2 gap-4 xl:grid-cols-4">
+    ${kpi('Receita',money(tot.rec),'fa-sack-dollar','realizada '+money(real.rec)+' · prevista '+money(tot.rec-real.rec))}
+    ${kpi('Diárias vendidas',tot.n,'fa-moon','quarto-noites no período')}
+    ${kpi('Ocupação',cap?Math.round(tot.n/cap*100)+'%':'—','fa-percent','inclui reservas futuras')}
+    ${kpi('Reservas',val.length,'fa-calendar-check',canc+' cancelada'+(canc!==1?'s':'')+' · ticket '+money(tot.n?tot.rec/tot.n:0)+'/diária')}
+  </section>
+  <section class="grid gap-4 lg:grid-cols-2">
+    <div class="${CARD} p-5"><h3 class="mb-2 font-serif text-lg font-extrabold">Receita por ${g.per==='ano'?'mês':'dia'}</h3>${barras(recB.map(x=>x.rec),per.buckets.map(b=>b.l),v=>'R$ '+Math.round(v))}</div>
+    <div class="${CARD} p-5"><h3 class="mb-2 font-serif text-lg font-extrabold">Ocupação por ${g.per==='ano'?'mês':'dia'}</h3>${barras(ocB,per.buckets.map(b=>b.l),v=>Math.round(v)+'%')}</div>
+  </section>
+  <section class="overflow-x-auto rounded-3xl border border-orange-100 bg-white"><table class="w-full text-left text-sm"><thead class="bg-brand-cream text-xs uppercase tracking-wider text-neutral-500"><tr><th class="px-4 py-3">Posto</th><th class="px-4 py-3">Receita</th><th class="px-4 py-3">Diárias</th><th class="px-4 py-3">Ocupação</th></tr></thead><tbody>${linhasP}</tbody></table></section>`;
+};
+ACOES.gPer=d=>{ UI.g.per=d.v; render(); };
+ACOES.gPos=(d,b)=>{ UI.g.p=b.value; render(); };
+ACOES.gNav=d=>{ const n=+d.n, r=new Date(UI.g.ref+'T12:00:00Z');
+  if(UI.g.per==='semana') UI.g.ref=addDias(UI.g.ref,7*n);
+  else if(UI.g.per==='mes'){ r.setUTCDate(1); r.setUTCMonth(r.getUTCMonth()+n); UI.g.ref=r.toISOString().slice(0,10); }
+  else { r.setUTCFullYear(r.getUTCFullYear()+n); UI.g.ref=r.toISOString().slice(0,10); }
+  render(); };
+
+/* ============ VIEW: Acessos ============ */
+VIEWS.acessos=()=>`
+  <div class="flex flex-wrap items-center justify-between gap-2"><p class="max-w-2xl text-sm text-neutral-600">Defina quem pode usar o painel, quais postos cada pessoa vê e quem pode cadastrar preços. Lembre-se de também compartilhar a planilha (Editor) e cadastrar o e-mail como usuário de teste no Google Cloud.</p><button data-act="formUsuario" class="${BTN}"><i class="fa-solid fa-user-plus"></i> Novo acesso</button></div>
+  <div class="hidden overflow-x-auto rounded-3xl border border-orange-100 bg-white md:block"><table class="w-full text-left text-sm"><thead class="bg-brand-cream text-xs uppercase tracking-wider text-neutral-500"><tr><th class="px-4 py-3">E-mail</th><th class="px-4 py-3">Perfil</th><th class="px-4 py-3">Postos</th><th class="px-4 py-3">Preços</th><th class="px-4 py-3">Situação</th><th class="px-4 py-3"></th></tr></thead><tbody>${DB.usuarios.map(u=>`<tr class="border-t border-neutral-100 hover:bg-brand-cream/60"><td class="px-4 py-3"><b>${esc(u.nome)}</b><div class="text-xs text-neutral-500">${esc(u.email)}</div></td><td class="px-4 py-3 capitalize">${esc(u.perfil)}</td><td class="px-4 py-3">${u.perfil==='admin'?'Todos':esc(String(u.pousadas).split(',').map(curtoP).join(', '))}</td><td class="px-4 py-3">${u.pode_preco==='sim'||u.perfil==='admin'?'<span class="rounded-full bg-leaf-soft px-3 py-1 text-xs font-semibold text-leaf">Pode</span>':'<span class="text-neutral-500">Não</span>'}</td><td class="px-4 py-3">${u.ativo==='nao'?'<span class="rounded-full bg-[#FDECEC] px-3 py-1 text-xs font-semibold text-[#D64545]">Inativo</span>':'<span class="rounded-full bg-leaf-soft px-3 py-1 text-xs font-semibold text-leaf">Ativo</span>'}</td><td class="px-4 py-3 text-right"><button data-act="formUsuario" data-e="${esc(u.email)}" class="grid h-9 w-9 place-items-center rounded-full text-brand hover:bg-brand-soft" aria-label="Editar"><i class="fa-solid fa-pen"></i></button></td></tr>`).join('')}</tbody></table></div>
+  <div class="space-y-3 md:hidden">${DB.usuarios.map(u=>`<button data-act="formUsuario" data-e="${esc(u.email)}" class="${CARD} block w-full p-4 text-left"><b>${esc(u.nome)}</b> <span class="text-xs capitalize text-neutral-500">· ${esc(u.perfil)}</span><div class="text-xs text-neutral-500">${esc(u.email)}</div><div class="mt-1 text-sm">${u.perfil==='admin'?'Todos os postos':esc(String(u.pousadas).split(',').map(curtoP).join(', '))}${u.ativo==='nao'?' · <b class="text-[#D64545]">Inativo</b>':''}</div></button>`).join('')}</div>`;
+ACOES.formUsuario=d=>{
+  const u=d.e?DB.usuarios.find(x=>x.email===d.e):null, sel=u?String(u.pousadas).split(',').map(s=>s.trim()):[];
+  const box=formShell(u?'Editar acesso':'Novo acesso',
+    campo('E-mail (Google)',`<input id="uEmail" type="email" value="${esc(u?u.email:'')}" ${u?'disabled':''} class="${INP}">`,'sm:col-span-2')+
+    campo('Nome',`<input id="uNome" value="${esc(u?u.nome:'')}" class="${INP}">`)+
+    campo('Perfil',`<select id="uPerfil" class="${INP}">${[['atendente','Atendente (reservas e check-in)'],['gerente','Gerente (+ quartos e gestão)'],['admin','Administrador (tudo)']].map(([v,t])=>`<option value="${v}" ${u&&u.perfil===v?'selected':''}>${t}</option>`).join('')}</select>`)+
+    campo('Postos que pode ver',`<div class="flex flex-wrap gap-4 rounded-xl border-2 border-neutral-200 bg-neutral-50 px-4 py-3">${CONFIG.pousadas.map(p=>`<label class="flex items-center gap-2 text-sm"><input type="checkbox" class="uPos h-4 w-4 accent-[#F47B20]" value="${p.id}" ${sel.includes(p.id)?'checked':''}> ${esc(p.nome)}</label>`).join('')}</div>`,'sm:col-span-2')+
+    `<label class="flex items-center gap-2 text-sm sm:col-span-1"><input id="uPreco" type="checkbox" class="h-4 w-4 accent-[#F47B20]" ${u&&u.pode_preco==='sim'?'checked':''}> Pode cadastrar preços</label><label class="flex items-center gap-2 text-sm sm:col-span-1"><input id="uAtivo" type="checkbox" class="h-4 w-4 accent-[#F47B20]" ${!u||u.ativo!=='nao'?'checked':''}> Acesso ativo</label>`,'Salvar');
+  box.querySelector('#fOk').onclick=async()=>{
+    const email=(u?u.email:box.querySelector('#uEmail').value.trim()).toLowerCase(), perfil=box.querySelector('#uPerfil').value;
+    const pous=[...box.querySelectorAll('.uPos:checked')].map(x=>x.value), ativo=box.querySelector('#uAtivo').checked;
+    if(!/^\S+@\S+\.\S+$/.test(email)) return box.erro('Informe um e-mail válido.');
+    if(!u&&DB.usuarios.some(x=>x.email.toLowerCase()===email)) return box.erro('Este e-mail já está cadastrado.');
+    if(perfil!=='admin'&&!pous.length) return box.erro('Marque ao menos um posto.');
+    if(email===EU.email&&(perfil!=='admin'||!ativo)) return box.erro('Você não pode remover seu próprio acesso de administrador.');
+    const campos={email,nome:box.querySelector('#uNome').value.trim()||email,perfil,pousadas:(perfil==='admin'?CONFIG.pousadas.map(p=>p.id):pous).join(','),pode_preco:box.querySelector('#uPreco').checked||perfil==='admin'?'sim':'nao',ativo:ativo?'sim':'nao'};
+    try{ if(u){ Object.assign(u,campos); await atualizar('usuarios',u); await log('editou_acesso',`${email} · ${perfil} · ${campos.pousadas}`); } else { await anexar('usuarios',campos); await log('criou_acesso',`${email} · ${perfil} · ${campos.pousadas}`); }
+      fecharDialogo(); render(); toast('Acesso salvo'); }catch(e){ erroGeral(e); }
+  };
+};
+
+/* ============ inicialização ============ */
+function mostrar(id){ ['login','carregando','negado','app'].forEach(x=>{ const e=$('#'+x); const on=x===id; e.classList.toggle('hidden',!on); if(x==='carregando'||x==='negado') e.classList.toggle('grid',on); }); }
+async function iniciar(){
+  mostrar('carregando'); $('#carregandoErro').classList.add('hidden');
+  try{
+    await garantirAbas(); await lerTudo();
+    if(!DB.tipos.length||!DB.quartos.length){ await semear(); await lerTudo(); }
+    const ok=await definirUsuario();
+    if(!ok){ $('#negadoEmail').textContent=SESSAO.u; mostrar('negado'); return; }
+    $('#uNome').textContent=EU.nome; $('#uPerfil').textContent=EU.admin?'Administrador':(EU.perfil==='gerente'?'Gerente':'Atendente');
+    $('#avatar').textContent=(EU.nome||'?').trim()[0].toUpperCase();
+    UI.pousada=minhasPousadas()[0]; mostrar('app'); render();
+    setInterval(async()=>{ if(document.hidden||$('#dlgForm').open||$('#dlgConf').open||document.activeElement.matches('input,select,textarea'))return; try{ await lerTudo(); render(); }catch{} },60000);
+  }catch(e){
+    console.error(e);
+    const el=$('#carregandoErro'); el.classList.remove('hidden');
+    el.innerHTML=`<b>${esc(dica(e))}</b><br>${esc(e.message||'')}<br><button onclick="location.reload()" class="mt-4 rounded-full border-2 border-brand px-5 py-2 font-semibold text-brand">Tentar de novo</button>`;
+    $('#carregandoTxt').textContent='Não foi possível carregar';
+  }
+}
+$('#loginLogo').innerHTML=logoHTML('h-16'); $('#menuLogo').innerHTML=logoHTML('h-12');
+$('#btnLogin').addEventListener('click',()=>{ loginErro(''); if(TC) TC.requestAccessToken({prompt:'select_account'}); });
+(function(){ const s=document.createElement('script'); s.src='https://accounts.google.com/gsi/client'; s.async=true; s.onload=iniciarGoogle; s.onerror=()=>loginErro('Não foi possível carregar o login do Google. Verifique a conexão.'); document.head.appendChild(s); })();
+</script>
+</body>
+</html>
