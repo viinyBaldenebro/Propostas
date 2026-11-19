@@ -57,6 +57,8 @@ dialog[open]{animation:pop .25s cubic-bezier(.2,.7,.2,1)}
   <div class="text-center">
     <div class="pulsar mx-auto mb-4 grid h-16 w-16 place-items-center rounded-3xl bg-brand text-3xl text-white"><i class="fa-solid fa-hotel"></i></div>
     <p id="carregandoTxt" class="font-serif text-xl font-extrabold">Carregando dados da planilha…</p>
+    <div class="mx-auto mt-5 h-3 w-72 max-w-full overflow-hidden rounded-full bg-brand-soft" role="progressbar" aria-valuemin="0" aria-valuemax="100"><div id="barra" class="h-full rounded-full bg-brand transition-all duration-500" style="width:0%"></div></div>
+    <p class="mt-2 text-sm font-semibold text-neutral-700"><span id="etapaTxt">Iniciando…</span> <span id="etapaPct" class="text-brand-dark">0%</span></p>
     <div id="carregandoErro" class="mt-4 hidden max-w-md text-sm text-[#D64545]"></div>
   </div>
 </section>
@@ -177,7 +179,10 @@ function rotuloData(iso){
   if(iso===addDias(h,1)) return 'Amanhã · '+diaSem(iso)+' '+fmtCurto(iso);
   return diaSem(iso)+', '+fmtBR(iso);
 }
-const cfg = k => { const c=DB.config.find(x=>x.chave===k); return c&&c.valor!==''?c.valor:(CONFIG[k]||''); };
+/* nome/subtítulo: planilha > cópia guardada no navegador (para a tela de login) > padrão do CONFIG */
+const marcaCache = () => { try{ return JSON.parse(localStorage.getItem('marca')||'{}'); }catch(e){ return {}; } };
+const cfg = k => { const c=DB.config.find(x=>x.chave===k); if(c&&c.valor!=='') return c.valor; return marcaCache()[k]||CONFIG[k]||''; };
+const salvarMarca = () => { if(!DB.config.length) return; try{ localStorage.setItem('marca',JSON.stringify({empresa:cfg('empresa'),subtitulo:cfg('subtitulo')})); }catch(e){} };
 
 const BTN='shine relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full bg-brand px-6 py-3 font-semibold text-white shadow-lg shadow-brand/30 transition hover:-translate-y-0.5 hover:bg-brand-dark disabled:opacity-50';
 const BTN2='inline-flex items-center justify-center gap-2 rounded-full border-2 border-brand px-5 py-2.5 text-sm font-semibold text-brand transition hover:bg-brand hover:text-white';
@@ -423,10 +428,11 @@ function render(){
   const itens=NAV.filter(n=>!n.ok||n.ok());
   if(!itens.find(n=>n.v===UI.view)) UI.view=itens[0].v;
   $('#nav').innerHTML=itens.map(n=>`<button data-act="nav" data-v="${n.v}" class="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left transition ${n.v===UI.view?'bg-brand-soft font-semibold text-brand-dark':'text-neutral-600 hover:bg-brand-soft hover:text-brand-dark'}"><i class="fa-solid ${n.ic} w-5 text-center"></i>${n.t}</button>`).join('');
-  $('#ctxBox').innerHTML=`<label class="${LBL}">Pousada</label>`+(ps.length>1?`<select data-chg="ctx" class="${INP} font-semibold">${ps.map(p=>`<option value="${p}" ${p===UI.pousada?'selected':''}>${esc(nomeP(p))}</option>`).join('')}</select>`:`<div class="rounded-xl bg-brand-soft px-4 py-2.5 text-sm font-semibold text-brand-dark">${esc(nomeP(UI.pousada))}</div>`);
-  $('#ctxChip').innerHTML=ehGlobal(UI.view)?'':`<i class="fa-solid fa-location-dot"></i> ${esc(nomeP(UI.pousada))} ▾`;
+  $('#ctxBox').classList.toggle('hidden',ps.length<2);
+  $('#ctxBox').innerHTML=ps.length>1?`<label class="${LBL}">Pousada</label><select data-chg="ctx" class="${INP} font-semibold">${ps.map(p=>`<option value="${p}" ${p===UI.pousada?'selected':''}>${esc(nomeP(p))}</option>`).join('')}</select>`:'';
+  $('#ctxChip').innerHTML=(ehGlobal(UI.view)||ps.length<2)?'':`<i class="fa-solid fa-location-dot"></i> ${esc(nomeP(UI.pousada))} ▾`;
   $('#titulo').textContent=(itens.find(n=>n.v===UI.view)||{}).t||'';
-  $('#menuLogo').innerHTML=logoHTML('h-12'); document.title=cfg('empresa')+' · Painel da Pousada';
+  salvarMarca(); $('#menuLogo').innerHTML=logoHTML('h-12'); document.title=cfg('empresa')+' · Painel da Pousada';
   $('#conteudo').innerHTML=VIEWS[UI.view]();
   if(UI.view==='reservas') renderListaRes();
 }
@@ -882,8 +888,13 @@ VIEWS.precos=()=>{
   ${pp?'':`<div class="rounded-2xl bg-brand-soft px-4 py-3 text-sm font-medium text-brand-dark"><i class="fa-solid fa-lock mr-2"></i>Você pode consultar os preços, mas só usuários autorizados podem alterá-los.</div>`}
   <section class="${CARD} p-5"><div class="flex flex-wrap items-center justify-between gap-2"><h3 class="font-serif text-xl font-extrabold">Tipos de quarto e diária padrão</h3>${pp?`<button data-act="formTipo" class="${BTN2}"><i class="fa-solid fa-plus"></i> Novo tipo</button>`:''}</div>
     <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">${tipos.map(t=>`<div class="rounded-2xl border border-orange-100 bg-brand-cream p-4"><div class="flex items-start justify-between"><div><b>${esc(t.nome)}</b><div class="text-xs text-neutral-500">${t.capacidade} pessoa${t.capacidade>1?'s':''}</div></div>${pp?`<button data-act="formTipo" data-id="${t.id}" class="grid h-8 w-8 place-items-center rounded-full text-brand hover:bg-brand-soft" aria-label="Editar"><i class="fa-solid fa-pen"></i></button>`:''}</div><div class="mt-2 font-serif text-3xl font-extrabold text-brand-dark">${money(t.preco)}</div></div>`).join('')||'<p class="text-neutral-500">Nenhum tipo cadastrado.</p>'}</div></section>
-  <section class="${CARD} p-5"><div class="flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-serif text-xl font-extrabold">Preços para datas específicas · ${esc(curtoP(p))}</h3><p class="text-sm text-neutral-600">Promoções, feriados e alta temporada. Valem apenas no período informado.</p></div>${pp?`<button data-act="formPreco" class="${BTN}"><i class="fa-solid fa-plus"></i> Novo preço</button>`:''}</div>
-    <div class="mt-4 space-y-2">${esp.map(x=>{ const t=tipoDe(x.tipo), enc=x.fim<h; return `<div class="flex flex-wrap items-center gap-3 rounded-2xl border border-neutral-100 px-4 py-3 ${enc?'opacity-60':''}"><div class="min-w-0 flex-1"><b>${esc(t?t.nome:'—')}</b> · <span class="text-sm">${x.pousada==='*'?'Todos os postos':esc(curtoP(x.pousada))}</span><div class="text-xs text-neutral-500">${fmtBR(x.inicio)} a ${fmtBR(x.fim)} · ${esc(x.motivo||'sem motivo')} · por ${esc(x.criado_por)}</div></div><span class="font-serif text-xl font-extrabold text-brand-dark">${money(x.preco)}</span>${enc?'<span class="rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-neutral-600">Encerrado</span>':(x.inicio<=h?'<span class="rounded-full bg-leaf-soft px-3 py-1 text-xs font-semibold text-leaf">Em vigor</span>':'<span class="rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-dark">Futuro</span>')}${pp?`<button data-act="formPreco" data-id="${x.id}" class="grid h-8 w-8 place-items-center rounded-full text-brand hover:bg-brand-soft" aria-label="Editar"><i class="fa-solid fa-pen"></i></button><button data-act="rmPreco" data-id="${x.id}" class="grid h-8 w-8 place-items-center rounded-full text-[#D64545] hover:bg-[#FDECEC]" aria-label="Remover"><i class="fa-solid fa-trash"></i></button>`:''}</div>`; }).join('')||'<p class="text-sm text-neutral-500">Nenhum preço especial cadastrado.</p>'}</div></section>`;
+  <section class="${CARD} p-4 sm:p-5"><div class="flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-serif text-lg font-extrabold sm:text-xl">Preços para datas específicas · ${esc(curtoP(p))}</h3><p class="text-sm text-neutral-600">Promoções, feriados e alta temporada. Valem apenas no período informado.</p></div>${pp?`<button data-act="formPreco" class="${BTN}"><i class="fa-solid fa-plus"></i> Novo preço</button>`:''}</div>
+    <div class="mt-4 space-y-2">${esp.map(x=>{ const t=tipoDe(x.tipo), enc=x.fim<h;
+      const stt=enc?'<span class="rounded-full bg-neutral-100 px-2.5 py-0.5 text-[11px] font-semibold text-neutral-600">Encerrado</span>':(x.inicio<=h?'<span class="rounded-full bg-leaf-soft px-2.5 py-0.5 text-[11px] font-semibold text-leaf">Em vigor</span>':'<span class="rounded-full bg-brand-soft px-2.5 py-0.5 text-[11px] font-semibold text-brand-dark">Futuro</span>');
+      return `<div class="min-w-0 rounded-2xl border border-neutral-100 p-3 sm:px-4 ${enc?'opacity-60':''}">
+        <div class="flex items-start justify-between gap-2"><div class="min-w-0"><b class="block break-words text-sm sm:text-base">${esc(t?t.nome:'—')}</b><span class="text-xs text-neutral-500">${x.pousada==='*'?'Todos os postos':esc(curtoP(x.pousada))}</span></div><span class="shrink-0 font-serif text-lg font-extrabold text-brand-dark sm:text-xl">${money(x.preco)}</span></div>
+        <div class="mt-1 break-words text-xs text-neutral-600"><i class="fa-regular fa-calendar text-brand"></i> ${fmtCurto(x.inicio)} a ${fmtBR(x.fim)} · ${esc(x.motivo||'sem motivo')}<span class="hidden sm:inline"> · por ${esc(x.criado_por)}</span></div>
+        <div class="mt-2 flex items-center justify-between gap-2">${stt}${pp?`<span class="flex items-center gap-1"><button data-act="formPreco" data-id="${x.id}" class="grid h-8 w-8 place-items-center rounded-full text-brand hover:bg-brand-soft" aria-label="Editar"><i class="fa-solid fa-pen"></i></button><button data-act="rmPreco" data-id="${x.id}" class="grid h-8 w-8 place-items-center rounded-full text-[#D64545] hover:bg-[#FDECEC]" aria-label="Remover"><i class="fa-solid fa-trash"></i></button></span>`:''}</div></div>`; }).join('')||'<p class="text-sm text-neutral-500">Nenhum preço especial cadastrado.</p>'}</div></section>`;
 };
 function formShell(titulo,corpo,botao){
   const box=abrirDialogo(`<div class="flex items-start justify-between gap-3"><h3 class="font-serif text-2xl font-extrabold">${titulo}</h3>${fechaX}</div><div class="mt-4 grid gap-4 sm:grid-cols-2">${corpo}<p id="fErro" class="hidden rounded-2xl bg-[#FDECEC] px-4 py-3 text-sm font-medium text-[#D64545] sm:col-span-2"></p><div class="flex justify-end gap-3 sm:col-span-2"><button data-act="fechar" class="${BTNG}">Cancelar</button><button id="fOk" class="${BTN}">${botao}</button></div></div>`);
@@ -906,7 +917,7 @@ ACOES.formPreco=d=>{
   if(!podePreco()) return toast('Sem permissão para cadastrar preços.','erro');
   const x=d.id?DB.precos.find(y=>y.id===d.id):null, ps=minhasPousadas(), alvo=x?x.pousada:UI.pousada;
   const box=formShell(x?'Editar preço especial':'Novo preço para datas específicas',
-    campo('Vale para',`<select id="pPos" class="${INP}"><option value="${UI.pousada}">${esc(nomeP(UI.pousada))}</option>${ps.length>1?`<option value="*" ${alvo==='*'?'selected':''}>Todos os postos</option>`:''}</select>`)+
+    (ps.length>1?campo('Vale para',`<select id="pPos" class="${INP}"><option value="${UI.pousada}">${esc(nomeP(UI.pousada))}</option>${ps.length>1?`<option value="*" ${alvo==='*'?'selected':''}>Todos os postos</option>`:''}</select>`):`<input type="hidden" id="pPos" value="${UI.pousada}">`)+
     campo('Tipo de quarto',`<select id="pTipo" class="${INP}">${DB.tipos.filter(t=>t.ativo!=='nao').map(t=>`<option value="${t.id}" ${x&&x.tipo===t.id?'selected':''}>${esc(t.nome)}</option>`).join('')}</select>`)+
     campo('De',`<input id="pIni" type="date" value="${x?x.inicio:hojeISO()}" class="${INP}">`)+campo('Até (inclusive)',`<input id="pFim" type="date" value="${x?x.fim:hojeISO()}" class="${INP}">`)+
     campo('Diária no período (R$)',`<input id="pPreco" type="number" min="0" step="0.01" value="${x?x.preco:''}" class="${INP}">`)+campo('Motivo',`<input id="pMot" value="${esc(x?x.motivo:'')}" placeholder="Feriado, promoção, alta temporada…" class="${INP}">`),'Salvar');
@@ -931,13 +942,14 @@ ACOES.rmPreco=async d=>{
 VIEWS.quartos=()=>{
   const p=UI.pousada, qs=quartosDe(p), h=hojeISO();
   const bls=bloqueiosAtivos().filter(b=>b.pousada===p&&b.fim>=h).sort((a,b)=>a.inicio.localeCompare(b.inicio));
-  return `<section class="${CARD} p-5"><div class="flex flex-wrap items-center justify-between gap-2"><h3 class="font-serif text-xl font-extrabold">${esc(nomeP(p))} <span class="text-sm font-sans font-medium text-neutral-500">· ${qs.length} quartos</span></h3><button data-act="formQuarto" class="${BTN2}"><i class="fa-solid fa-plus"></i> Adicionar quarto</button></div>
-  <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">${qs.map(q=>{ const t=tipoDe(q.tipo), b=bloqueioEm(q,h); return `<div class="rounded-2xl border border-orange-100 bg-brand-cream px-4 py-3"><div class="flex items-center gap-3"><span class="font-serif text-2xl font-extrabold">${esc(q.numero)}</span><span class="min-w-0 flex-1 truncate text-sm text-neutral-600">${esc(t?t.nome:'sem tipo')}</span>
-    <button data-act="formBloqueio" data-q="${q.id}" class="grid h-8 w-8 place-items-center rounded-full text-brand hover:bg-brand-soft" aria-label="Bloquear" title="Bloquear por período"><i class="fa-solid fa-lock"></i></button>
-    <button data-act="formQuarto" data-id="${q.id}" class="grid h-8 w-8 place-items-center rounded-full text-brand hover:bg-brand-soft" aria-label="Editar"><i class="fa-solid fa-pen"></i></button>
-    <button data-act="rmQuarto" data-id="${q.id}" class="grid h-8 w-8 place-items-center rounded-full text-[#D64545] hover:bg-[#FDECEC]" aria-label="Remover"><i class="fa-solid fa-trash"></i></button></div>${b?`<div class="mt-2 rounded-full bg-neutral-200 px-3 py-1 text-xs font-semibold text-neutral-600"><i class="fa-solid fa-lock"></i> Bloqueado até ${fmtCurto(b.fim)}</div>`:''}</div>`; }).join('')}</div></section>
-  <section class="${CARD} p-5"><h3 class="font-serif text-xl font-extrabold">Bloqueios ativos e futuros</h3>
-    <div class="mt-3 space-y-2">${bls.map(b=>{ const q=quartoDe(b.quarto_id); return `<div class="flex flex-wrap items-center gap-3 rounded-2xl border border-neutral-100 px-4 py-3"><b class="font-serif text-lg">Apto ${esc(q?q.numero:'?')}</b><div class="min-w-0 flex-1 text-sm">${fmtBR(b.inicio)} a ${fmtBR(b.fim)} · ${esc(b.motivo)}<div class="text-xs text-neutral-500">por ${esc(b.criado_por)}</div></div><button data-act="rmBloqueio" data-id="${b.id}" class="${BTNG} !py-1.5 text-xs"><i class="fa-solid fa-lock-open"></i> Liberar</button></div>`; }).join('')||'<p class="text-sm text-neutral-500">Nenhum bloqueio ativo.</p>'}</div></section>`;
+  return `<section class="${CARD} p-4 sm:p-5"><div class="flex flex-wrap items-center justify-between gap-2"><h3 class="font-serif text-lg font-extrabold sm:text-xl">${esc(nomeP(p))} <span class="text-sm font-sans font-medium text-neutral-500">· ${qs.length} quartos</span></h3><button data-act="formQuarto" class="${BTN2}"><i class="fa-solid fa-plus"></i> Adicionar quarto</button></div>
+  <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">${qs.map(q=>{ const t=tipoDe(q.tipo), b=bloqueioEm(q,h); const ib='grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs sm:h-8 sm:w-8 sm:text-sm'; return `<div class="min-w-0 rounded-2xl border border-orange-100 bg-brand-cream px-3 py-2 sm:px-4 sm:py-3"><div class="flex items-center gap-2"><span class="font-serif text-xl font-extrabold sm:text-2xl">${esc(q.numero)}</span><span class="min-w-0 flex-1 truncate text-xs text-neutral-600 sm:text-sm">${esc(t?t.nome:'sem tipo')}</span>
+    <span class="flex shrink-0 items-center gap-0.5 sm:gap-1"><button data-act="formBloqueio" data-q="${q.id}" class="${ib} text-brand hover:bg-brand-soft" aria-label="Bloquear" title="Bloquear por período"><i class="fa-solid fa-lock"></i></button>
+    <button data-act="formQuarto" data-id="${q.id}" class="${ib} text-brand hover:bg-brand-soft" aria-label="Editar"><i class="fa-solid fa-pen"></i></button>
+    <button data-act="rmQuarto" data-id="${q.id}" class="${ib} text-[#D64545] hover:bg-[#FDECEC]" aria-label="Remover"><i class="fa-solid fa-trash"></i></button></span></div>${b?`<div class="mt-1.5 inline-block rounded-full bg-neutral-200 px-2.5 py-0.5 text-[11px] font-semibold text-neutral-600"><i class="fa-solid fa-lock"></i> Bloqueado até ${fmtCurto(b.fim)}</div>`:''}</div>`; }).join('')}</div></section>
+  <section class="${CARD} p-4 sm:p-5"><h3 class="font-serif text-lg font-extrabold sm:text-xl">Bloqueios ativos e futuros</h3>
+    <div class="mt-3 space-y-2">${bls.map(b=>{ const q=quartoDe(b.quarto_id); return `<div class="min-w-0 rounded-2xl border border-neutral-100 p-3 sm:px-4"><div class="flex items-center justify-between gap-2"><b class="font-serif text-lg">Apto ${esc(q?q.numero:'?')}</b><button data-act="rmBloqueio" data-id="${b.id}" class="${BTNG} !px-3 !py-1.5 text-xs"><i class="fa-solid fa-lock-open"></i> Liberar</button></div>
+      <div class="mt-1 text-xs font-semibold sm:text-sm"><i class="fa-regular fa-calendar text-brand"></i> ${fmtCurto(b.inicio)} a ${fmtBR(b.fim)}</div><div class="break-words text-xs text-neutral-600 sm:text-sm">${esc(b.motivo)}</div><div class="hidden text-[11px] text-neutral-500 sm:block">por ${esc(b.criado_por)}</div></div>`; }).join('')||'<p class="text-sm text-neutral-500">Nenhum bloqueio ativo.</p>'}</div></section>`;
 };
 ACOES.formQuarto=d=>{
   const q=d.id?quartoDe(d.id):null, p=q?q.pousada:UI.pousada;
@@ -1125,12 +1137,18 @@ async function atualizarAuto(){
   if($('#dlgForm').open||$('#dlgConf').open||SALVANDO){ setTimeout(atualizarAuto,60000); return; }
   try{ await lerTudo(); ULT=Date.now(); render(); }catch(e){ console.warn('auto-atualização falhou',e); if(e.status===401) toast('Sessão Google expirada. Clique em atualizar (↻) ou entre novamente.','erro'); }
 }
+function etapa(p,t){ $('#barra').style.width=p+'%'; $('#etapaTxt').textContent=t; $('#etapaPct').textContent=p+'%'; $('#barra').parentElement.setAttribute('aria-valuenow',p); }
 async function iniciar(){
-  mostrar('carregando'); $('#carregandoErro').classList.add('hidden');
+  mostrar('carregando'); $('#carregandoErro').classList.add('hidden'); etapa(0,'Iniciando…');
   try{
-    await garantirAbas(); await lerTudo();
-    if(!DB.pousadas.length||!DB.config.length||!DB.tipos.length||!DB.quartos.length){ await semear(); await lerTudo(); }
-    const ok=await definirUsuario();
+    etapa(5,'Conectando ao Google Sheets…');
+    etapa(15,'Verificando as abas da planilha…'); await garantirAbas();
+    etapa(35,'Lendo pousadas e configurações…'); await lerTab(['pousadas','config']);
+    etapa(50,'Lendo tipos de quarto, quartos e preços…'); await lerTab(['tipos','quartos','bloqueios','precos']);
+    etapa(70,'Lendo reservas e limpeza…'); await lerTab(['reservas','limpeza']);
+    etapa(85,'Verificando seu acesso…'); await lerTab(['usuarios']);
+    if(!DB.pousadas.length||!DB.config.length||!DB.tipos.length||!DB.quartos.length){ etapa(90,'Preparando os dados iniciais…'); await semear(); await lerTudo(); }
+    const ok=await definirUsuario(); etapa(100,'Pronto!');
     if(!ok){ $('#negadoEmail').textContent=SESSAO.u; mostrar('negado'); return; }
     $('#uNome').textContent=EU.nome; $('#uPerfil').textContent=EU.admin?'Administrador':(EU.perfil==='gerente'?'Gerente':'Atendente');
     $('#avatar').textContent=(EU.nome||'?').trim()[0].toUpperCase();
@@ -1142,10 +1160,10 @@ async function iniciar(){
     console.error(e);
     const el=$('#carregandoErro'); el.classList.remove('hidden');
     el.innerHTML=`<b>${esc(dica(e))}</b><br>${esc(e.message||'')}<br><button onclick="location.reload()" class="mt-4 rounded-full border-2 border-brand px-5 py-2 font-semibold text-brand">Tentar de novo</button>`;
-    $('#carregandoTxt').textContent='Não foi possível carregar';
+    $('#carregandoTxt').textContent='Não foi possível carregar'; $('#barra').className='h-full rounded-full bg-[#D64545] transition-all duration-500';
   }
 }
-$('#loginLogo').innerHTML=logoHTML('h-16');
+$('#loginLogo').innerHTML=logoHTML('h-16'); document.title=cfg('empresa')+' · Painel da Pousada';
 $('#btnLogin').addEventListener('click',()=>{ loginErro(''); if(TC) TC.requestAccessToken({prompt:'select_account'}); });
 (function(){ const s=document.createElement('script'); s.src='https://accounts.google.com/gsi/client'; s.async=true; s.onload=iniciarGoogle; s.onerror=()=>loginErro('Não foi possível carregar o login do Google. Verifique a conexão.'); document.head.appendChild(s); })();
 </script>
