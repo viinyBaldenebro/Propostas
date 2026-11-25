@@ -94,6 +94,7 @@ dialog[open]{animation:pop .25s cubic-bezier(.2,.7,.2,1)}
           <div class="min-w-0"><h1 id="titulo" class="truncate font-serif text-xl font-extrabold sm:text-2xl"></h1><button id="ctxChip" data-act="menu" class="block max-w-full truncate text-xs font-semibold text-brand-dark lg:hidden"></button></div>
         </div>
         <div class="flex items-center gap-2">
+          <button data-act="consultaPrecos" class="inline-flex h-10 items-center gap-2 rounded-full border border-neutral-200 px-3 text-sm font-semibold text-brand-dark hover:bg-brand-soft sm:px-4" title="Consultar tabela de preços"><i class="fa-solid fa-tags text-brand"></i><span class="hidden md:inline">Tabela de preços</span></button>
           <button data-act="sync" class="grid h-10 w-10 place-items-center rounded-full border border-neutral-200 text-brand hover:bg-brand-soft" title="Atualizar"><i class="fa-solid fa-rotate"></i></button>
           <button data-act="novaRes" class="shine relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand/30 transition hover:-translate-y-0.5 hover:bg-brand-dark"><i class="fa-solid fa-plus"></i><span class="hidden sm:inline">Nova reserva</span><span class="sm:hidden">Reservar</span></button>
         </div>
@@ -134,10 +135,6 @@ const CONFIG = {
   pousadasIniciais: [
     { id:'P1', nome:'Hotel - Posto Rei do Suco 1', curto:'Posto 1', quartos:10 },
     { id:'P2', nome:'Hotel - Posto Rei do Suco 2', curto:'Posto 2', quartos:11 }
-  ],
-  tiposIniciais: [
-    { id:'T1', nome:'Solteiro (1 pessoa)', capacidade:1, preco:75 },
-    { id:'T2', nome:'Casal (2 pessoas)',   capacidade:2, preco:130 }
   ]
 };
 /* colunas novas sempre no FIM, para não quebrar planilhas já existentes */
@@ -347,9 +344,8 @@ async function log(acao,detalhe){
 async function semear(){
   if(!DB.pousadas.length) await anexarVarios('pousadas',CONFIG.pousadasIniciais.map(p=>({id:p.id,nome:p.nome,curto:p.curto,ativo:'sim'})));
   if(!DB.config.length) await anexarVarios('config',[{chave:'empresa',valor:CONFIG.empresa},{chave:'subtitulo',valor:CONFIG.subtitulo}]);
-  if(!DB.tipos.length) await anexarVarios('tipos',CONFIG.tiposIniciais.map(t=>({...t,ativo:'sim'})));
   if(!DB.quartos.length){
-    const L=[]; CONFIG.pousadasIniciais.forEach(p=>{ for(let i=1;i<=p.quartos;i++) L.push({id:uid('Q'),pousada:p.id,numero:String(i),tipo:CONFIG.tiposIniciais[1].id,ativo:'sim'}); });
+    const L=[]; CONFIG.pousadasIniciais.forEach(p=>{ for(let i=1;i<=p.quartos;i++) L.push({id:uid('Q'),pousada:p.id,numero:String(i),tipo:'',ativo:'sim'}); });
     await anexarVarios('quartos',L);
   }
 }
@@ -521,7 +517,7 @@ function cardQuarto(q,data,act,occ){
   return `<button data-act="${act}" data-q="${q.id}" class="group rounded-3xl border border-leaf/40 bg-white p-4 text-left shadow-sm transition duration-300 hover:-translate-y-1.5 hover:border-leaf hover:shadow-xl hover:shadow-orange-900/10">
       <div class="flex items-start justify-between gap-2"><span class="font-serif text-3xl font-extrabold">${esc(q.numero)}</span><span class="inline-flex items-center gap-1 rounded-full bg-leaf px-2.5 py-1 text-[11px] font-bold text-white"><i class="fa-solid fa-check text-[9px]"></i>Disponível</span></div>
       <div class="mt-1 text-xs text-neutral-500">${tn}</div>
-      <div class="mt-3 font-serif text-xl font-extrabold text-brand-dark">${money(pn.preco)}</div><div class="text-xs text-neutral-500">${pn.especial?'<i class="fa-solid fa-star text-brand"></i> '+esc(pn.motivo||'preço especial'):((!occ&&t&&t.modo==='ocupacao')?'a partir de · 1 pessoa':'diária')}</div></button>`;
+      <div class="mt-3 font-serif text-xl font-extrabold text-brand-dark">${t?money(pn.preco):'<span class="text-sm text-[#D64545]">Defina o tipo</span>'}</div><div class="text-xs text-neutral-500">${pn.especial?'<i class="fa-solid fa-star text-brand"></i> '+esc(pn.motivo||'preço especial'):((!occ&&t&&t.modo==='ocupacao')?'a partir de · 1 pessoa':'diária')}</div></button>`;
 }
 const estadoQ = (q,data) => ocupacao(q,data)?1:(bloqueioEm(q,data)?2:0);
 
@@ -674,6 +670,7 @@ function abrirWizard({res=null,quartoId=null,entrada=null,modo=null}){
 function renderWZ(){ WZ.passo===1?renderPasso1():renderPasso2(); }
 function calcWZ(){
   const q=quartoDe(WZ.quartoId); if(!q) return {erro:'Escolha um quarto.'};
+  if(!tipoDe(q.tipo)) return {erro:'Este quarto está sem tipo. Defina o tipo em Gerir quartos.'};
   const ent=WZ.entrada, sai=WZ.saida, ign=WZ.res&&WZ.res.id;
   if(!(sai>ent)) return {erro:'O check-out deve ser depois do check-in.'};
   const lim=maxSaida(q.id,ent,ign); if(lim&&sai>lim) return {erro:'Este quarto fica indisponível a partir de '+fmtBR(lim)+'. Check-out no máximo nessa data.',lim};
@@ -810,6 +807,51 @@ ACOES.wzSalvar=async()=>{
   }catch(e){ erroGeral(e); }
   finally{ SALVANDO=false; const b=wz$('wzSalvar'); if(b) b.disabled=false; }
 };
+
+/* ============ CONSULTA RÁPIDA DE PREÇOS (somente leitura) ============ */
+const CONS={pousada:null,data:null};
+function consultaHtml(){
+  const P=CONS.pousada, D=CONS.data, ps=minhasPousadas(), tipos=DB.tipos.filter(t=>t.ativo!=='nao');
+  const fx=faixasAtivas(), ads=adicionaisAtivos();
+  const card=t=>{
+    const cap=Math.max(1,+t.capacidade||1), e=especialEm(P,t.id,D), n1=precoNoite(P,t.id,D).especial;
+    let corpo;
+    if(t.modo==='ocupacao'){
+      corpo='<div class="mt-3 divide-y divide-neutral-100">'+Array.from({length:cap},(_,i)=>i+1).map(n=>{
+        const r=precoNoite(P,t.id,D,{adultos:n,criancas:{},adics:[]});
+        return `<div class="flex items-center justify-between py-2"><span class="text-sm text-neutral-600"><i class="fa-solid fa-user mr-2 text-brand/70"></i>${n} pessoa${n>1?'s':''}</span><b class="font-serif text-lg font-extrabold ${r.especial?'text-brand-dark':'text-ink'}">${money(r.preco)}</b></div>`; }).join('')+'</div>';
+    } else {
+      const r=precoNoite(P,t.id,D);
+      corpo=`<div class="mt-3 flex items-end justify-between"><span class="text-sm text-neutral-600">Diária do quarto</span><b class="font-serif text-3xl font-extrabold ${r.especial?'text-brand-dark':'text-ink'}">${money(r.preco)}</b></div>`;
+    }
+    return `<div class="rounded-2xl border-2 ${n1?'border-brand bg-brand-soft/40':'border-neutral-200 bg-white'} p-4">
+      <div class="flex items-start justify-between gap-2"><div><h4 class="font-serif text-lg font-extrabold">${esc(t.nome)}</h4><p class="text-xs text-neutral-500">até ${cap} hóspede${cap>1?'s':''}${t.modo==='ocupacao'?' · preço por nº de pessoas':''}</p></div>
+      ${n1?`<span class="shrink-0 rounded-full bg-brand px-2.5 py-1 text-[11px] font-bold uppercase text-white"><i class="fa-solid fa-star mr-1"></i>${esc(e&&e.motivo||'Data especial')}</span>`:''}</div>${corpo}</div>`;
+  };
+  const extra=(tit,ic,lin)=>lin.length?`<div class="rounded-2xl bg-neutral-50 p-4"><h4 class="text-sm font-bold uppercase tracking-wide text-neutral-500"><i class="fa-solid ${ic} mr-2 text-brand"></i>${tit}</h4><ul class="mt-2 space-y-1.5 text-sm">${lin.map(l=>`<li class="flex items-center justify-between gap-3"><span>${l[0]}</span><b class="text-right">${l[1]}</b></li>`).join('')}</ul></div>`:'';
+  const adLin=ads.map(a=>{ if(a.cobranca!=='tabela') return [esc(a.nome),adTxt(a)];
+    const L=DB.tarifas.filter(t=>t.alvo==='ad_'+a.id&&!(t.periodo||'')).sort((x,y)=>x.pessoas-y.pessoas);
+    return [esc(a.nome),L.length?L.map(t=>t.pessoas+' adulto'+(t.pessoas>1?'s':'')+': '+money(t.preco)).join(' · '):'valor por nº de adultos']; });
+  return `<div class="flex items-start justify-between gap-3"><div><h3 class="font-serif text-2xl font-extrabold">Tabela de preços</h3><p class="text-sm text-neutral-500">Consulta rápida · valores da diária no dia escolhido</p></div>${fechaX}</div>
+    <div class="mt-4 flex flex-wrap items-end gap-3">
+      ${ps.length>1?`<div class="min-w-[12rem] flex-1"><label class="${LBL}">Pousada</label><select data-chg="consP" class="${INP} font-semibold">${ps.map(x=>`<option value="${x}" ${x===P?'selected':''}>${esc(nomeP(x))}</option>`).join('')}</select></div>`:''}
+      <div class="min-w-[12rem] flex-1"><label class="${LBL}">Data</label><input type="date" value="${D}" data-chg="consD" class="${INP}"></div>
+      ${D!==hojeISO()?`<button data-act="consHoje" class="${BTNG}">Voltar para hoje</button>`:''}
+    </div>
+    <p class="mt-3 text-sm font-semibold text-brand-dark"><i class="fa-regular fa-calendar mr-1"></i>${diaSem(D)}, ${fmtBR(D)}${D===hojeISO()?' · hoje':''}</p>
+    ${tipos.length?`<div class="mt-3 grid gap-3 sm:grid-cols-2">${tipos.map(card).join('')}</div>`:'<p class="mt-4 rounded-2xl bg-neutral-50 p-6 text-center text-sm text-neutral-500">Nenhum tipo de quarto cadastrado ainda. Cadastre em Preços.</p>'}
+    <div class="mt-3 grid gap-3 sm:grid-cols-2">
+      ${extra('Crianças','fa-child',fx.map(f=>[esc(f.nome)+' <span class="text-xs text-neutral-500">('+f.idade_min+' a '+f.idade_max+' anos)</span>',regraTxt(f).split(' · ')[0]]))}
+      ${extra('Adicionais','fa-mug-hot',adLin)}
+    </div>
+    <p class="mt-3 text-xs text-neutral-500">Valores por diária (noite). Destaque em laranja = preço de data especial. Reservas já feitas mantêm o valor combinado.</p>
+    <div class="mt-4 flex justify-end"><button data-act="fechar" class="${BTN}">Fechar</button></div>`;
+}
+const consRender=()=>abrirDialogo(consultaHtml());
+ACOES.consultaPrecos=()=>{ CONS.pousada=minhasPousadas().includes(UI.pousada)?UI.pousada:minhasPousadas()[0]; CONS.data=hojeISO(); consRender(); };
+ACOES.consP=(d,el)=>{ CONS.pousada=el.value; consRender(); };
+ACOES.consD=(d,el)=>{ if(el.value){ CONS.data=el.value; consRender(); } };
+ACOES.consHoje=()=>{ CONS.data=hojeISO(); consRender(); };
 ACOES.fechar=()=>fecharDialogo();
 
 /* ============ DETALHE DA RESERVA ============ */
@@ -957,7 +999,7 @@ VIEWS.precos=()=>{
   const pen=(act,id)=>pp?`<button data-act="${act}" data-id="${id}" class="grid h-8 w-8 shrink-0 place-items-center rounded-full text-brand hover:bg-brand-soft" aria-label="Editar"><i class="fa-solid fa-pen"></i></button>`:'';
   const head=(t,sub,btn)=>`<div class="flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-serif text-lg font-extrabold sm:text-xl">${t}</h3>${sub?`<p class="text-sm text-neutral-600">${sub}</p>`:''}</div>${pp?btn:''}</div>`;
   const tipoCard=t=>{ const tb=tabelaDe(t.id), ocup=t.modo==='ocupacao';
-    return `<div class="min-w-0 rounded-2xl border border-orange-100 bg-brand-cream p-4"><div class="flex items-start justify-between gap-2"><div class="min-w-0"><b class="break-words">${esc(t.nome)}</b><div class="text-xs text-neutral-500">até ${t.capacidade} hóspede${t.capacidade>1?'s':''} · ${ocup?'preço por nº de pessoas':'preço fixo do quarto'}</div></div>${pen('formTipo',t.id)}</div>
+    return `<div class="min-w-0 rounded-2xl border border-orange-100 bg-brand-cream p-4"><div class="flex items-start justify-between gap-2"><div class="min-w-0"><b class="break-words">${esc(t.nome)}</b><div class="text-xs text-neutral-500">até ${t.capacidade} hóspede${t.capacidade>1?'s':''} · ${ocup?'preço por nº de pessoas':'preço fixo do quarto'}</div></div><span class="flex shrink-0">${pen('formTipo',t.id)}${pp?`<button data-act="rmTipo" data-id="${t.id}" class="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#D64545] hover:bg-[#FDECEC]" aria-label="Excluir"><i class="fa-solid fa-trash"></i></button>`:''}</span></div>
       ${ocup?`<div class="mt-2 space-y-0.5">${Array.from({length:t.capacidade},(_,i)=>`<div class="flex justify-between text-sm"><span>${i+1} pessoa${i?'s':''}</span><b>${tb[i+1]!==undefined?money(tb[i+1]):'—'}</b></div>`).join('')}</div>`:`<div class="mt-2 font-serif text-3xl font-extrabold text-brand-dark">${money(t.preco)}</div>`}</div>`; };
   const linha=(a,b,c)=>`<div class="flex items-center justify-between gap-2 rounded-2xl border border-neutral-100 px-3 py-2.5 sm:px-4"><div class="min-w-0"><b class="block break-words text-sm">${a}</b><span class="text-xs text-neutral-500">${b}</span></div><span class="flex shrink-0 items-center gap-1">${c}</span></div>`;
   return `
@@ -992,7 +1034,7 @@ ACOES.formTipo=d=>{
   const ler=()=>{ const f=box.querySelector('#tFixo'); if(f) fixo=f.value; for(let n=1;n<=40;n++){ const e=box.querySelector('#tp'+n); if(e) vals[n]=e.value; } };
   const desenhar=()=>{ const modo=box.querySelector('#tModo').value, cap=Math.min(40,Math.max(1,+box.querySelector('#tCap').value||1)), bx=box.querySelector('#tPrecoBox');
     bx.innerHTML=modo==='quarto'?campo('Diária (R$)',`<input id="tFixo" type="number" min="0" step="0.01" value="${esc(fixo)}" class="${INP}">`):`<div class="${LBL}">Diária por número de pessoas (R$)</div>`+tabelaGrid('tp',cap,vals); };
-  box.querySelector('#tModo').value=t&&t.modo==='ocupacao'?'ocupacao':'quarto'; desenhar();
+  box.querySelector('#tModo').value=t?(t.modo==='ocupacao'?'ocupacao':'quarto'):(cfg('modo_preco')||'quarto'); desenhar();
   box.querySelector('#tModo').onchange=()=>{ ler(); desenhar(); }; box.querySelector('#tCap').oninput=()=>{ ler(); desenhar(); };
   box.querySelector('#fOk').onclick=async()=>{
     ler(); const nome=box.querySelector('#tNome').value.trim(), cap=+box.querySelector('#tCap').value, modo=box.querySelector('#tModo').value;
@@ -1005,6 +1047,13 @@ ACOES.formTipo=d=>{
       if(modo==='ocupacao') await salvarTabela(id,'',tab);
       await log(t?'editou_tipo':'criou_tipo',`${nome} · ${modo} · cap ${cap}`); fecharDialogo(); render(); toast('Tipo salvo'); }catch(e){ erroGeral(e); }
   };
+};
+ACOES.rmTipo=async d=>{
+  if(!podePreco()) return semPerm();
+  const t=tipoDe(d.id), usam=DB.quartos.filter(q=>q.tipo===t.id&&q.ativo!=='nao');
+  if(usam.length) return toast(usam.length+' quarto'+(usam.length>1?'s usam':' usa')+' este tipo ('+usam.slice(0,5).map(q=>q.numero).join(', ')+(usam.length>5?'…':'')+'). Altere o tipo deles em Gerir quartos antes de excluir.','erro');
+  const ok=await modal({titulo:'Excluir tipo de quarto?',texto:'O tipo deixa de aparecer nas listas. Reservas antigas mantêm os valores e o nome já gravados.',resumo:`<b>${esc(t.nome)}</b> · até ${t.capacidade} hóspede${t.capacidade>1?'s':''}`,ok:'Excluir',perigo:true});
+  if(!ok) return; t.ativo='nao'; await atualizar('tipos',t); await log('excluiu_tipo',t.nome); render(); toast('Tipo excluído');
 };
 ACOES.formAdicional=d=>{
   if(!podePreco()) return semPerm();
@@ -1113,6 +1162,7 @@ ACOES.formQuarto=d=>{
     campo('Número / identificação',`<input id="qNum" value="${esc(q?q.numero:'')}" class="${INP}">`)+campo('Tipo',`<select id="qTipo" class="${INP}">${DB.tipos.filter(t=>t.ativo!=='nao').map(t=>`<option value="${t.id}" ${q&&q.tipo===t.id?'selected':''}>${esc(t.nome)} · ${money(t.preco)}</option>`).join('')}</select>`),'Salvar');
   box.querySelector('#fOk').onclick=async()=>{
     const num=box.querySelector('#qNum').value.trim(), tipo=box.querySelector('#qTipo').value;
+    if(!tipo) return box.erro('Cadastre um tipo de quarto em Preços antes.');
     if(!num) return box.erro('Informe o número do quarto.');
     if(quartosDe(p).some(x=>x.numero===num&&(!q||x.id!==q.id))) return box.erro('Já existe um quarto com esse número neste posto.');
     try{ if(q){ Object.assign(q,{numero:num,tipo}); await atualizar('quartos',q); await log('editou_quarto',`${curtoP(p)} · ${num}`); } else { await anexar('quartos',{id:uid('Q'),pousada:p,numero:num,tipo,ativo:'sim'}); await log('criou_quarto',`${curtoP(p)} · ${num}`); }
@@ -1262,19 +1312,16 @@ VIEWS.config=()=>`
   <section class="${CARD} p-5"><h3 class="font-serif text-xl font-extrabold">Identidade do sistema</h3><p class="text-sm text-neutral-600">Nome e subtítulo exibidos no menu, login e fichas impressas.</p>
     <div class="mt-4 grid gap-4 sm:grid-cols-2">${campo('Nome da empresa',`<input id="cEmp" value="${esc(cfg('empresa'))}" class="${INP}">`)}${campo('Subtítulo',`<input id="cSub" value="${esc(cfg('subtitulo'))}" class="${INP}">`)}</div>
     <div class="mt-4 flex justify-end"><button data-act="salvarConfig" class="${BTN}">Salvar identidade</button></div></section>
-  <section class="${CARD} p-5"><h3 class="font-serif text-xl font-extrabold">Modelo de preço por pessoa (Rei do Suco 2026)</h3><p class="text-sm text-neutral-600">Cria o tipo "Hospedagem" (até 4 hóspedes; 1 a 4 pessoas: R$ 116 / 209 / 300 / 389), o adicional "Café da manhã" (R$ 10 / 20 / 15 / 20 por nº de adultos) e as faixas de crianças (0 a 5 anos não pagam; 6 a 12 pagam +R$ 50 por diária). Troca todos os quartos para esse tipo. Tudo pode ser editado depois em Preços.</p><div class="mt-3"><button data-act="modeloCliente" class="${BTN2}"><i class="fa-solid fa-wand-magic-sparkles"></i> Aplicar modelo</button></div></section>
+  <section class="${CARD} p-5"><h3 class="font-serif text-xl font-extrabold">Modelo de precificação</h3><p class="text-sm text-neutral-600">Define como os novos tipos de quarto cobram a diária. Cada tipo ainda pode ser ajustado individualmente em Preços.</p>
+    <div class="mt-3 grid gap-2 sm:grid-cols-2">${[['quarto','Preço fixo do quarto','Um valor de diária por tipo de quarto, independente de quantas pessoas.'],['ocupacao','Preço por nº de pessoas','Tabela de diária conforme a quantidade de hóspedes (1 pessoa, 2 pessoas…).']].map(([v,t,d])=>`<label class="flex cursor-pointer items-start gap-3 rounded-2xl border-2 border-neutral-200 p-3 has-[:checked]:border-brand has-[:checked]:bg-brand-soft"><input type="radio" name="modoPreco" value="${v}" ${(cfg('modo_preco')||'quarto')===v?'checked':''} class="mt-1 h-4 w-4 accent-[#F47B20]"><span><b class="block text-sm">${t}</b><span class="text-xs text-neutral-600">${d}</span></span></label>`).join('')}</div>
+    <p class="mt-2 text-xs text-neutral-500">Adicionais (ex.: café da manhã), faixas de idade de crianças e preços de temporada ficam em Preços e funcionam nos dois modelos.</p>
+    <div class="mt-3 flex justify-end"><button data-act="salvarModoPreco" class="${BTN}">Salvar modelo</button></div></section>
   <section class="${CARD} p-5"><div class="flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-serif text-xl font-extrabold">Pousadas / hotéis</h3><p class="text-sm text-neutral-600">Cadastre, renomeie ou desative as unidades.</p></div><button data-act="formPousada" class="${BTN}"><i class="fa-solid fa-plus"></i> Nova pousada</button></div>
     <div class="mt-4 space-y-2">${DB.pousadas.map(p=>`<div class="flex flex-wrap items-center gap-3 rounded-2xl border border-neutral-100 px-4 py-3 ${p.ativo==='nao'?'opacity-60':''}"><div class="min-w-0 flex-1"><b>${esc(p.nome)}</b><div class="text-xs text-neutral-500">Nome curto: ${esc(p.curto)} · ${quartosDe(p.id).length} quartos${p.ativo==='nao'?' · <b>inativa</b>':''}</div></div><button data-act="formPousada" data-id="${p.id}" class="grid h-9 w-9 place-items-center rounded-full text-brand hover:bg-brand-soft" aria-label="Editar"><i class="fa-solid fa-pen"></i></button></div>`).join('')}</div></section>`;
-ACOES.modeloCliente=async()=>{
-  const ok=await modal({titulo:'Aplicar modelo de preço por pessoa?',texto:'Cria o tipo, o adicional e as faixas de crianças e muda TODOS os quartos ativos para o novo tipo. Reservas antigas mantêm os valores já gravados; se forem editadas com outra composição de hóspedes, serão recalculadas.',ok:'Aplicar modelo'});
-  if(!ok) return;
-  const tid=uid('T'); await anexar('tipos',{id:tid,nome:'Hospedagem',capacidade:4,preco:116,ativo:'sim',modo:'ocupacao'});
-  await salvarTabela(tid,'',[116,209,300,389]);
-  const aid=uid('A'); await anexar('adicionais',{id:aid,nome:'Café da manhã',cobranca:'tabela',montante:0,padrao:'',ativo:'sim'});
-  await salvarTabela('ad_'+aid,'',[10,20,15,20]);
-  await anexarVarios('faixas',[{id:uid('C'),nome:'0 a 5 anos',idade_min:0,idade_max:5,regra:'gratis',montante:0,ativo:'sim',cobra_adic:''},{id:uid('C'),nome:'6 a 12 anos',idade_min:6,idade_max:12,regra:'fixo_diaria',montante:50,ativo:'sim',cobra_adic:''}]);
-  for(const q of DB.quartos.filter(q=>q.ativo!=='nao')){ q.tipo=tid; await atualizar('quartos',q); }
-  await lerTab(['tipos','adicionais','faixas','quartos','tarifas']); await log('modelo_preco_pessoa','Hospedagem · 4 pessoas'); render(); toast('Modelo aplicado');
+ACOES.salvarModoPreco=async()=>{
+  const v=(document.querySelector('input[name=modoPreco]:checked')||{}).value||'quarto';
+  const c=DB.config.find(x=>x.chave==='modo_preco'); if(c){ c.valor=v; await atualizar('config',c); } else await anexar('config',{chave:'modo_preco',valor:v});
+  await log('editou_modelo_preco',v); render(); toast('Modelo de precificação salvo');
 };
 ACOES.salvarConfig=async()=>{
   for(const [k,id] of [['empresa','cEmp'],['subtitulo','cSub']]){
@@ -1315,7 +1362,7 @@ async function iniciar(){
     etapa(50,'Lendo tipos de quarto, quartos e preços…'); await lerTab(['tipos','quartos','bloqueios','precos','tarifas','adicionais','faixas']);
     etapa(70,'Lendo reservas e limpeza…'); await lerTab(['reservas','limpeza']);
     etapa(85,'Verificando seu acesso…'); await lerTab(['usuarios']);
-    if(!DB.pousadas.length||!DB.config.length||!DB.tipos.length||!DB.quartos.length){ etapa(90,'Preparando os dados iniciais…'); await semear(); await lerTudo(); }
+    if(!DB.pousadas.length||!DB.config.length||!DB.quartos.length){ etapa(90,'Preparando os dados iniciais…'); await semear(); await lerTudo(); }
     const ok=await definirUsuario(); etapa(100,'Pronto!');
     if(!ok){ $('#negadoEmail').textContent=SESSAO.u; mostrar('negado'); return; }
     $('#uNome').textContent=EU.nome; $('#uPerfil').textContent=EU.admin?'Administrador':(EU.perfil==='gerente'?'Gerente':'Atendente');
