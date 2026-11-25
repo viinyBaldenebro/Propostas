@@ -141,21 +141,24 @@ const CONFIG = {
   ]
 };
 /* colunas novas sempre no FIM, para não quebrar planilhas já existentes */
-const ABA = { pousadas:'Pousadas', config:'Config', quartos:'Quartos', bloqueios:'Bloqueios', tipos:'Tipos', precos:'PrecosEspeciais', usuarios:'Usuarios', reservas:'Reservas', limpeza:'Limpeza', hist:'Historico' };
+const ABA = { pousadas:'Pousadas', config:'Config', quartos:'Quartos', bloqueios:'Bloqueios', tipos:'Tipos', precos:'PrecosEspeciais', tarifas:'Tarifas', adicionais:'Adicionais', faixas:'FaixasEtarias', usuarios:'Usuarios', reservas:'Reservas', limpeza:'Limpeza', hist:'Historico' };
 const COLS = {
   pousadas:['id','nome','curto','ativo'],
   config:['chave','valor'],
   quartos:['id','pousada','numero','tipo','ativo'],
   bloqueios:['id','pousada','quarto_id','inicio','fim','motivo','criado_por','criado_em','ativo'],
-  tipos:['id','nome','capacidade','preco','ativo'],
-  precos:['id','pousada','tipo','inicio','fim','preco','motivo','criado_por','criado_em','ativo'],
+  tipos:['id','nome','capacidade','preco','ativo','modo'],
+  tarifas:['id','alvo','periodo','pessoas','preco'],
+  adicionais:['id','nome','cobranca','montante','padrao','ativo'],
+  faixas:['id','nome','idade_min','idade_max','regra','montante','ativo','cobra_adic'],
+  precos:['id','pousada','tipo','inicio','fim','preco','motivo','criado_por','criado_em','ativo','ajuste_tipo','ajuste_valor'],
   usuarios:['email','nome','perfil','pousadas','pode_preco','ativo','pode_desconto','pode_gestao'],
-  reservas:['id','pousada','quarto_id','quarto_num','tipo','status','entrada','saida','diarias','precos_noites','total','nome','rg','cpf','nasc','telefone','veiculo','placa','cidade','obs','criado_por','criado_em','checkin_em','checkout_em','desconto','pago','pago_em','pago_por','email','forma_pgto'],
+  reservas:['id','pousada','quarto_id','quarto_num','tipo','status','entrada','saida','diarias','precos_noites','total','nome','rg','cpf','nasc','telefone','veiculo','placa','cidade','obs','criado_por','criado_em','checkin_em','checkout_em','desconto','pago','pago_em','pago_por','email','forma_pgto','adultos','criancas','adicionais','detalhe'],
   limpeza:['data','pousada','quarto_id','acao','por','quando'],
   hist:['quando','por','acao','detalhe']
 };
-const NUMCOLS = ['capacidade','preco','diarias','total','desconto'];
-const DB = { pousadas:[], config:[], quartos:[], bloqueios:[], tipos:[], precos:[], usuarios:[], reservas:[], limpeza:[] };
+const NUMCOLS = ['capacidade','preco','diarias','total','desconto','ajuste_valor','pessoas','montante','idade_min','idade_max','adultos'];
+const DB = { pousadas:[], config:[], quartos:[], bloqueios:[], tipos:[], precos:[], tarifas:[], adicionais:[], faixas:[], usuarios:[], reservas:[], limpeza:[] };
 
 /* ============ utilidades ============ */
 const $ = s => document.querySelector(s);
@@ -392,19 +395,62 @@ function maxSaida(qid,ent,ignorar){
   bloqueiosAtivos().forEach(b=>{ if(b.quarto_id===qid&&b.inicio>ent) c.push(b.inicio); });
   return c.length?c.sort()[0]:null;
 }
-function precoNoite(pousada,tipoId,data){
-  const esp=DB.precos.filter(p=>p.ativo!=='nao'&&(p.pousada==='*'||p.pousada===pousada)&&p.tipo===tipoId&&p.inicio<=data&&data<=p.fim)
-    .sort((a,b)=>((b.pousada!=='*')-(a.pousada!=='*'))||String(b.criado_em).localeCompare(String(a.criado_em)));
-  if(esp.length) return {preco:+esp[0].preco,motivo:esp[0].motivo,especial:true};
-  const t=tipoDe(tipoId); return {preco:t?+t.preco:0,especial:false};
+const arred = v => Math.round(v*100)/100;
+const OCC1 = {adultos:1,criancas:{},adics:[]};
+const faixasAtivas = () => DB.faixas.filter(f=>f.ativo!=='nao').sort((a,b)=>a.idade_min-b.idade_min);
+const adicionaisAtivos = () => DB.adicionais.filter(a=>a.ativo!=='nao');
+const regraTxt = f => (f.regra==='fixo_diaria'?'+'+money(f.montante)+' por diária':(f.regra==='percentual'?'+'+f.montante+'% da diária':'não paga'))+(f.cobra_adic==='sim'?' · paga adicionais':'');
+const adTxt = a => a.cobranca==='pessoa_diaria'?'+'+money(a.montante)+' por pessoa/dia':(a.cobranca==='diaria'?'+'+money(a.montante)+' por diária':(a.cobranca==='estadia'?'+'+money(a.montante)+' por estadia':'valor por nº de adultos'));
+function parseCriancas(str){ const m={}; String(str||'').split(';').forEach(x=>{ const [k,v]=x.split(':'); if(k&&+v>0) m[k]=+v; }); return m; }
+const critStr = m => Object.keys(m).filter(k=>m[k]>0).sort().map(k=>k+':'+m[k]).join(';');
+const occDe = r => ({adultos:Number(r.adultos)||1,criancas:parseCriancas(r.criancas),adics:String(r.adicionais||'').split(';').filter(Boolean)});
+const occSig = o => (o.adultos||1)+'|'+critStr(o.criancas||{})+'|'+[...(o.adics||[])].sort().join(',');
+function detalheOcc(o){
+  const p=[o.adultos+' adulto'+(o.adultos>1?'s':'')];
+  Object.keys(o.criancas||{}).forEach(k=>{ const f=DB.faixas.find(x=>x.id===k), q=o.criancas[k]; if(f&&q>0) p.push(q+' criança'+(q>1?'s':'')+' ('+f.nome+')'); });
+  (o.adics||[]).forEach(id=>{ const a=DB.adicionais.find(x=>x.id===id); if(a) p.push(a.nome); });
+  return p.join(' · ');
 }
-/* preços das noites já gravadas em `old` são preservados; só noites novas usam o preço atual */
-function calcNoites(pousada,quarto,ent,sai,old){
+/* tabela por nº de pessoas: usa a linha de mesmo número, ou a maior abaixo dele */
+function tabelaPreco(alvo,periodo,pessoas){
+  const L=DB.tarifas.filter(t=>t.alvo===alvo&&(t.periodo||'')===(periodo||'')).sort((a,b)=>a.pessoas-b.pessoas);
+  if(!L.length) return null; let r=null; L.forEach(t=>{ if(t.pessoas<=pessoas) r=t; }); return (r||L[0]).preco;
+}
+function especialEm(pousada,tipoId,data){
+  return DB.precos.filter(p=>p.ativo!=='nao'&&(p.pousada==='*'||p.pousada===pousada)&&p.tipo===tipoId&&p.inicio<=data&&data<=p.fim)
+    .sort((a,b)=>((b.pousada!=='*')-(a.pousada!=='*'))||String(b.criado_em).localeCompare(String(a.criado_em)))[0]||null;
+}
+/* preço de UMA noite: diária (fixa ou por ocupação) ± ajuste do período + crianças + adicionais */
+function precoNoite(pousada,tipoId,data,occ=OCC1,primeira=false){
+  const t=tipoDe(tipoId), e=especialEm(pousada,tipoId,data), ad=occ.adultos||1, partes=[]; let especial=false;
+  const aj=e?e.ajuste_tipo:'';
+  if(t&&t.modo==='ocupacao'){
+    let v=null; if(e&&aj==='tabela'){ v=tabelaPreco(t.id,e.id,ad); if(v!==null) especial=true; }
+    if(v===null) v=tabelaPreco(t.id,'',ad);
+    partes.push({t:'Diária · '+ad+' adulto'+(ad>1?'s':''),v:v===null?(+t.preco||0):v});
+  } else {
+    let v=t?+t.preco:0; if(e&&(aj===''||aj==='valor')){ v=+e.preco; especial=true; } partes.push({t:'Diária',v});
+  }
+  const soma=()=>partes.reduce((s,x)=>s+x.v,0);
+  const pag=ad+faixasAtivas().reduce((n,f)=>n+(f.cobra_adic==='sim'?((occ.criancas||{})[f.id]||0):0),0);
+  if(e&&aj==='acresc_v'){ partes.push({t:'Ajuste do período',v:+e.ajuste_valor}); especial=true; }
+  if(e&&aj==='acresc_p'){ partes.push({t:'Ajuste do período ('+e.ajuste_valor+'%)',v:arred(soma()*e.ajuste_valor/100)}); especial=true; }
+  const base=soma();
+  faixasAtivas().forEach(f=>{ const q=(occ.criancas||{})[f.id]||0; if(!q) return;
+    const v=f.regra==='fixo_diaria'?f.montante*q:(f.regra==='percentual'?arred(base*f.montante/100*q):0);
+    if(v>0) partes.push({t:f.nome+' × '+q,v}); });
+  (occ.adics||[]).forEach(id=>{ const a=DB.adicionais.find(x=>x.id===id&&x.ativo!=='nao'); if(!a) return; let v=0;
+    if(a.cobranca==='pessoa_diaria') v=a.montante*pag; else if(a.cobranca==='diaria') v=a.montante; else if(a.cobranca==='estadia') v=primeira?a.montante:0; else v=tabelaPreco('ad_'+a.id,'',pag)||0;
+    if(v>0) partes.push({t:a.nome,v}); });
+  return {preco:Math.max(0,arred(soma())),partes,especial,motivo:e?e.motivo:''};
+}
+/* preços das noites já gravadas em `old` são preservados se tipo e composição de hóspedes não mudaram */
+function calcNoites(pousada,quarto,ent,sai,old,occ=OCC1){
   const mapa={};
-  if(old&&quartoDe(old.quarto_id)&&quartoDe(old.quarto_id).tipo===quarto.tipo)
+  if(old&&quartoDe(old.quarto_id)&&quartoDe(old.quarto_id).tipo===quarto.tipo&&occSig(occDe(old))===occSig(occ))
     String(old.precos_noites).split(';').filter(x=>x!=='').forEach((v,i)=>{ mapa[addDias(old.entrada,i)]=+v; });
-  const out=[]; const n=diffDias(ent,sai);
-  for(let i=0;i<n;i++){ const d=addDias(ent,i); out.push(mapa[d]!==undefined?{data:d,preco:mapa[d],fixo:true}:{data:d,...precoNoite(pousada,quarto.tipo,d)}); }
+  const out=[], n=diffDias(ent,sai);
+  for(let i=0;i<n;i++){ const d=addDias(ent,i); out.push(mapa[d]!==undefined?{data:d,preco:mapa[d],fixo:true}:{data:d,...precoNoite(pousada,quarto.tipo,d,occ,i===0)}); }
   return out;
 }
 const precosList = r => String(r.precos_noites).split(';').filter(x=>x!=='').map(Number);
@@ -461,8 +507,8 @@ ACOES.dnset=(d,b)=>{ if(b.value) DN[d.k].set(b.value); };
 DN.dia={get:()=>UI.data,set:v=>{ UI.data=v; render(); }};
 
 /* card de quarto: disponível (verde, destaque) · ocupado (apagado) · bloqueado */
-function cardQuarto(q,data,act){
-  const r=ocupacao(q,data), bl=!r&&bloqueioEm(q,data), t=tipoDe(q.tipo), pn=precoNoite(q.pousada,q.tipo,data), tn=esc(t?t.nome:'Sem tipo');
+function cardQuarto(q,data,act,occ){
+  const r=ocupacao(q,data), bl=!r&&bloqueioEm(q,data), t=tipoDe(q.tipo), pn=precoNoite(q.pousada,q.tipo,data,occ||OCC1), tn=esc(t?t.nome:'Sem tipo');
   if(r){
     const atras=r.status==='hospedado'&&r.saida<=data&&data===hojeISO();
     return `<button data-act="${act}" data-q="${q.id}" class="rounded-3xl border border-neutral-200 bg-neutral-100 p-4 text-left opacity-55 saturate-50 transition hover:opacity-90">
@@ -475,7 +521,7 @@ function cardQuarto(q,data,act){
   return `<button data-act="${act}" data-q="${q.id}" class="group rounded-3xl border border-leaf/40 bg-white p-4 text-left shadow-sm transition duration-300 hover:-translate-y-1.5 hover:border-leaf hover:shadow-xl hover:shadow-orange-900/10">
       <div class="flex items-start justify-between gap-2"><span class="font-serif text-3xl font-extrabold">${esc(q.numero)}</span><span class="inline-flex items-center gap-1 rounded-full bg-leaf px-2.5 py-1 text-[11px] font-bold text-white"><i class="fa-solid fa-check text-[9px]"></i>Disponível</span></div>
       <div class="mt-1 text-xs text-neutral-500">${tn}</div>
-      <div class="mt-3 font-serif text-xl font-extrabold text-brand-dark">${money(pn.preco)}</div><div class="text-xs text-neutral-500">${pn.especial?'<i class="fa-solid fa-star text-brand"></i> '+esc(pn.motivo||'preço especial'):'diária'}</div></button>`;
+      <div class="mt-3 font-serif text-xl font-extrabold text-brand-dark">${money(pn.preco)}</div><div class="text-xs text-neutral-500">${pn.especial?'<i class="fa-solid fa-star text-brand"></i> '+esc(pn.motivo||'preço especial'):((!occ&&t&&t.modo==='ocupacao')?'a partir de · 1 pessoa':'diária')}</div></button>`;
 }
 const estadoQ = (q,data) => ocupacao(q,data)?1:(bloqueioEm(q,data)?2:0);
 
@@ -547,7 +593,7 @@ function viaFicha(r,via,dest){
       ${r.obs?F('Observações',r.obs,12):''}
     </div>
     <div style="display:flex;margin-top:7px;border:1.5px solid #000;border-radius:6px;overflow:hidden">
-      <div style="flex:1;padding:5px 9px;font-size:11px"><div style="font-size:8px;text-transform:uppercase;letter-spacing:.08em;color:#555">Hospedagem${r.tipo?' · '+esc(r.tipo):''}</div>${grp.map(g=>`<div style="margin-top:2px">${g.n} × diária de <b>${money(g.v)}</b> = ${money(g.n*g.v)}</div>`).join('')}<div style="margin-top:4px;display:inline-block;border:1.5px solid ${pago?'#2f6b1b':'#000'};color:${pago?'#2f6b1b':'#000'};border-radius:10px;padding:1px 9px;font-size:10px;font-weight:800">${pago?'PAGO':'EM ABERTO'}</div></div>
+      <div style="flex:1;padding:5px 9px;font-size:11px"><div style="font-size:8px;text-transform:uppercase;letter-spacing:.08em;color:#555">Hospedagem${r.tipo?' · '+esc(r.tipo):''}</div>${r.detalhe?`<div style="font-size:10px;margin-top:1px">${esc(r.detalhe)}</div>`:''}${grp.map(g=>`<div style="margin-top:2px">${g.n} × diária de <b>${money(g.v)}</b> = ${money(g.n*g.v)}</div>`).join('')}<div style="margin-top:4px;display:inline-block;border:1.5px solid ${pago?'#2f6b1b':'#000'};color:${pago?'#2f6b1b':'#000'};border-radius:10px;padding:1px 9px;font-size:10px;font-weight:800">${pago?'PAGO':'EM ABERTO'}</div></div>
       <div style="width:64mm;border-left:1.5px solid #000;background:#FFF1E2;padding:5px 9px;font-size:11px">
         <div style="display:flex;justify-content:space-between"><span>Subtotal</span><span>${money(sub)}</span></div>
         ${desc>0?`<div style="display:flex;justify-content:space-between;color:#D64545;font-weight:800"><span>DESCONTO</span><span>− ${money(desc)}</span></div>`:''}
@@ -595,7 +641,7 @@ function imprimirRecibo(r,modo){
     <div style="text-align:center;font-weight:700;font-size:${t?13:17}px">RECIBO DE PAGAMENTO</div>
     <div style="text-align:center">Nº ${esc(r.id)}</div><div style="text-align:center">${quando}</div>${sep}
     ${L('Hóspede:',esc(r.nome))}${r.cpf?L('CPF:',esc(r.cpf)):''}${L('Apto:',esc(r.quarto_num)+(r.tipo?' · '+esc(r.tipo):''))}
-    ${L('Entrada:',fmtBR(r.entrada))}${L('Saída:',fmtBR(r.saida))}${L('Diárias:',r.diarias)}${sep}
+    ${L('Entrada:',fmtBR(r.entrada))}${L('Saída:',fmtBR(r.saida))}${L('Diárias:',r.diarias)}${r.detalhe?L('Hóspedes:',esc(r.detalhe)):''}${sep}
     ${L('Subtotal',money(sub))}${desc>0?L('Desconto','- '+money(desc)):''}
     ${L('TOTAL PAGO',money(r.total),`font-weight:700;font-size:${t?14:18}px;margin-top:2px`)}${sep}
     ${r.forma_pgto?L('Forma pgto:',esc(r.forma_pgto)):''}${L('Atendente:',esc(r.pago_por||EU.email))}${sep}
@@ -604,68 +650,114 @@ function imprimirRecibo(r,modo){
     <div style="text-align:center;margin-top:6px">Obrigado pela preferência!</div>${t?'<div style="height:8mm"></div>':''}</div>`,t);
 }
 
-/* ============ ASSISTENTE DE RESERVA (modal em 2 etapas) ============ */
+/* ============ ASSISTENTE DE RESERVA (2 etapas) ============ */
 let WZ=null, SALVANDO=false;
 const wzBox = () => $('#dlgFormBox');
 const wz$ = id => wzBox().querySelector('#'+id);
-DN.wz={get:()=>WZ.entrada,set:v=>{ const h=hojeISO(); WZ.entrada=v<h?h:v; if(WZ.passo===1) renderWZ(); }};
+const fechaX = '<button data-act="fechar" class="grid h-9 w-9 shrink-0 place-items-center rounded-full text-neutral-500 hover:bg-brand-soft hover:text-brand" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>';
+const totalHosp = () => WZ.adultos+Object.values(WZ.criancas).reduce((a,b)=>a+b,0);
+const capQ = q => { const t=q&&tipoDe(q.tipo); return t&&t.capacidade>0?t.capacidade:99; };
+const occAtual = () => ({adultos:WZ.adultos,criancas:WZ.criancas,adics:WZ.adics});
+const hospedadoWZ = () => !!(WZ.res&&WZ.res.status==='hospedado');
+const maxCap = () => hospedadoWZ()?capQ(quartoDe(WZ.quartoId)):Math.max(1,...quartosDe(WZ.pousada).map(capQ));
+const quartoOk = q => !!q&&q.ativo!=='nao'&&q.pousada===WZ.pousada&&capQ(q)>=totalHosp()&&livre(q.id,WZ.entrada,WZ.saida,WZ.res&&WZ.res.id);
+function limparQuarto(){ if(WZ.quartoId&&!hospedadoWZ()&&!quartoOk(quartoDe(WZ.quartoId))) WZ.quartoId=null; }
+DN.wz={get:()=>WZ.entrada,set:v=>{ if(hospedadoWZ()) return; const h=hojeISO(); WZ.entrada=v<h?h:v; if(WZ.saida<=WZ.entrada) WZ.saida=addDias(WZ.entrada,1); renderWZ(); }};
 function abrirWizard({res=null,quartoId=null,entrada=null,modo=null}){
-  const h=hojeISO();
-  WZ={res,modo,pousada:res?res.pousada:UI.pousada,quartoId:res?res.quarto_id:quartoId,
-    entrada:res?res.entrada:(entrada&&entrada>=h?entrada:h),saida:res?res.saida:null,
-    passo:(res||quartoId)?2:1,descTipo:'v',descVal:res?Number(res.desconto)||0:0,f:null};
+  const h=hojeISO(), o=res?occDe(res):{adultos:1,criancas:{},adics:adicionaisAtivos().filter(a=>a.padrao==='sim').map(a=>a.id)};
+  WZ={res,modo,pousada:res?res.pousada:UI.pousada,quartoId:res?res.quarto_id:quartoId,entrada:res?res.entrada:(entrada&&entrada>=h?entrada:h),saida:res?res.saida:null,
+    adultos:o.adultos,criancas:{...o.criancas},adics:[...o.adics],passo:modo==='checkin'?2:1,descTipo:'v',descVal:res?Number(res.desconto)||0:0,
+    pago:res?res.pago==='sim':false,forma:(res&&res.forma_pgto)||formaPadrao(),det:false,f:null};
   if(!WZ.saida) WZ.saida=addDias(WZ.entrada,1);
   renderWZ();
 }
-const fechaX = '<button data-act="fechar" class="grid h-9 w-9 shrink-0 place-items-center rounded-full text-neutral-500 hover:bg-brand-soft hover:text-brand" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>';
 function renderWZ(){ WZ.passo===1?renderPasso1():renderPasso2(); }
-function renderPasso1(){
-  const p=WZ.pousada, ent=WZ.entrada, ign=WZ.res&&WZ.res.id;
-  const qs=quartosDe(p).filter(q=>livre(q.id,ent,addDias(ent,1),ign));
-  abrirDialogo(`
-  <div class="flex items-start justify-between gap-3"><div><span class="inline-flex items-center gap-2 rounded-full bg-brand px-3 py-1 text-xs font-bold uppercase tracking-wider text-white"><i class="fa-solid fa-location-dot"></i>${esc(nomeP(p))}</span><h3 class="mt-2 font-serif text-2xl font-extrabold">${WZ.res?'Trocar de quarto':'Nova reserva'}</h3><p class="text-sm text-neutral-600">1. Escolha a data e toque no quarto disponível.</p></div>${fechaX}</div>
-  <div class="mt-4">${dateNavHTML('wz',ent,hojeISO())}</div>
-  <h4 class="mt-5 mb-3 flex items-center gap-2 font-serif text-lg font-extrabold"><span class="h-3 w-3 rounded-full bg-leaf"></span>${qs.length} quarto${qs.length!==1?'s':''} disponíve${qs.length!==1?'is':'l'}</h4>
-  <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">${qs.map(q=>cardQuarto(q,ent,'wzPick')).join('')||`<p class="col-span-full rounded-2xl bg-brand-soft px-4 py-3 text-sm font-medium text-brand-dark">Nenhum quarto disponível nesta data. Tente outro dia.</p>`}</div>`);
+function calcWZ(){
+  const q=quartoDe(WZ.quartoId); if(!q) return {erro:'Escolha um quarto.'};
+  const ent=WZ.entrada, sai=WZ.saida, ign=WZ.res&&WZ.res.id;
+  if(!(sai>ent)) return {erro:'O check-out deve ser depois do check-in.'};
+  const lim=maxSaida(q.id,ent,ign); if(lim&&sai>lim) return {erro:'Este quarto fica indisponível a partir de '+fmtBR(lim)+'. Check-out no máximo nessa data.',lim};
+  if(capQ(q)<totalHosp()) return {erro:'O quarto comporta no máximo '+capQ(q)+' hóspedes.'};
+  const n=calcNoites(WZ.pousada,q,ent,sai,WZ.res,occAtual()), sub=arred(n.reduce((s,x)=>s+x.preco,0));
+  let dv=WZ.descVal||0; if(WZ.descTipo==='p') dv=sub*Math.min(dv,100)/100; else if(WZ.descTipo==='d') dv=dv*n.length;
+  dv=Math.max(0,Math.min(arred(dv),sub));
+  return {n,sub,desc:dv,total:arred(sub-dv),lim,sai,q};
 }
-ACOES.wzPick=d=>{ WZ.quartoId=d.q; WZ.passo=2; if(!WZ.res||WZ.saida<=WZ.entrada) WZ.saida=addDias(WZ.entrada,1); renderWZ(); };
-ACOES.wzTrocar=()=>{ capturar(); WZ.passo=1; renderWZ(); };
+const stepper=(k,rot,sub,val,min,mais)=>`<div class="flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 px-3 py-2"><div class="min-w-0"><div class="text-sm font-semibold">${rot}</div>${sub?`<div class="text-[11px] text-neutral-500">${sub}</div>`:''}</div><div class="flex items-center gap-1"><button type="button" data-act="wzQtd" data-k="${k}" data-d="-1" ${val<=min?'disabled':''} class="grid h-9 w-9 place-items-center rounded-full border-2 border-brand text-lg text-brand hover:bg-brand hover:text-white disabled:opacity-30">−</button><output class="w-7 text-center font-serif text-xl font-extrabold">${val}</output><button type="button" data-act="wzQtd" data-k="${k}" data-d="1" ${mais?'':'disabled'} class="grid h-9 w-9 place-items-center rounded-full border-2 border-brand text-lg text-brand hover:bg-brand hover:text-white disabled:opacity-30">+</button></div></div>`;
+function renderPasso1(){
+  limparQuarto();
+  const p=WZ.pousada, ent=WZ.entrada, h=hojeISO(), hosp=hospedadoWZ(), ign=WZ.res&&WZ.res.id, th=totalHosp(), mc=maxCap(), occ=occAtual();
+  const qs=hosp?[quartoDe(WZ.quartoId)]:quartosDe(p).filter(q=>capQ(q)>=th&&livre(q.id,ent,WZ.saida,ign));
+  const fx=faixasAtivas(), ads=adicionaisAtivos(), mais=th<mc, descTem=podeDesconto()||WZ.descVal>0;
+  abrirDialogo(`
+  <div class="flex items-start justify-between gap-3"><div><span class="inline-flex items-center gap-2 rounded-full bg-brand px-3 py-1 text-xs font-bold uppercase tracking-wider text-white"><i class="fa-solid fa-location-dot"></i>${esc(nomeP(p))}</span><h3 class="mt-2 font-serif text-xl font-extrabold sm:text-2xl">${WZ.res?(WZ.modo==='checkin'?'Check-in':'Editar reserva'):'Nova reserva'}</h3><p class="text-xs text-neutral-600">Etapa 1 de 2 · datas, hóspedes e quarto</p></div>${fechaX}</div>
+  <div class="mt-4 grid gap-3 sm:grid-cols-2">
+    <div><div class="${LBL}">Check-in</div>${hosp?`<div class="rounded-xl bg-brand-cream px-4 py-2.5 font-semibold">${rotuloData(ent)}</div>`:dateNavHTML('wz',ent,h)}</div>
+    <div><label class="${LBL}" for="wzS">Check-out</label><input id="wzS" type="date" data-chg="wzSaida" value="${WZ.saida}" min="${addDias(ent,1)}" class="${INP}"></div>
+  </div>
+  <div class="mt-2 flex flex-wrap gap-2" id="wzChips">${[1,2,3,5,7].map(n=>`<button type="button" data-act="wzNoites" data-n="${n}" class="rounded-full border px-3.5 py-1.5 text-xs font-semibold hover:border-brand hover:text-brand disabled:opacity-30 ${WZ.saida===addDias(ent,n)?'border-brand bg-brand-soft text-brand-dark':'border-neutral-200 text-neutral-600'}">${n} noite${n>1?'s':''}</button>`).join('')}</div>
+  <div class="mt-4"><div class="mb-2 flex items-center justify-between"><b class="text-xs font-bold uppercase tracking-[.2em] text-brand">Hóspedes</b><span class="text-xs font-semibold ${th>=mc?'text-brand-dark':'text-neutral-500'}">${th} de ${mc} (capacidade)</span></div>
+    <div class="grid gap-2 sm:grid-cols-2">${stepper('ad','Adultos','',WZ.adultos,1,mais)}${fx.map(f=>stepper(f.id,'Crianças · '+esc(f.nome),regraTxt(f),WZ.criancas[f.id]||0,0,mais)).join('')}</div></div>
+  ${ads.length?`<div class="mt-4"><b class="text-xs font-bold uppercase tracking-[.2em] text-brand">Adicionais</b><div class="mt-2 grid gap-2 sm:grid-cols-2">${ads.map(a=>`<label class="flex cursor-pointer items-center justify-between gap-3 rounded-2xl border-2 border-neutral-200 px-3 py-2.5 has-[:checked]:border-brand has-[:checked]:bg-brand-soft"><span class="min-w-0"><b class="block text-sm">${esc(a.nome)}</b><span class="text-[11px] text-neutral-500">${adTxt(a)}</span></span><input type="checkbox" data-chg="wzAd" data-id="${a.id}" ${WZ.adics.includes(a.id)?'checked':''} class="h-5 w-5 shrink-0 accent-[#F47B20]"></label>`).join('')}</div></div>`:''}
+  <div class="mt-4"><div class="mb-2 flex items-center justify-between"><b class="text-xs font-bold uppercase tracking-[.2em] text-brand">Quarto</b><span class="text-xs text-neutral-500">${hosp?'':qs.length+' disponíve'+(qs.length!==1?'is':'l')+' para '+th+' hóspede'+(th>1?'s':'')}</span></div>
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">${qs.map(q=>`<div class="[&>button]:h-full [&>button]:w-full rounded-3xl ${q.id===WZ.quartoId?'ring-4 ring-brand/70':''}">${cardQuarto(q,ent,'wzPick',occ)}</div>`).join('')||`<p class="col-span-full rounded-2xl bg-brand-soft px-4 py-3 text-sm font-medium text-brand-dark">Nenhum quarto disponível neste período para ${th} hóspede${th>1?'s':''}. Tente outras datas.</p>`}</div></div>
+  <p id="wzAviso" class="mt-3 hidden rounded-2xl bg-[#FDECEC] px-4 py-2.5 text-sm font-medium text-[#D64545]"></p>
+  <div id="wzValores" class="mt-4"></div>
+  ${descTem?`<div class="mt-3"><button type="button" data-act="wzDesc" class="${podeDesconto()?BTNG:'hidden'} !py-1.5 text-xs"><i class="fa-solid fa-tag"></i> ${WZ.descVal>0?'Alterar desconto':'Dar desconto'}</button>
+    <div id="wzDescBox" class="${WZ.descVal>0&&podeDesconto()?'':'hidden'} mt-2 flex items-center gap-2"><select id="wzDT" data-chg="wzDescTp" class="${INP} !w-44 !px-2" ${podeDesconto()?'':'disabled'}><option value="v" ${WZ.descTipo==='v'?'selected':''}>R$ no total</option><option value="d" ${WZ.descTipo==='d'?'selected':''}>R$ por diária</option><option value="p" ${WZ.descTipo==='p'?'selected':''}>% no total</option></select><input id="wzDV" data-inp="wzDescIn" type="number" min="0" step="0.01" value="${WZ.descVal||''}" placeholder="0" class="${INP} !w-32" ${podeDesconto()?'':'disabled'}></div></div>`:''}
+  <label class="mt-3 flex cursor-pointer items-center gap-2 border-t border-neutral-100 pt-3 text-sm font-semibold"><input id="wzPago" data-chg="wzPagoChg" type="checkbox" class="h-4 w-4 accent-[#F47B20]" ${WZ.pago?'checked':''}> Pagamento recebido (marcar como paga)</label>
+  <div id="wzFormaBox" class="${WZ.pago?'':'hidden'} mt-2"><label class="${LBL}">Forma de pagamento (opcional)</label><input id="wzForma" data-inp="wzFormaIn" list="dlFormas" value="${esc(WZ.forma)}" placeholder="Ex.: Pix, dinheiro, cartão…" class="${INP}">${dlFormas()}</div>
+  <div class="sticky bottom-0 -mx-4 -mb-4 mt-4 flex items-center justify-between gap-3 border-t border-neutral-100 bg-white px-4 py-3 sm:-mx-7 sm:-mb-7 sm:px-7"><div><div class="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Total</div><b id="wzBarTotal" class="font-serif text-2xl text-brand-dark">—</b></div><button type="button" id="wzAvancar" data-act="wzAvancar" class="${BTN}">Avançar <i class="fa-solid fa-arrow-right"></i></button></div>`);
+  atualizarTotais();
+}
+function atualizarTotais(){
+  const box=wz$('wzValores'); if(!box) return;
+  const c=calcWZ(), av=wz$('wzAviso'), ign=WZ.res&&WZ.res.id;
+  av.classList.toggle('hidden',!(c.erro&&WZ.quartoId)); if(c.erro) av.textContent=c.erro;
+  const lim=WZ.quartoId?maxSaida(WZ.quartoId,WZ.entrada,ign):null;
+  wzBox().querySelectorAll('#wzChips [data-n]').forEach(b=>{ b.disabled=!!(lim&&addDias(WZ.entrada,+b.dataset.n)>lim); });
+  wz$('wzAvancar').disabled=!!c.erro;
+  if(c.erro){ box.innerHTML=WZ.quartoId?'':'<p class="rounded-2xl bg-brand-cream px-4 py-3 text-sm text-neutral-600">Escolha um quarto para ver o valor.</p>'; wz$('wzBarTotal').textContent='—'; return; }
+  const nn=c.n.length, pr=precoNoite(WZ.pousada,c.q.tipo,c.n[0].data,occAtual(),true);
+  box.innerHTML=`<div class="rounded-2xl bg-brand-cream p-4"><div class="flex items-center justify-between gap-3"><div><div class="text-sm font-semibold">${nn} diária${nn>1?'s':''}${c.desc>0?' · desconto '+money(c.desc):''}</div><button type="button" data-act="wzDet" class="text-xs font-semibold text-brand-dark underline">${WZ.det?'Ocultar':'Ver'} detalhes</button></div><b class="font-serif text-3xl text-brand-dark">${money(c.total)}</b></div>
+    ${WZ.det?`<div class="mt-3 text-sm"><div class="${LBL}">Composição da 1ª diária</div>${pr.partes.map(x=>`<div class="flex justify-between gap-2"><span>${esc(x.t)}</span><span>${money(x.v)}</span></div>`).join('')}
+      <div class="mt-2 flex flex-wrap gap-1.5">${c.n.map(x=>`<span class="rounded-full bg-white px-2.5 py-1 text-xs shadow-sm">${fmtCurto(x.data)} · ${money(x.preco)}${x.especial?' <i class="fa-solid fa-star text-brand" title="'+esc(x.motivo||'preço especial')+'"></i>':''}${x.fixo?' <i class="fa-solid fa-lock text-neutral-400" title="preço gravado na entrada"></i>':''}</span>`).join('')}</div>
+      <div class="mt-2 text-xs text-neutral-600">Subtotal ${money(c.sub)}${c.desc>0?' − desconto '+money(c.desc)+' = <b>'+money(c.total)+'</b>':''}. O valor fica gravado nesta reserva; mudanças futuras de preço não a alteram.</div></div>`:''}</div>`;
+  wz$('wzBarTotal').textContent=money(c.total);
+}
+ACOES.wzQtd=d=>{
+  const dl=+d.d, nv=totalHosp()+dl;
+  if(dl>0&&nv>maxCap()) return;
+  if(d.k==='ad'){ if(WZ.adultos+dl<1) return; WZ.adultos+=dl; } else { const q=(WZ.criancas[d.k]||0)+dl; if(q<0) return; WZ.criancas[d.k]=q; }
+  renderWZ();
+};
+ACOES.wzAd=(d,b)=>{ const i=WZ.adics.indexOf(d.id); if(b.checked&&i<0) WZ.adics.push(d.id); if(!b.checked&&i>=0) WZ.adics.splice(i,1); atualizarTotais(); };
+ACOES.wzSaida=(d,b)=>{ if(b.value&&b.value>WZ.entrada) WZ.saida=b.value; renderWZ(); };
+ACOES.wzNoites=d=>{ WZ.saida=addDias(WZ.entrada,+d.n); renderWZ(); };
+ACOES.wzPick=d=>{ WZ.quartoId=d.q; renderWZ(); const v=wz$('wzValores'); if(v) v.scrollIntoView({behavior:'smooth',block:'nearest'}); };
+ACOES.wzDet=()=>{ WZ.det=!WZ.det; atualizarTotais(); };
+ACOES.wzDesc=()=>{ wz$('wzDescBox').classList.toggle('hidden'); const i=wz$('wzDV'); if(!wz$('wzDescBox').classList.contains('hidden')) i.focus(); };
+ACOES.wzDescIn=(d,b)=>{ WZ.descVal=+b.value||0; atualizarTotais(); };
+ACOES.wzDescTp=(d,b)=>{ WZ.descTipo=b.value; atualizarTotais(); };
+ACOES.wzPagoChg=(d,b)=>{ WZ.pago=b.checked; wz$('wzFormaBox').classList.toggle('hidden',!b.checked); if(b.checked) wz$('wzForma').focus(); };
+ACOES.wzFormaIn=(d,b)=>{ WZ.forma=b.value; };
+ACOES.wzAvancar=()=>{ const c=calcWZ(); if(c.erro) return; WZ.passo=2; renderWZ(); };
+ACOES.wzVoltar=()=>{ capturar(); WZ.passo=1; renderWZ(); };
 function capturar(){
-  const g=id=>{ const e=wz$(id); return e?e.value:''; };
+  if(!wz$('fNome')) return; const g=id=>wz$(id).value;
   WZ.f={nome:g('fNome'),tel:g('fTel'),placa:g('fPla'),rg:g('fRg'),cpf:g('fCpf'),nasc:g('fNasc'),vei:g('fVei'),email:g('fEmail'),cid:g('fCid'),obs:g('fObs')};
-  if(wz$('wzS')) WZ.saida=wz$('wzS').value;
-  if(wz$('wzPago')) WZ.pago=wz$('wzPago').checked;
-  if(wz$('wzForma')) WZ.forma=wz$('wzForma').value;
-  if(wz$('wzDV')){ WZ.descVal=+wz$('wzDV').value||0; WZ.descTipo=wz$('wzDT').value; }
 }
 function renderPasso2(){
-  const q=quartoDe(WZ.quartoId), t=tipoDe(q.tipo), r=WZ.res, h=hojeISO(), F=WZ.f||{};
+  const c=calcWZ(); if(c.erro){ WZ.passo=1; return renderPasso1(); }
+  const q=c.q, t=tipoDe(q.tipo), r=WZ.res, h=hojeISO(), F=WZ.f||{}, nn=c.n.length;
   const val=(k,rk)=>esc(F[k]!==undefined?F[k]:(r?r[rk]:'')), valM=(k,rk,m)=>esc(MASKS[m](F[k]!==undefined?F[k]:(r?r[rk]:'')));
-  const hosp=r&&r.status==='hospedado';
   const obsTem=!!(F.obs!==undefined?F.obs:(r&&r.obs));
-  const descTem=podeDesconto()||WZ.descVal>0;
   abrirDialogo(`
-  <div class="flex items-start justify-between gap-3"><h3 class="font-serif text-2xl font-extrabold">${WZ.modo==='checkin'?'Check-in':(r?'Editar reserva':'Nova reserva')}</h3>${fechaX}</div>
-  <div class="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-brand p-4 text-white">
-    <div class="min-w-0"><div class="text-[11px] font-bold uppercase tracking-[.15em] opacity-90"><i class="fa-solid fa-location-dot"></i> ${esc(nomeP(WZ.pousada))}</div><div class="font-serif text-3xl font-extrabold leading-tight">Apto ${esc(q.numero)}</div><div class="truncate text-sm opacity-95">${esc(t?t.nome:'Sem tipo')}</div></div>
-    ${hosp?'':`<button data-act="wzTrocar" class="shrink-0 rounded-full border border-white/70 px-4 py-2 text-xs font-semibold hover:bg-white hover:text-brand-dark">Trocar quarto/data</button>`}
-  </div>
-  <div class="mt-4 grid grid-cols-2 gap-3">
-    <div><div class="${LBL}">Check-in</div><div class="rounded-xl bg-brand-cream px-4 py-2.5 font-semibold"><i class="fa-regular fa-calendar mr-1 text-brand"></i>${rotuloData(WZ.entrada)}</div></div>
-    <div><label class="${LBL}" for="wzS">Check-out</label><input id="wzS" type="date" value="${WZ.saida}" min="${addDias(WZ.entrada,1)}" class="${INP}"></div>
-    <div class="col-span-2 flex flex-wrap gap-2" id="wzChips">${[1,2,3,5,7].map(n=>`<button type="button" data-act="wzNoites" data-n="${n}" class="rounded-full border border-neutral-200 px-3.5 py-1.5 text-xs font-semibold text-neutral-600 hover:border-brand hover:text-brand disabled:opacity-30">${n} noite${n>1?'s':''}</button>`).join('')}</div>
-  </div>
-  <p id="wzAviso" class="mt-2 hidden rounded-2xl bg-[#FDECEC] px-4 py-2.5 text-sm font-medium text-[#D64545]"></p>
-  <div class="mt-4 rounded-2xl bg-brand-cream p-4">
-    <div class="flex items-center justify-between gap-3"><div><div id="wzResumo" class="text-sm font-semibold"></div><button type="button" data-act="wzDet" class="text-xs font-semibold text-brand-dark underline">Ver detalhes</button></div><b id="wzTotal" class="font-serif text-3xl text-brand-dark"></b></div>
-    <div id="wzDet" class="mt-3 hidden text-sm"></div>
-    ${descTem?`<div class="mt-3 border-t border-orange-100 pt-3"><button type="button" data-act="wzDesc" class="${podeDesconto()?BTNG:'hidden'} !py-1.5 text-xs"><i class="fa-solid fa-tag"></i> ${WZ.descVal>0?'Alterar desconto':'Dar desconto'}</button>
-      <div id="wzDescBox" class="${WZ.descVal>0&&podeDesconto()?'':'hidden'} mt-2 flex items-center gap-2"><select id="wzDT" class="${INP} !w-44 !px-2" ${podeDesconto()?'':'disabled'}><option value="v" ${WZ.descTipo==='v'?'selected':''}>R$ no total</option><option value="d" ${WZ.descTipo==='d'?'selected':''}>R$ por diária</option><option value="p" ${WZ.descTipo==='p'?'selected':''}>% no total</option></select><input id="wzDV" type="number" min="0" step="0.01" value="${WZ.descVal||''}" placeholder="0" class="${INP} !w-32" ${podeDesconto()?'':'disabled'}></div>
-      <div id="wzDescInfo" class="mt-1 text-xs font-semibold text-leaf"></div></div>`:''}
-    <label class="mt-3 flex cursor-pointer items-center gap-2 border-t border-orange-100 pt-3 text-sm font-semibold"><input id="wzPago" data-chg="wzPagoChg" type="checkbox" class="h-4 w-4 accent-[#F47B20]" ${(WZ.pago!==undefined?WZ.pago:(r&&r.pago==='sim'))?'checked':''}> Pagamento recebido (marcar como paga)</label>
-    <div id="wzFormaBox" class="${(WZ.pago!==undefined?WZ.pago:(r&&r.pago==='sim'))?'':'hidden'} mt-2"><label class="${LBL}">Forma de pagamento (opcional)</label><input id="wzForma" list="dlFormas" value="${esc(WZ.forma!==undefined?WZ.forma:((r&&r.forma_pgto)||formaPadrao()))}" placeholder="Ex.: Pix, dinheiro, cartão…" class="${INP}">${dlFormas()}</div>
-  </div>
-  <div class="mt-5 flex items-center justify-between"><b class="text-xs font-bold uppercase tracking-[.2em] text-brand">Hóspede</b><span class="text-xs text-neutral-500">${OBR} obrigatório</span></div>
+  <div class="flex items-start justify-between gap-3"><div><h3 class="font-serif text-xl font-extrabold sm:text-2xl">${WZ.modo==='checkin'?'Check-in':(r?'Editar reserva':'Nova reserva')}</h3><p class="text-xs text-neutral-600">Etapa 2 de 2 · dados do hóspede</p></div>${fechaX}</div>
+  <div class="mt-3 rounded-2xl bg-brand p-4 text-white"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="truncate text-[11px] font-bold uppercase tracking-[.15em] opacity-90"><i class="fa-solid fa-location-dot"></i> ${esc(nomeP(WZ.pousada))}</div><div class="font-serif text-2xl font-extrabold leading-tight">Apto ${esc(q.numero)} <span class="font-sans text-sm font-medium opacity-90">· ${esc(t?t.nome:'')}</span></div><div class="text-sm opacity-95">${fmtCurto(WZ.entrada)} → ${fmtBR(WZ.saida)} · ${nn} diária${nn>1?'s':''}</div><div class="break-words text-xs opacity-90">${esc(detalheOcc(occAtual()))}</div></div>
+    <div class="shrink-0 text-right"><div class="font-serif text-2xl font-extrabold">${money(c.total)}</div>${c.desc>0?`<div class="text-[11px]">desc. ${money(c.desc)}</div>`:''}<div class="text-[11px]">${WZ.pago?'Pago':'Em aberto'}</div></div></div>
+    <button data-act="wzVoltar" class="mt-2 rounded-full border border-white/70 px-4 py-1.5 text-xs font-semibold hover:bg-white hover:text-brand-dark"><i class="fa-solid fa-arrow-left"></i> Alterar datas, hóspedes ou valores</button></div>
+  <div class="mt-5 flex items-center justify-between"><b class="text-xs font-bold uppercase tracking-[.2em] text-brand">Titular da reserva</b><span class="text-xs text-neutral-500">${OBR} obrigatório</span></div>
   <div class="mt-2 grid grid-cols-2 gap-3">
     ${campo('Nome '+OBR,`<input id="fNome" value="${val('nome','nome')}" autocomplete="off" class="${INP}">`,'col-span-2')}
     ${campo('Telefone '+OBR,`<input id="fTel" data-mask="tel" value="${valM('tel','telefone','tel')}" inputmode="tel" maxlength="15" placeholder="(00) 00000-0000" class="${INP}">`)}
@@ -680,43 +772,11 @@ function renderPasso2(){
       <div id="wzObsBox" class="${obsTem?'':'hidden'}"><label class="${LBL}">Observações</label><textarea id="fObs" rows="2" class="${INP}">${val('obs','obs')}</textarea></div></div>
   </div>
   <p id="fErro" class="mt-3 hidden rounded-2xl bg-[#FDECEC] px-4 py-3 text-sm font-medium text-[#D64545]"></p>
-  <div class="mt-5 flex flex-wrap justify-end gap-3"><button type="button" data-act="fechar" class="${BTNG}">Cancelar</button><button type="button" id="wzSalvar" data-act="wzSalvar" class="${BTN}"></button></div>`);
-  const sv=wz$('wzSalvar');
-  sv.innerHTML=WZ.modo==='checkin'?'<i class="fa-solid fa-key"></i> Confirmar check-in':(r?'<i class="fa-solid fa-floppy-disk"></i> Salvar alterações':(WZ.entrada===h?'<i class="fa-solid fa-key"></i> Check-in agora':'<i class="fa-solid fa-calendar-check"></i> Reservar para check-in'));
-  wz$('wzS').addEventListener('change',atualizarPreco);
-  ['wzDV','wzDT'].forEach(id=>{ const e=wz$(id); if(e){ e.addEventListener('input',atualizarPreco); e.addEventListener('change',atualizarPreco); } });
-  atualizarPreco(); setTimeout(()=>{ if(!wz$('fNome').value) wz$('fNome').focus(); },60);
+  <div class="mt-5 flex flex-wrap justify-end gap-3"><button type="button" data-act="wzVoltar" class="${BTNG}"><i class="fa-solid fa-arrow-left"></i> Voltar</button><button type="button" id="wzSalvar" data-act="wzSalvar" class="${BTN}"></button></div>`);
+  wz$('wzSalvar').innerHTML=WZ.modo==='checkin'?'<i class="fa-solid fa-key"></i> Confirmar check-in':(r?'<i class="fa-solid fa-floppy-disk"></i> Salvar alterações':(WZ.entrada===h?'<i class="fa-solid fa-key"></i> Check-in agora':'<i class="fa-solid fa-calendar-check"></i> Reservar para check-in'));
+  setTimeout(()=>{ if(!wz$('fNome').value) wz$('fNome').focus(); },60);
 }
-ACOES.wzPagoChg=(d,b)=>{ wz$('wzFormaBox').classList.toggle('hidden',!b.checked); if(b.checked) wz$('wzForma').focus(); };
-ACOES.wzNoites=d=>{ wz$('wzS').value=addDias(WZ.entrada,+d.n); atualizarPreco(); };
-ACOES.wzDet=()=>wz$('wzDet').classList.toggle('hidden');
-ACOES.wzDesc=()=>{ wz$('wzDescBox').classList.toggle('hidden'); const i=wz$('wzDV'); if(!wz$('wzDescBox').classList.contains('hidden')) i.focus(); };
 ACOES.wzObs=()=>{ wz$('wzObsBox').classList.remove('hidden'); wz$('wzObsBtn').classList.add('hidden'); wz$('fObs').focus(); };
-/* calcula noites, desconto e total da etapa 2 */
-function calcWZ(){
-  const q=quartoDe(WZ.quartoId), sai=wz$('wzS').value, ent=WZ.entrada;
-  const lim=maxSaida(q.id,ent,WZ.res&&WZ.res.id);
-  if(!(sai>ent)) return {erro:'O check-out deve ser depois do check-in.',lim};
-  if(lim&&sai>lim) return {erro:'Este quarto fica indisponível a partir de '+fmtBR(lim)+'. Check-out no máximo nessa data.',lim};
-  const n=calcNoites(WZ.pousada,q,ent,sai,WZ.res), sub=n.reduce((s,x)=>s+x.preco,0);
-  let dv=0; if(wz$('wzDV')){ const v=+wz$('wzDV').value||0; const tp=wz$('wzDT').value; dv=tp==='p'?sub*Math.min(v,100)/100:(tp==='d'?v*n.length:v); } else dv=WZ.descVal||0;
-  dv=Math.max(0,Math.min(Math.round(dv*100)/100,sub));
-  return {n,sub,desc:dv,total:sub-dv,lim,sai};
-}
-function atualizarPreco(){
-  const c=calcWZ(), av=wz$('wzAviso');
-  const q=quartoDe(WZ.quartoId); const lim=c.lim;
-  wzBox().querySelectorAll('#wzChips [data-n]').forEach(b=>{ const s=addDias(WZ.entrada,+b.dataset.n); b.disabled=!!(lim&&s>lim); });
-  wz$('wzS').max=lim||'';
-  av.classList.toggle('hidden',!c.erro); if(c.erro) av.textContent=c.erro;
-  if(c.erro){ wz$('wzResumo').textContent='—'; wz$('wzTotal').textContent=''; wz$('wzDet').innerHTML=''; return; }
-  const nn=c.n.length;
-  wz$('wzResumo').textContent=nn+' diária'+(nn>1?'s':'')+(c.desc>0?' · desconto '+money(c.desc):'');
-  wz$('wzTotal').textContent=money(c.total);
-  wz$('wzDet').innerHTML=`<div class="flex flex-wrap gap-1.5">${c.n.map(x=>`<span class="rounded-full bg-white px-2.5 py-1 text-xs shadow-sm">${fmtCurto(x.data)} · ${money(x.preco)}${x.especial?' <i class="fa-solid fa-star text-brand" title="'+esc(x.motivo||'preço especial')+'"></i>':''}${x.fixo?' <i class="fa-solid fa-lock text-neutral-400" title="preço gravado na entrada"></i>':''}</span>`).join('')}</div>
-    <div class="mt-2 text-xs text-neutral-600">Subtotal ${money(c.sub)}${c.desc>0?' − desconto '+money(c.desc)+' = <b>'+money(c.total)+'</b>':''}. O valor fica gravado nesta reserva; mudanças futuras de preço não a alteram.</div>`;
-  const di=wz$('wzDescInfo'); if(di) di.textContent=c.desc>0?'Desconto aplicado: '+money(c.desc)+(wz$('wzDT')&&wz$('wzDT').value==='d'?' ('+money(+wz$('wzDV').value||0)+' × '+c.n.length+' diária'+(c.n.length>1?'s':'')+')':''):'';
-}
 ACOES.wzSalvar=async()=>{
   if(SALVANDO) return;
   const erro=m=>{ const e=wz$('fErro'); e.textContent=m; e.classList.remove('hidden'); };
@@ -728,7 +788,7 @@ ACOES.wzSalvar=async()=>{
   if(g('fCpf')&&!validaCpf(g('fCpf'))) return erro('CPF inválido. Confira os números.');
   if(g('fEmail')&&!/^\S+@\S+\.\S+$/.test(g('fEmail'))) return erro('E-mail inválido.');
   const c=calcWZ(); if(c.erro) return erro(c.erro);
-  const ent=WZ.entrada, sai=c.sai;
+  const ent=WZ.entrada, sai=WZ.saida;
   if((!r||ent!==r.entrada)&&ent<h) return erro('Reservas só podem começar de hoje em diante.');
   let st=r?r.status:(ent===h?'hospedado':'reservada');
   if(WZ.modo==='checkin'){ st='hospedado'; if(ent>h) return erro('Check-in só pode ser feito a partir da data de entrada.'); }
@@ -736,11 +796,12 @@ ACOES.wzSalvar=async()=>{
   try{
     await lerTab(['reservas','bloqueios']);
     if(!livre(WZ.quartoId,ent,sai,r&&r.id)){ erro('Este quarto acabou de ser ocupado/bloqueado. Volte e escolha outro.'); return; }
-    const q=quartoDe(WZ.quartoId), old=r?DB.reservas.find(x=>x.id===r.id):null, n=calcNoites(WZ.pousada,q,ent,sai,old);
-    const sub=n.reduce((s,x)=>s+x.preco,0);
-    const pagoM=wz$('wzPago').checked, pg=pagoM?((old&&old.pago==='sim')?{pago:'sim',pago_em:old.pago_em,pago_por:old.pago_por}:{pago:'sim',pago_em:new Date().toISOString(),pago_por:EU.email}):{pago:'',pago_em:'',pago_por:''};
-    const campos={pousada:WZ.pousada,quarto_id:q.id,quarto_num:q.numero,tipo:(tipoDe(q.tipo)||{}).nome||'',status:st,entrada:ent,saida:sai,diarias:n.length,precos_noites:n.map(x=>x.preco).join(';'),total:sub-c.desc,desconto:c.desc,nome,rg:g('fRg'),cpf:g('fCpf'),nasc:g('fNasc'),telefone:tel,veiculo:g('fVei'),placa,cidade:g('fCid'),obs:g('fObs'),email:g('fEmail'),...pg,forma_pgto:pagoM?wz$('wzForma').value.trim():''};
-    lembrarForma(campos.forma_pgto);
+    const q=quartoDe(WZ.quartoId), old=r?DB.reservas.find(x=>x.id===r.id):null, occ=occAtual(), n=calcNoites(WZ.pousada,q,ent,sai,old,occ);
+    const sub=arred(n.reduce((s,x)=>s+x.preco,0));
+    const pagoM=WZ.pago, pg=pagoM?((old&&old.pago==='sim')?{pago:'sim',pago_em:old.pago_em,pago_por:old.pago_por}:{pago:'sim',pago_em:new Date().toISOString(),pago_por:EU.email}):{pago:'',pago_em:'',pago_por:''};
+    const forma=pagoM?(WZ.forma||'').trim():'';
+    const campos={pousada:WZ.pousada,quarto_id:q.id,quarto_num:q.numero,tipo:(tipoDe(q.tipo)||{}).nome||'',status:st,entrada:ent,saida:sai,diarias:n.length,precos_noites:n.map(x=>x.preco).join(';'),total:arred(sub-c.desc),desconto:c.desc,nome,rg:g('fRg'),cpf:g('fCpf'),nasc:g('fNasc'),telefone:tel,veiculo:g('fVei'),placa,cidade:g('fCid'),obs:g('fObs'),email:g('fEmail'),...pg,forma_pgto:forma,adultos:WZ.adultos,criancas:critStr(WZ.criancas),adicionais:WZ.adics.join(';'),detalhe:detalheOcc(occ)};
+    lembrarForma(forma);
     let rr;
     if(old){ rr=old; Object.assign(rr,campos); if(st==='hospedado'&&!rr.checkin_em) rr.checkin_em=new Date().toISOString(); await atualizar('reservas',rr); await log(WZ.modo==='checkin'?'checkin':'editou_reserva',`${rr.id} · Apto ${rr.quarto_num} · ${rr.nome}`); }
     else { rr={id:uid('R'),...campos,criado_por:EU.email,criado_em:new Date().toISOString(),checkin_em:st==='hospedado'?new Date().toISOString():'',checkout_em:''}; await anexar('reservas',rr); await log(st==='hospedado'?'checkin':'reservou',`${rr.id} · ${nomeP(rr.pousada)} · Apto ${rr.quarto_num} · ${rr.nome} · ${fmtBR(ent)}→${fmtBR(sai)} · ${money(rr.total)}${c.desc>0?' · desc '+money(c.desc):''}`); }
@@ -776,7 +837,7 @@ ACOES.res=async d=>{
     <h3 class="font-serif text-xl font-extrabold leading-tight sm:text-2xl">Apto ${esc(r.quarto_num)}${r.tipo?` <span class="font-sans text-xs font-medium text-neutral-500 sm:text-sm">· ${esc(r.tipo)}</span>`:''}</h3>
     <div class="break-words text-base font-semibold">${esc(r.nome)}</div></div>${fechaX}</div>
   <div class="mt-2 flex flex-wrap items-center gap-2">${pill(r.status)}${r.status!=='cancelada'?pgPill(r):''}<span class="text-xs font-semibold text-neutral-600"><i class="fa-regular fa-calendar text-brand"></i> ${fmtCurto(r.entrada)} → ${fmtBR(r.saida)} · ${r.diarias} diária${r.diarias>1?'s':''}</span></div>
-  ${sec('Hóspede',`<div class="grid grid-cols-2 gap-x-4 gap-y-2.5">${li('Telefone',r.telefone)}${li('Placa',r.placa)}${li('Veículo',r.veiculo)}${li('Cidade',r.cidade)}${li('CPF',r.cpf)}${li('RG',r.rg)}${li('Nascimento',fmtBR(r.nasc))}${li('E-mail',r.email,'col-span-2')}${r.obs?li('Observações',r.obs,'col-span-2'):''}</div>`)}
+  ${sec('Hóspede',`<div class="grid grid-cols-2 gap-x-4 gap-y-2.5">${li('Telefone',r.telefone)}${li('Placa',r.placa)}${li('Veículo',r.veiculo)}${li('Cidade',r.cidade)}${li('CPF',r.cpf)}${li('RG',r.rg)}${li('Nascimento',fmtBR(r.nasc))}${r.detalhe?li('Hóspedes',r.detalhe,'col-span-2'):''}${li('E-mail',r.email,'col-span-2')}${r.obs?li('Observações',r.obs,'col-span-2'):''}</div>`)}
   ${sec('Valores',`<div class="rounded-2xl bg-brand-cream p-3 text-sm">
     ${grp.map(g=>`<div class="flex items-center justify-between gap-2"><span>${g.n} × diária de ${money(g.v)}</span><span>${money(g.n*g.v)}</span></div>`).join('')}
     ${desc>0?`<div class="flex items-center justify-between gap-2 font-semibold text-[#D64545]"><span>Desconto</span><span>− ${money(desc)}</span></div>`:''}
@@ -880,55 +941,150 @@ ACOES.imprimirLimpeza=()=>{
 };
 
 /* ============ VIEW: Preços (posto selecionado + preços de todos os postos) ============ */
+const descEsp = x => x.ajuste_tipo==='tabela'?'Tabela própria':(x.ajuste_tipo==='acresc_v'?(x.ajuste_valor>=0?'+ ':'− ')+money(Math.abs(x.ajuste_valor))+'/diária':(x.ajuste_tipo==='acresc_p'?(x.ajuste_valor>=0?'+ ':'− ')+Math.abs(x.ajuste_valor)+'%':money(x.preco)));
+const tabelaGrid=(prefix,n,vals)=>`<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">${Array.from({length:n},(_,i)=>`<div><label class="text-[11px] font-semibold text-neutral-500">${i+1} pessoa${i?'s':''}</label><input id="${prefix}${i+1}" type="number" min="0" step="0.01" value="${esc(vals[i+1]??'')}" class="${INP} !px-3 !py-2"></div>`).join('')}</div>`;
+async function salvarTabela(alvo,periodo,vals){
+  const novos=[];
+  for(let i=0;i<vals.length;i++){ const n=i+1, ex=DB.tarifas.find(t=>t.alvo===alvo&&(t.periodo||'')===(periodo||'')&&t.pessoas===n);
+    if(ex){ if(ex.preco!==vals[i]){ ex.preco=vals[i]; await atualizar('tarifas',ex); } } else novos.push({id:uid('F'),alvo,periodo:periodo||'',pessoas:n,preco:vals[i]}); }
+  if(novos.length) await anexarVarios('tarifas',novos);
+  await lerTab(['tarifas']);
+}
+const tabelaDe=(alvo,periodo='')=>{ const m={}; DB.tarifas.filter(t=>t.alvo===alvo&&(t.periodo||'')===periodo).forEach(t=>m[t.pessoas]=t.preco); return m; };
 VIEWS.precos=()=>{
-  const pp=podePreco(), h=hojeISO(), p=UI.pousada;
-  const tipos=DB.tipos.filter(t=>t.ativo!=='nao');
+  const pp=podePreco(), h=hojeISO(), p=UI.pousada, tipos=DB.tipos.filter(t=>t.ativo!=='nao');
   const esp=DB.precos.filter(x=>x.ativo!=='nao'&&(x.pousada==='*'||x.pousada===p)).sort((a,b)=>b.inicio.localeCompare(a.inicio));
+  const pen=(act,id)=>pp?`<button data-act="${act}" data-id="${id}" class="grid h-8 w-8 shrink-0 place-items-center rounded-full text-brand hover:bg-brand-soft" aria-label="Editar"><i class="fa-solid fa-pen"></i></button>`:'';
+  const head=(t,sub,btn)=>`<div class="flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-serif text-lg font-extrabold sm:text-xl">${t}</h3>${sub?`<p class="text-sm text-neutral-600">${sub}</p>`:''}</div>${pp?btn:''}</div>`;
+  const tipoCard=t=>{ const tb=tabelaDe(t.id), ocup=t.modo==='ocupacao';
+    return `<div class="min-w-0 rounded-2xl border border-orange-100 bg-brand-cream p-4"><div class="flex items-start justify-between gap-2"><div class="min-w-0"><b class="break-words">${esc(t.nome)}</b><div class="text-xs text-neutral-500">até ${t.capacidade} hóspede${t.capacidade>1?'s':''} · ${ocup?'preço por nº de pessoas':'preço fixo do quarto'}</div></div>${pen('formTipo',t.id)}</div>
+      ${ocup?`<div class="mt-2 space-y-0.5">${Array.from({length:t.capacidade},(_,i)=>`<div class="flex justify-between text-sm"><span>${i+1} pessoa${i?'s':''}</span><b>${tb[i+1]!==undefined?money(tb[i+1]):'—'}</b></div>`).join('')}</div>`:`<div class="mt-2 font-serif text-3xl font-extrabold text-brand-dark">${money(t.preco)}</div>`}</div>`; };
+  const linha=(a,b,c)=>`<div class="flex items-center justify-between gap-2 rounded-2xl border border-neutral-100 px-3 py-2.5 sm:px-4"><div class="min-w-0"><b class="block break-words text-sm">${a}</b><span class="text-xs text-neutral-500">${b}</span></div><span class="flex shrink-0 items-center gap-1">${c}</span></div>`;
   return `
   ${pp?'':`<div class="rounded-2xl bg-brand-soft px-4 py-3 text-sm font-medium text-brand-dark"><i class="fa-solid fa-lock mr-2"></i>Você pode consultar os preços, mas só usuários autorizados podem alterá-los.</div>`}
-  <section class="${CARD} p-5"><div class="flex flex-wrap items-center justify-between gap-2"><h3 class="font-serif text-xl font-extrabold">Tipos de quarto e diária padrão</h3>${pp?`<button data-act="formTipo" class="${BTN2}"><i class="fa-solid fa-plus"></i> Novo tipo</button>`:''}</div>
-    <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">${tipos.map(t=>`<div class="rounded-2xl border border-orange-100 bg-brand-cream p-4"><div class="flex items-start justify-between"><div><b>${esc(t.nome)}</b><div class="text-xs text-neutral-500">${t.capacidade} pessoa${t.capacidade>1?'s':''}</div></div>${pp?`<button data-act="formTipo" data-id="${t.id}" class="grid h-8 w-8 place-items-center rounded-full text-brand hover:bg-brand-soft" aria-label="Editar"><i class="fa-solid fa-pen"></i></button>`:''}</div><div class="mt-2 font-serif text-3xl font-extrabold text-brand-dark">${money(t.preco)}</div></div>`).join('')||'<p class="text-neutral-500">Nenhum tipo cadastrado.</p>'}</div></section>
-  <section class="${CARD} p-4 sm:p-5"><div class="flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-serif text-lg font-extrabold sm:text-xl">Preços para datas específicas · ${esc(curtoP(p))}</h3><p class="text-sm text-neutral-600">Promoções, feriados e alta temporada. Valem apenas no período informado.</p></div>${pp?`<button data-act="formPreco" class="${BTN}"><i class="fa-solid fa-plus"></i> Novo preço</button>`:''}</div>
+  <section class="${CARD} p-4 sm:p-5">${head('Tipos de quarto e diária padrão','Capacidade máxima e forma de cobrança.',`<button data-act="formTipo" class="${BTN2}"><i class="fa-solid fa-plus"></i> Novo tipo</button>`)}
+    <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">${tipos.map(tipoCard).join('')||'<p class="text-neutral-500">Nenhum tipo cadastrado.</p>'}</div></section>
+  <section class="${CARD} p-4 sm:p-5">${head('Adicionais','Café da manhã e outros acréscimos escolhidos na reserva.',`<button data-act="formAdicional" class="${BTN2}"><i class="fa-solid fa-plus"></i> Novo adicional</button>`)}
+    <div class="mt-3 space-y-2">${DB.adicionais.map(a=>linha(esc(a.nome)+(a.ativo==='nao'?' <span class="text-xs text-neutral-500">(inativo)</span>':'')+(a.padrao==='sim'?' <span class="rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-semibold text-brand-dark">padrão</span>':''),adTxt(a),pen('formAdicional',a.id))).join('')||'<p class="text-sm text-neutral-500">Nenhum adicional cadastrado.</p>'}</div></section>
+  <section class="${CARD} p-4 sm:p-5">${head('Faixas de idade das crianças','Regra de cobrança por faixa. Todas contam na capacidade do quarto.',`<button data-act="formFaixa" class="${BTN2}"><i class="fa-solid fa-plus"></i> Nova faixa</button>`)}
+    <div class="mt-3 space-y-2">${DB.faixas.slice().sort((a,b)=>a.idade_min-b.idade_min).map(f=>linha(esc(f.nome)+(f.ativo==='nao'?' <span class="text-xs text-neutral-500">(inativa)</span>':''),f.idade_min+' a '+f.idade_max+' anos · '+regraTxt(f),pen('formFaixa',f.id))).join('')||'<p class="text-sm text-neutral-500">Nenhuma faixa cadastrada (todos os hóspedes são adultos).</p>'}</div></section>
+  <section class="${CARD} p-4 sm:p-5">${head('Preços para datas específicas · '+esc(curtoP(p)),'Promoções, feriados e alta temporada. Valem apenas no período informado.',`<button data-act="formPreco" class="${BTN}"><i class="fa-solid fa-plus"></i> Novo preço</button>`)}
     <div class="mt-4 space-y-2">${esp.map(x=>{ const t=tipoDe(x.tipo), enc=x.fim<h;
       const stt=enc?'<span class="rounded-full bg-neutral-100 px-2.5 py-0.5 text-[11px] font-semibold text-neutral-600">Encerrado</span>':(x.inicio<=h?'<span class="rounded-full bg-leaf-soft px-2.5 py-0.5 text-[11px] font-semibold text-leaf">Em vigor</span>':'<span class="rounded-full bg-brand-soft px-2.5 py-0.5 text-[11px] font-semibold text-brand-dark">Futuro</span>');
-      return `<div class="min-w-0 rounded-2xl border border-neutral-100 p-3 sm:px-4 ${enc?'opacity-60':''}">
-        <div class="flex items-start justify-between gap-2"><div class="min-w-0"><b class="block break-words text-sm sm:text-base">${esc(t?t.nome:'—')}</b><span class="text-xs text-neutral-500">${x.pousada==='*'?'Todos os postos':esc(curtoP(x.pousada))}</span></div><span class="shrink-0 font-serif text-lg font-extrabold text-brand-dark sm:text-xl">${money(x.preco)}</span></div>
+      return `<div class="min-w-0 rounded-2xl border border-neutral-100 p-3 sm:px-4 ${enc?'opacity-60':''}"><div class="flex items-start justify-between gap-2"><div class="min-w-0"><b class="block break-words text-sm sm:text-base">${esc(t?t.nome:'—')}</b><span class="text-xs text-neutral-500">${x.pousada==='*'?'Todos os postos':esc(curtoP(x.pousada))}</span></div><span class="shrink-0 font-serif text-lg font-extrabold text-brand-dark sm:text-xl">${descEsp(x)}</span></div>
         <div class="mt-1 break-words text-xs text-neutral-600"><i class="fa-regular fa-calendar text-brand"></i> ${fmtCurto(x.inicio)} a ${fmtBR(x.fim)} · ${esc(x.motivo||'sem motivo')}<span class="hidden sm:inline"> · por ${esc(x.criado_por)}</span></div>
-        <div class="mt-2 flex items-center justify-between gap-2">${stt}${pp?`<span class="flex items-center gap-1"><button data-act="formPreco" data-id="${x.id}" class="grid h-8 w-8 place-items-center rounded-full text-brand hover:bg-brand-soft" aria-label="Editar"><i class="fa-solid fa-pen"></i></button><button data-act="rmPreco" data-id="${x.id}" class="grid h-8 w-8 place-items-center rounded-full text-[#D64545] hover:bg-[#FDECEC]" aria-label="Remover"><i class="fa-solid fa-trash"></i></button></span>`:''}</div></div>`; }).join('')||'<p class="text-sm text-neutral-500">Nenhum preço especial cadastrado.</p>'}</div></section>`;
+        <div class="mt-2 flex items-center justify-between gap-2">${stt}${pp?`<span class="flex items-center gap-1">${pen('formPreco',x.id)}<button data-act="rmPreco" data-id="${x.id}" class="grid h-8 w-8 place-items-center rounded-full text-[#D64545] hover:bg-[#FDECEC]" aria-label="Remover"><i class="fa-solid fa-trash"></i></button></span>`:''}</div></div>`; }).join('')||'<p class="text-sm text-neutral-500">Nenhum preço especial cadastrado.</p>'}</div></section>`;
 };
 function formShell(titulo,corpo,botao){
   const box=abrirDialogo(`<div class="flex items-start justify-between gap-3"><h3 class="font-serif text-2xl font-extrabold">${titulo}</h3>${fechaX}</div><div class="mt-4 grid gap-4 sm:grid-cols-2">${corpo}<p id="fErro" class="hidden rounded-2xl bg-[#FDECEC] px-4 py-3 text-sm font-medium text-[#D64545] sm:col-span-2"></p><div class="flex justify-end gap-3 sm:col-span-2"><button data-act="fechar" class="${BTNG}">Cancelar</button><button id="fOk" class="${BTN}">${botao}</button></div></div>`);
   box.erro=m=>{ const e=box.querySelector('#fErro'); e.textContent=m; e.classList.remove('hidden'); };
   return box;
 }
+const semPerm=()=>{ toast('Sem permissão para cadastrar preços.','erro'); };
 ACOES.formTipo=d=>{
-  if(!podePreco()) return toast('Sem permissão para cadastrar preços.','erro');
+  if(!podePreco()) return semPerm();
   const t=d.id?tipoDe(d.id):null;
   const box=formShell(t?'Editar tipo de quarto':'Novo tipo de quarto',
-    campo('Nome',`<input id="tNome" value="${esc(t?t.nome:'')}" placeholder="Ex.: Casal com ar" class="${INP}">`,'sm:col-span-2')+campo('Capacidade (pessoas)',`<input id="tCap" type="number" min="1" value="${t?t.capacidade:2}" class="${INP}">`)+campo('Diária padrão (R$)',`<input id="tPreco" type="number" min="0" step="0.01" value="${t?t.preco:''}" class="${INP}">`),'Salvar');
+    campo('Nome',`<input id="tNome" value="${esc(t?t.nome:'')}" placeholder="Ex.: Quarto standard" class="${INP}">`,'sm:col-span-2')+
+    campo('Capacidade máxima (hóspedes, contando crianças)',`<input id="tCap" type="number" min="1" max="40" value="${t?t.capacidade:2}" class="${INP}">`)+
+    campo('Cobrança',`<select id="tModo" class="${INP}"><option value="quarto">Preço fixo do quarto</option><option value="ocupacao">Preço por nº de pessoas (tabela)</option></select>`)+`<div id="tPrecoBox" class="sm:col-span-2"></div>`,'Salvar');
+  let vals={...(t?tabelaDe(t.id):{})}, fixo=t?String(t.preco):'';
+  const ler=()=>{ const f=box.querySelector('#tFixo'); if(f) fixo=f.value; for(let n=1;n<=40;n++){ const e=box.querySelector('#tp'+n); if(e) vals[n]=e.value; } };
+  const desenhar=()=>{ const modo=box.querySelector('#tModo').value, cap=Math.min(40,Math.max(1,+box.querySelector('#tCap').value||1)), bx=box.querySelector('#tPrecoBox');
+    bx.innerHTML=modo==='quarto'?campo('Diária (R$)',`<input id="tFixo" type="number" min="0" step="0.01" value="${esc(fixo)}" class="${INP}">`):`<div class="${LBL}">Diária por número de pessoas (R$)</div>`+tabelaGrid('tp',cap,vals); };
+  box.querySelector('#tModo').value=t&&t.modo==='ocupacao'?'ocupacao':'quarto'; desenhar();
+  box.querySelector('#tModo').onchange=()=>{ ler(); desenhar(); }; box.querySelector('#tCap').oninput=()=>{ ler(); desenhar(); };
   box.querySelector('#fOk').onclick=async()=>{
-    const nome=box.querySelector('#tNome').value.trim(), cap=+box.querySelector('#tCap').value, pr=+box.querySelector('#tPreco').value;
-    if(!nome||!(cap>=1)||!(pr>0)) return box.erro('Informe nome, capacidade e um preço maior que zero.');
-    try{ if(t){ Object.assign(t,{nome,capacidade:cap,preco:pr}); await atualizar('tipos',t); await log('editou_tipo',`${nome} · ${money(pr)}`); } else { await anexar('tipos',{id:uid('T'),nome,capacidade:cap,preco:pr,ativo:'sim'}); await log('criou_tipo',`${nome} · ${money(pr)}`); }
-      fecharDialogo(); render(); toast('Tipo salvo'); }catch(e){ erroGeral(e); }
+    ler(); const nome=box.querySelector('#tNome').value.trim(), cap=+box.querySelector('#tCap').value, modo=box.querySelector('#tModo').value;
+    if(!nome||!(cap>=1)||cap>40) return box.erro('Informe o nome e uma capacidade entre 1 e 40.');
+    let preco=0; const tab=[];
+    if(modo==='quarto'){ preco=+fixo; if(!(preco>0)) return box.erro('Informe uma diária maior que zero.'); }
+    else { for(let n=1;n<=cap;n++){ const v=+vals[n]; if(!(v>0)) return box.erro('Preencha o valor para '+n+' pessoa'+(n>1?'s':'')+'.'); tab.push(v); } preco=tab[0]; }
+    try{ const campos={nome,capacidade:cap,preco,modo}; let id;
+      if(t){ Object.assign(t,campos); await atualizar('tipos',t); id=t.id; } else { id=uid('T'); await anexar('tipos',{id,...campos,ativo:'sim'}); }
+      if(modo==='ocupacao') await salvarTabela(id,'',tab);
+      await log(t?'editou_tipo':'criou_tipo',`${nome} · ${modo} · cap ${cap}`); fecharDialogo(); render(); toast('Tipo salvo'); }catch(e){ erroGeral(e); }
+  };
+};
+ACOES.formAdicional=d=>{
+  if(!podePreco()) return semPerm();
+  const a=d.id?DB.adicionais.find(x=>x.id===d.id):null, cap=Math.min(40,Math.max(1,...DB.tipos.map(t=>t.capacidade||1)));
+  const box=formShell(a?'Editar adicional':'Novo adicional',
+    campo('Nome',`<input id="aNome" value="${esc(a?a.nome:'')}" placeholder="Ex.: Café da manhã" class="${INP}">`,'sm:col-span-2')+
+    campo('Como cobrar',`<select id="aCob" class="${INP}" ${''}><option value="pessoa_diaria">Por pessoa, por diária</option><option value="diaria">Valor fixo por diária</option><option value="estadia">Valor fixo por estadia</option><option value="tabela">Tabela por nº de pessoas</option></select>`,'sm:col-span-2')+`<div id="aValBox" class="sm:col-span-2"></div>`+
+    `<label class="flex items-center gap-2 text-sm"><input id="aPadrao" type="checkbox" class="h-4 w-4 accent-[#F47B20]" ${a&&a.padrao==='sim'?'checked':''}> Marcado por padrão na reserva</label>${a?`<label class="flex items-center gap-2 text-sm"><input id="aAtivo" type="checkbox" class="h-4 w-4 accent-[#F47B20]" ${a.ativo!=='nao'?'checked':''}> Ativo</label>`:''}
+    <p class="text-xs text-neutral-500 sm:col-span-2">Crianças só pagam o adicional nas faixas de idade em que "Cobra adicionais" estiver marcado.</p>`,'Salvar');
+  let vals={...(a?tabelaDe('ad_'+a.id):{})}, un=a?String(a.montante):'';
+  const ler=()=>{ const f=box.querySelector('#aUn'); if(f) un=f.value; for(let n=1;n<=40;n++){ const e=box.querySelector('#at'+n); if(e) vals[n]=e.value; } };
+  const desenhar=()=>{ const c=box.querySelector('#aCob').value, bx=box.querySelector('#aValBox');
+    bx.innerHTML=c==='tabela'?`<div class="${LBL}">Valor por diária conforme nº de pessoas que pagam (R$; 0 = sem cobrança)</div>`+tabelaGrid('at',cap,vals):campo('Valor (R$)',`<input id="aUn" type="number" min="0" step="0.01" value="${esc(un)}" class="${INP}">`); };
+  box.querySelector('#aCob').value=a?a.cobranca:'pessoa_diaria'; desenhar(); box.querySelector('#aCob').onchange=()=>{ ler(); desenhar(); };
+  box.querySelector('#fOk').onclick=async()=>{
+    ler(); const nome=box.querySelector('#aNome').value.trim(), cob=box.querySelector('#aCob').value;
+    if(!nome) return box.erro('Informe o nome do adicional.');
+    let montante=0; const tab=[];
+    if(cob==='tabela'){ for(let n=1;n<=cap;n++){ const v=+vals[n]||0; if(v<0) return box.erro('Valores não podem ser negativos.'); tab.push(v); } }
+    else { montante=+un; if(!(montante>0)) return box.erro('Informe um valor maior que zero.'); }
+    try{ const campos={nome,cobranca:cob,montante,padrao:box.querySelector('#aPadrao').checked?'sim':'',ativo:a?(box.querySelector('#aAtivo').checked?'sim':'nao'):'sim'}; let id;
+      if(a){ Object.assign(a,campos); await atualizar('adicionais',a); id=a.id; } else { id=uid('A'); await anexar('adicionais',{id,...campos}); }
+      if(cob==='tabela') await salvarTabela('ad_'+id,'',tab);
+      await log(a?'editou_adicional':'criou_adicional',`${nome} · ${cob}`); fecharDialogo(); render(); toast('Adicional salvo'); }catch(e){ erroGeral(e); }
+  };
+};
+ACOES.formFaixa=d=>{
+  if(!podePreco()) return semPerm();
+  const f=d.id?DB.faixas.find(x=>x.id===d.id):null;
+  const box=formShell(f?'Editar faixa de idade':'Nova faixa de idade',
+    campo('Idade inicial (anos)',`<input id="fMin" type="number" min="0" max="17" value="${f?f.idade_min:0}" class="${INP}">`)+campo('Idade final (anos)',`<input id="fMax" type="number" min="0" max="17" value="${f?f.idade_max:5}" class="${INP}">`)+
+    campo('Regra de cobrança',`<select id="fRegra" class="${INP}"><option value="gratis">Não paga</option><option value="fixo_diaria">Valor fixo por diária (R$)</option><option value="percentual">% da diária</option></select>`)+
+    `<div id="fValBox">${campo('Valor',`<input id="fVal" type="number" min="0" step="0.01" value="${f&&f.montante?f.montante:''}" class="${INP}">`)}</div>`+
+    `<label class="flex items-center gap-2 text-sm sm:col-span-2"><input id="fAdic" type="checkbox" class="h-4 w-4 accent-[#F47B20]" ${f&&f.cobra_adic==='sim'?'checked':''}> Cobra adicionais (ex.: café da manhã) para crianças desta faixa</label>${f?`<label class="flex items-center gap-2 text-sm sm:col-span-2"><input id="fAtivo" type="checkbox" class="h-4 w-4 accent-[#F47B20]" ${f.ativo!=='nao'?'checked':''}> Faixa ativa</label>`:''}`,'Salvar');
+  const reg=box.querySelector('#fRegra'); reg.value=f?f.regra:'gratis';
+  const vis=()=>{ box.querySelector('#fValBox').classList.toggle('hidden',reg.value==='gratis'); }; vis(); reg.onchange=vis;
+  box.querySelector('#fOk').onclick=async()=>{
+    const mn=+box.querySelector('#fMin').value, mx=+box.querySelector('#fMax').value, regra=reg.value, v=+box.querySelector('#fVal').value||0;
+    if(!(mn>=0)||!(mx>=mn)) return box.erro('A idade final deve ser igual ou maior que a inicial.');
+    if(regra!=='gratis'&&!(v>0)) return box.erro('Informe o valor da cobrança.');
+    const conf=DB.faixas.find(x=>x.ativo!=='nao'&&(!f||x.id!==f.id)&&x.idade_min<=mx&&x.idade_max>=mn);
+    if(conf) return box.erro('Esta faixa se sobrepõe a "'+conf.nome+'" ('+conf.idade_min+' a '+conf.idade_max+' anos).');
+    try{ const campos={nome:mn+' a '+mx+' anos',idade_min:mn,idade_max:mx,regra,montante:regra==='gratis'?0:v,cobra_adic:box.querySelector('#fAdic').checked?'sim':'',ativo:f?(box.querySelector('#fAtivo').checked?'sim':'nao'):'sim'};
+      if(f){ Object.assign(f,campos); await atualizar('faixas',f); } else await anexar('faixas',{id:uid('C'),...campos});
+      await log(f?'editou_faixa':'criou_faixa',campos.nome+' · '+regra); fecharDialogo(); render(); toast('Faixa salva'); }catch(e){ erroGeral(e); }
   };
 };
 ACOES.formPreco=d=>{
-  if(!podePreco()) return toast('Sem permissão para cadastrar preços.','erro');
+  if(!podePreco()) return semPerm();
   const x=d.id?DB.precos.find(y=>y.id===d.id):null, ps=minhasPousadas(), alvo=x?x.pousada:UI.pousada;
-  const box=formShell(x?'Editar preço especial':'Novo preço para datas específicas',
-    (ps.length>1?campo('Vale para',`<select id="pPos" class="${INP}"><option value="${UI.pousada}">${esc(nomeP(UI.pousada))}</option>${ps.length>1?`<option value="*" ${alvo==='*'?'selected':''}>Todos os postos</option>`:''}</select>`):`<input type="hidden" id="pPos" value="${UI.pousada}">`)+
-    campo('Tipo de quarto',`<select id="pTipo" class="${INP}">${DB.tipos.filter(t=>t.ativo!=='nao').map(t=>`<option value="${t.id}" ${x&&x.tipo===t.id?'selected':''}>${esc(t.nome)}</option>`).join('')}</select>`)+
+  const tiposA=DB.tipos.filter(t=>t.ativo!=='nao');
+  const box=formShell(x?'Editar preço da temporada':'Novo preço para datas específicas',
+    (ps.length>1?campo('Vale para',`<select id="pPos" class="${INP}"><option value="${UI.pousada}">${esc(nomeP(UI.pousada))}</option><option value="*" ${alvo==='*'?'selected':''}>Todos os postos</option></select>`):`<input type="hidden" id="pPos" value="${UI.pousada}">`)+
+    campo('Tipo de quarto',`<select id="pTipo" class="${INP}">${tiposA.map(t=>`<option value="${t.id}" ${x&&x.tipo===t.id?'selected':''}>${esc(t.nome)}</option>`).join('')}</select>`)+
     campo('De',`<input id="pIni" type="date" value="${x?x.inicio:hojeISO()}" class="${INP}">`)+campo('Até (inclusive)',`<input id="pFim" type="date" value="${x?x.fim:hojeISO()}" class="${INP}">`)+
-    campo('Diária no período (R$)',`<input id="pPreco" type="number" min="0" step="0.01" value="${x?x.preco:''}" class="${INP}">`)+campo('Motivo',`<input id="pMot" value="${esc(x?x.motivo:'')}" placeholder="Feriado, promoção, alta temporada…" class="${INP}">`),'Salvar');
+    campo('O que muda neste período',`<select id="pAj" class="${INP}"></select>`,'sm:col-span-2')+`<div id="pValBox" class="sm:col-span-2"></div>`+
+    campo('Motivo',`<input id="pMot" value="${esc(x?x.motivo:'')}" placeholder="Feriado, promoção, alta temporada…" class="${INP}">`,'sm:col-span-2'),'Salvar');
+  const ajx=x?(x.ajuste_tipo||'valor'):null; let est={aj:ajx,v:x?(ajx==='valor'?x.preco:(x.ajuste_valor||'')):'',vals:x&&ajx==='tabela'?tabelaDe(x.tipo,x.id):{}};
+  const tipoSel=()=>tipoDe(box.querySelector('#pTipo').value), ocup=()=>{ const t=tipoSel(); return !!t&&t.modo==='ocupacao'; };
+  const ler=()=>{ const s=box.querySelector('#pAj'); if(s&&s.value) est.aj=s.value; const v=box.querySelector('#pVal'); if(v) est.v=v.value; for(let n=1;n<=40;n++){ const e=box.querySelector('#pt'+n); if(e) est.vals[n]=e.value; } };
+  const desenhar=()=>{
+    const ops=ocup()?[['tabela','Tabela de preços própria do período'],['acresc_v','Acrescentar R$ por diária (negativo = desconto)'],['acresc_p','Acrescentar % (negativo = desconto)']]:[['valor','Novo valor da diária (R$)'],['acresc_v','Acrescentar R$ por diária (negativo = desconto)'],['acresc_p','Acrescentar % (negativo = desconto)']];
+    const sel=box.querySelector('#pAj'); if(!ops.some(o=>o[0]===est.aj)) est.aj=ops[0][0];
+    sel.innerHTML=ops.map(o=>`<option value="${o[0]}" ${o[0]===est.aj?'selected':''}>${o[1]}</option>`).join('');
+    const bx=box.querySelector('#pValBox'), t=tipoSel();
+    bx.innerHTML=est.aj==='tabela'?`<div class="${LBL}">Diária por número de pessoas neste período (R$)</div>`+tabelaGrid('pt',Math.min(40,t?t.capacidade:1),est.vals):campo(est.aj==='acresc_p'?'Percentual (%)':'Valor (R$)',`<input id="pVal" type="number" step="0.01" value="${esc(est.v)}" class="${INP}">`);
+  };
+  desenhar(); box.querySelector('#pTipo').onchange=()=>{ ler(); desenhar(); }; box.querySelector('#pAj').onchange=()=>{ ler(); desenhar(); };
   box.querySelector('#fOk').onclick=async()=>{
-    const g=id=>box.querySelector('#'+id).value, ini=g('pIni'), fim=g('pFim'), pr=+g('pPreco');
+    ler(); const g=id=>box.querySelector('#'+id).value, ini=g('pIni'), fim=g('pFim'), aj=est.aj, t=tipoSel();
+    if(!t) return box.erro('Cadastre um tipo de quarto antes.');
     if(!ini||!fim||fim<ini) return box.erro('A data final deve ser igual ou depois da inicial.');
-    if(!(pr>0)) return box.erro('Informe um preço maior que zero.');
-    try{ const campos={pousada:g('pPos'),tipo:g('pTipo'),inicio:ini,fim,preco:pr,motivo:g('pMot').trim()};
-      if(x){ Object.assign(x,campos); await atualizar('precos',x); await log('editou_preco',`${campos.motivo} · ${money(pr)} · ${ini}→${fim}`); }
-      else { await anexar('precos',{id:uid('E'),...campos,criado_por:EU.email,criado_em:new Date().toISOString(),ativo:'sim'}); await log('criou_preco',`${campos.motivo} · ${money(pr)} · ${ini}→${fim}`); }
-      fecharDialogo(); render(); toast('Preço salvo'); }catch(e){ erroGeral(e); }
+    let preco=0, avl=0; const tab=[];
+    if(aj==='tabela'){ for(let n=1;n<=t.capacidade;n++){ const v=+est.vals[n]; if(!(v>0)) return box.erro('Preencha o valor para '+n+' pessoa'+(n>1?'s':'')+'.'); tab.push(v); } }
+    else if(aj==='valor'){ preco=+est.v; if(!(preco>0)) return box.erro('Informe um valor maior que zero.'); }
+    else { avl=+est.v; if(!avl) return box.erro('Informe o valor do ajuste (diferente de zero).'); }
+    try{ const campos={pousada:g('pPos'),tipo:t.id,inicio:ini,fim,preco,motivo:g('pMot').trim(),ajuste_tipo:aj,ajuste_valor:avl}; let id;
+      if(x){ Object.assign(x,campos); await atualizar('precos',x); id=x.id; } else { id=uid('E'); await anexar('precos',{id,...campos,criado_por:EU.email,criado_em:new Date().toISOString(),ativo:'sim'}); }
+      if(aj==='tabela') await salvarTabela(t.id,id,tab);
+      await log(x?'editou_preco':'criou_preco',`${campos.motivo} · ${aj} · ${ini}→${fim}`); fecharDialogo(); render(); toast('Preço salvo'); }catch(e){ erroGeral(e); }
   };
 };
 ACOES.rmPreco=async d=>{
@@ -1106,8 +1262,20 @@ VIEWS.config=()=>`
   <section class="${CARD} p-5"><h3 class="font-serif text-xl font-extrabold">Identidade do sistema</h3><p class="text-sm text-neutral-600">Nome e subtítulo exibidos no menu, login e fichas impressas.</p>
     <div class="mt-4 grid gap-4 sm:grid-cols-2">${campo('Nome da empresa',`<input id="cEmp" value="${esc(cfg('empresa'))}" class="${INP}">`)}${campo('Subtítulo',`<input id="cSub" value="${esc(cfg('subtitulo'))}" class="${INP}">`)}</div>
     <div class="mt-4 flex justify-end"><button data-act="salvarConfig" class="${BTN}">Salvar identidade</button></div></section>
+  <section class="${CARD} p-5"><h3 class="font-serif text-xl font-extrabold">Modelo de preço por pessoa (Rei do Suco 2026)</h3><p class="text-sm text-neutral-600">Cria o tipo "Hospedagem" (até 4 hóspedes; 1 a 4 pessoas: R$ 116 / 209 / 300 / 389), o adicional "Café da manhã" (R$ 10 / 20 / 15 / 20 por nº de adultos) e as faixas de crianças (0 a 5 anos não pagam; 6 a 12 pagam +R$ 50 por diária). Troca todos os quartos para esse tipo. Tudo pode ser editado depois em Preços.</p><div class="mt-3"><button data-act="modeloCliente" class="${BTN2}"><i class="fa-solid fa-wand-magic-sparkles"></i> Aplicar modelo</button></div></section>
   <section class="${CARD} p-5"><div class="flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-serif text-xl font-extrabold">Pousadas / hotéis</h3><p class="text-sm text-neutral-600">Cadastre, renomeie ou desative as unidades.</p></div><button data-act="formPousada" class="${BTN}"><i class="fa-solid fa-plus"></i> Nova pousada</button></div>
     <div class="mt-4 space-y-2">${DB.pousadas.map(p=>`<div class="flex flex-wrap items-center gap-3 rounded-2xl border border-neutral-100 px-4 py-3 ${p.ativo==='nao'?'opacity-60':''}"><div class="min-w-0 flex-1"><b>${esc(p.nome)}</b><div class="text-xs text-neutral-500">Nome curto: ${esc(p.curto)} · ${quartosDe(p.id).length} quartos${p.ativo==='nao'?' · <b>inativa</b>':''}</div></div><button data-act="formPousada" data-id="${p.id}" class="grid h-9 w-9 place-items-center rounded-full text-brand hover:bg-brand-soft" aria-label="Editar"><i class="fa-solid fa-pen"></i></button></div>`).join('')}</div></section>`;
+ACOES.modeloCliente=async()=>{
+  const ok=await modal({titulo:'Aplicar modelo de preço por pessoa?',texto:'Cria o tipo, o adicional e as faixas de crianças e muda TODOS os quartos ativos para o novo tipo. Reservas antigas mantêm os valores já gravados; se forem editadas com outra composição de hóspedes, serão recalculadas.',ok:'Aplicar modelo'});
+  if(!ok) return;
+  const tid=uid('T'); await anexar('tipos',{id:tid,nome:'Hospedagem',capacidade:4,preco:116,ativo:'sim',modo:'ocupacao'});
+  await salvarTabela(tid,'',[116,209,300,389]);
+  const aid=uid('A'); await anexar('adicionais',{id:aid,nome:'Café da manhã',cobranca:'tabela',montante:0,padrao:'',ativo:'sim'});
+  await salvarTabela('ad_'+aid,'',[10,20,15,20]);
+  await anexarVarios('faixas',[{id:uid('C'),nome:'0 a 5 anos',idade_min:0,idade_max:5,regra:'gratis',montante:0,ativo:'sim',cobra_adic:''},{id:uid('C'),nome:'6 a 12 anos',idade_min:6,idade_max:12,regra:'fixo_diaria',montante:50,ativo:'sim',cobra_adic:''}]);
+  for(const q of DB.quartos.filter(q=>q.ativo!=='nao')){ q.tipo=tid; await atualizar('quartos',q); }
+  await lerTab(['tipos','adicionais','faixas','quartos','tarifas']); await log('modelo_preco_pessoa','Hospedagem · 4 pessoas'); render(); toast('Modelo aplicado');
+};
 ACOES.salvarConfig=async()=>{
   for(const [k,id] of [['empresa','cEmp'],['subtitulo','cSub']]){
     const v=$('#'+id).value.trim(); if(!v) return toast('Preencha nome e subtítulo.','erro');
@@ -1144,7 +1312,7 @@ async function iniciar(){
     etapa(5,'Conectando ao Google Sheets…');
     etapa(15,'Verificando as abas da planilha…'); await garantirAbas();
     etapa(35,'Lendo pousadas e configurações…'); await lerTab(['pousadas','config']);
-    etapa(50,'Lendo tipos de quarto, quartos e preços…'); await lerTab(['tipos','quartos','bloqueios','precos']);
+    etapa(50,'Lendo tipos de quarto, quartos e preços…'); await lerTab(['tipos','quartos','bloqueios','precos','tarifas','adicionais','faixas']);
     etapa(70,'Lendo reservas e limpeza…'); await lerTab(['reservas','limpeza']);
     etapa(85,'Verificando seu acesso…'); await lerTab(['usuarios']);
     if(!DB.pousadas.length||!DB.config.length||!DB.tipos.length||!DB.quartos.length){ etapa(90,'Preparando os dados iniciais…'); await semear(); await lerTudo(); }
