@@ -485,10 +485,20 @@ async function garantirAbas(){
     if(falta.includes(ABA.hist)) await SHEETS({path:'/values/'+encodeURIComponent(ABA.hist+'!A1')+'?valueInputOption=RAW',opts:{method:'PUT',body:JSON.stringify({values:[CAB_HIST]})}});
   }
 }
+// Abas novas vêm com 1000/2000 linhas e 26 colunas: gravar além disso dá "exceeds grid limits". Amplia a grade antes.
+async function garantirGrade(aba,linhas,colunas){
+  const info=await SHEETS({path:'?fields=sheets.properties(sheetId,title,gridProperties)'});
+  const s=(info.sheets||[]).map(x=>x.properties).find(x=>x.title===aba); if(!s) return;
+  const g=s.gridProperties||{}, reqs=[];
+  if((g.rowCount||0)<linhas || (g.columnCount||0)<colunas){
+    await SHEETS({path:':batchUpdate',opts:pj({requests:[{updateSheetProperties:{properties:{sheetId:s.sheetId,gridProperties:{rowCount:Math.max(g.rowCount||0,linhas+500),columnCount:Math.max(g.columnCount||0,colunas)}},fields:'gridProperties.rowCount,gridProperties.columnCount'}}]})});
+  }
+}
 async function gravarPlanilha(dados,hist){
   await garantirAbas();
   const rows=[CAB_LOTES,...dados.lotes.map(l=>{ const p=dados.produtos[l.cod]||{};
     return [l.cod,p.desc||'',p.grupo||'',p.tipo||'',p.setor||'',p.situacao||'',p.unidade||'',p.fam||'',p.portaria||'',l.filial,l.fornecedor,l.lote,l.nota,l.fabr||'',l.val,l.qtd,l.custo,l.total]; })];
+  await garantirGrade(ABA.lotes,rows.length+1,18);
   // grava primeiro e só depois limpa o que sobrou, para nunca deixar a planilha vazia no meio do processo
   for(let i=0;i<rows.length;i+=2000){
     await SHEETS({path:'/values/'+encodeURIComponent(`${ABA.lotes}!A${i+1}`)+'?valueInputOption=RAW',opts:{method:'PUT',body:JSON.stringify({values:rows.slice(i,i+2000)})}});
