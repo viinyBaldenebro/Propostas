@@ -85,7 +85,7 @@ dialog[open]{animation:pop .25s cubic-bezier(.2,.7,.2,1)}
           <div class="min-w-0"><b id="uNome" class="block truncate text-sm text-ink"></b><span id="uPerfil"></span></div>
         </div>
         <button data-act="sair" class="mt-3 w-full rounded-full border border-neutral-200 py-2 font-semibold text-neutral-600 hover:border-brand hover:text-brand"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
-        <div class="mt-2 text-center text-[10px] text-neutral-400">Versão 26/11 · reserva em 4 etapas</div>
+        <div class="mt-2 text-center text-[10px] text-neutral-400">Versão 26/11 · reserva em 6 etapas</div>
       </div>
     </aside>
     <div class="min-w-0 flex-1">
@@ -188,6 +188,8 @@ const salvarMarca = () => { if(!DB.config.length) return; try{ localStorage.setI
 const BTN='shine relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full bg-brand px-6 py-3 font-semibold text-white shadow-lg shadow-brand/30 transition hover:-translate-y-0.5 hover:bg-brand-dark disabled:opacity-50';
 const BTN2='inline-flex items-center justify-center gap-2 rounded-full border-2 border-brand px-5 py-2.5 text-sm font-semibold text-brand transition hover:bg-brand hover:text-white';
 const BTNG='inline-flex items-center justify-center gap-2 rounded-full border border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-600 transition hover:border-brand hover:text-brand';
+const DLGBOX='max-h-[94vh] w-[min(96vw,760px)] overflow-y-auto overflow-x-hidden rounded-3xl bg-white p-4 shadow-2xl sm:p-7';
+const WZBOX='@container flex h-[min(94dvh,700px)] w-[min(96vw,760px)] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl';
 const INP='w-full rounded-xl border-2 border-neutral-200 bg-neutral-50 px-4 py-2.5 outline-none transition focus:border-brand';
 const LBL='mb-1 block text-xs font-semibold uppercase tracking-wider text-neutral-500';
 const CARD='rounded-3xl border border-orange-100 bg-white shadow-sm';
@@ -253,7 +255,7 @@ function modal({titulo,texto='',resumo='',campo:c=null,ok='Confirmar',perigo=fal
   });
 }
 function abrirDialogo(html){
-  const d=$('#dlgForm'); $('#dlgFormBox').innerHTML=html;
+  const d=$('#dlgForm'); $('#dlgFormBox').className=DLGBOX; $('#dlgFormBox').innerHTML=html;
   if(!d.open) d.showModal();
   return $('#dlgFormBox');
 }
@@ -424,21 +426,21 @@ function precoNoite(pousada,tipoId,data,occ=OCC1,primeira=false){
   if(t&&t.modo==='ocupacao'){
     let v=null; if(e&&aj==='tabela'){ v=tabelaPreco(t.id,e.id,ad); if(v!==null) especial=true; }
     if(v===null) v=tabelaPreco(t.id,'',ad);
-    partes.push({t:'Diária · '+ad+' adulto'+(ad>1?'s':''),v:v===null?(+t.preco||0):v});
+    partes.push({t:'Diária · '+ad+' adulto'+(ad>1?'s':''),v:v===null?(+t.preco||0):v,tag:especial?(e.motivo||'Data especial'):''});
   } else {
-    let v=t?+t.preco:0; if(e&&(aj===''||aj==='valor')){ v=+e.preco; especial=true; } partes.push({t:'Diária',v});
+    let v=t?+t.preco:0; if(e&&(aj===''||aj==='valor')){ v=+e.preco; especial=true; } partes.push({t:'Diária',v,tag:especial?(e.motivo||'Data especial'):''});
   }
   const soma=()=>partes.reduce((s,x)=>s+x.v,0);
   const pag=ad+faixasAtivas().reduce((n,f)=>n+(f.cobra_adic==='sim'?((occ.criancas||{})[f.id]||0):0),0);
-  if(e&&aj==='acresc_v'){ partes.push({t:'Ajuste do período',v:+e.ajuste_valor}); especial=true; }
-  if(e&&aj==='acresc_p'){ partes.push({t:'Ajuste do período ('+e.ajuste_valor+'%)',v:arred(soma()*e.ajuste_valor/100)}); especial=true; }
+  if(e&&aj==='acresc_v'){ partes.push({t:'Ajuste · '+(e.motivo||'período'),v:+e.ajuste_valor}); especial=true; }
+  if(e&&aj==='acresc_p'){ partes.push({t:'Ajuste · '+(e.motivo||'período')+' ('+e.ajuste_valor+'%)',v:arred(soma()*e.ajuste_valor/100)}); especial=true; }
   const base=soma();
   faixasAtivas().forEach(f=>{ const q=(occ.criancas||{})[f.id]||0; if(!q) return;
     const v=f.regra==='fixo_diaria'?f.montante*q:(f.regra==='percentual'?arred(base*f.montante/100*q):0);
-    if(v>0) partes.push({t:f.nome+' × '+q,v}); });
+    if(v>0) partes.push({t:(/rian/i.test(f.nome)?f.nome:'Criança '+f.nome)+' × '+q,v}); });
   (occ.adics||[]).forEach(id=>{ const a=DB.adicionais.find(x=>x.id===id&&x.ativo!=='nao'); if(!a) return; let v=0;
     if(a.cobranca==='pessoa_diaria') v=a.montante*pag; else if(a.cobranca==='diaria') v=a.montante; else if(a.cobranca==='estadia') v=primeira?a.montante:0; else v=tabelaPreco('ad_'+a.id,'',pag)||0;
-    if(v>0) partes.push({t:a.nome,v}); });
+    if(v>0) partes.push({t:a.nome+((a.cobranca==='pessoa_diaria'||a.cobranca==='tabela')?' · '+pag+' pessoa'+(pag>1?'s':''):''),v,un:a.cobranca==='estadia'?'estadia':''}); });
   return {preco:Math.max(0,arred(soma())),partes,especial,motivo:e?e.motivo:''};
 }
 /* preços das noites já gravadas em `old` são preservados se tipo e composição de hóspedes não mudaram */
@@ -563,7 +565,7 @@ ACOES.card=async d=>{
   if(UI.data<hojeISO()) return toast('Data passada: só é possível consultar.','erro');
   abrirWizard({quartoId:q.id,entrada:UI.data});
 };
-ACOES.novaRes=()=>abrirWizard({entrada:UI.data>=hojeISO()?UI.data:hojeISO()});
+ACOES.novaRes=()=>abrirWizard({});
 
 /* ============ IMPRESSÃO ============ */
 function imprimirHTML(html,termico){
@@ -647,7 +649,7 @@ function imprimirRecibo(r,modo){
     <div style="text-align:center;margin-top:6px">Obrigado pela preferência!</div>${t?'<div style="height:8mm"></div>':''}</div>`,t);
 }
 
-/* ============ ASSISTENTE DE RESERVA (3 etapas: quarto → hóspedes e valor → titular) ============ */
+/* ============ ASSISTENTE DE RESERVA (6 etapas) ============ */
 let WZ=null, SALVANDO=false;
 const wzBox = () => $('#dlgFormBox');
 const wz$ = id => wzBox().querySelector('#'+id);
@@ -657,19 +659,37 @@ const capQ = q => { const t=q&&tipoDe(q.tipo); return t&&t.capacidade>0?t.capaci
 const occAtual = () => ({adultos:WZ.adultos,criancas:WZ.criancas,adics:WZ.adics});
 const hospedadoWZ = () => !!(WZ.res&&WZ.res.status==='hospedado');
 const maxCap = () => WZ.quartoId&&quartoDe(WZ.quartoId)?capQ(quartoDe(WZ.quartoId)):Math.max(1,...quartosDe(WZ.pousada).map(capQ));
-const quartoOk0 = q => !!q&&q.ativo!=='nao'&&q.pousada===WZ.pousada&&capQ(q)>=totalHosp()&&livre(q.id,WZ.entrada,WZ.saida,WZ.res&&WZ.res.id);
-DN.wz={get:()=>WZ.entrada,set:v=>{ if(hospedadoWZ()) return; const h=hojeISO(); WZ.entrada=v<h?h:v; if(WZ.saida<=WZ.entrada) WZ.saida=addDias(WZ.entrada,1); renderWZ(); }};
+const WZROT=['Qual quarto?','Quais as datas?','Quem vai ficar?','Desconto e pagamento','Dados do titular','Confira e confirme'];
+const WZMES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const resF = r => ({nome:(r&&r.nome)||'',tel:(r&&r.telefone)||'',placa:(r&&r.placa)||'',rg:(r&&r.rg)||'',cpf:(r&&r.cpf)||'',nasc:(r&&r.nasc)||'',vei:(r&&r.veiculo)||'',email:(r&&r.email)||'',cid:(r&&r.cidade)||'',obs:(r&&r.obs)||''});
+const wzIc = (n,c='') => `<i class="fa-solid fa-${n} ${c}"></i>`;
+const INPS='w-full min-w-0 rounded-lg border-2 border-neutral-200 bg-neutral-50 px-3 py-2 text-base outline-none transition focus:border-brand @md:py-1.5 @md:text-sm';
+const LBLW='mb-0.5 block text-[11px] font-semibold uppercase tracking-wider text-neutral-500';
+const BTNW='shine relative inline-flex h-12 items-center justify-center gap-2 overflow-hidden rounded-full bg-brand px-6 font-semibold text-white shadow-lg shadow-brand/30 transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none';
+const BTNI='grid h-12 w-12 shrink-0 place-items-center rounded-full border border-neutral-200 text-neutral-600 transition hover:border-brand hover:text-brand';
+const wzSec = t => `<b class="text-[11px] font-bold uppercase tracking-[.18em] text-brand">${t}</b>`;
+const faixaRot = f => { const r=/\d/.test(f.nome)?f.nome:f.nome+' ('+f.idade_min+' a '+f.idade_max+' anos)'; return /rian/i.test(r)?r:'Criança · '+r; };
+const wzIgn = () => WZ.res&&WZ.res.id;
+const wzOcup = (q,d) => !livre(q,d,addDias(d,1),wzIgn());
+const wzLivreAte = (q,ent) => wzOcup(q,ent)?null:(maxSaida(q,ent,wzIgn())||addDias(ent,400));
+function wzStatus(q){
+  const h=hojeISO(), r=ocupacao(q,h), b=bloqueioEm(q,h);
+  if(q.id===WZ.quartoId) return {livre:true,sel:true,txt:'Escolhido'};
+  if(r) return {livre:false,txt:(r.status==='hospedado'?'Ocupado':'Reservado')+' até '+fmtCurto(r.saida)};
+  if(b) return {livre:false,txt:'Bloqueado até '+fmtCurto(b.fim)};
+  const p=maxSaida(q.id,h,null); return {livre:true,txt:'Livre hoje'+(p&&diffDias(h,p)<=7?' · próx. '+fmtCurto(p):'')};
+}
 function abrirWizard({res=null,quartoId=null,entrada=null,modo=null}){
-  const h=hojeISO(), o=res?occDe(res):{adultos:1,criancas:{},adics:adicionaisAtivos().filter(a=>a.padrao==='sim').map(a=>a.id)};
-  WZ={res,modo,pousada:res?res.pousada:UI.pousada,quartoId:res?res.quarto_id:quartoId,entrada:res?res.entrada:(entrada&&entrada>=h?entrada:h),saida:res?res.saida:null,
-    adultos:o.adultos,criancas:{...o.criancas},adics:[...o.adics],passo:(res||quartoId)?2:1,descTipo:'v',descVal:res?Number(res.desconto)||0:0,
-    pago:res?res.pago==='sim':false,forma:(res&&res.forma_pgto)||formaPadrao(),det:false,f:resF(res),edData:false,adOpen:false,maisOpen:false};
-  if(!WZ.saida) WZ.saida=addDias(WZ.entrada,1);
-  renderWZ();
+  const o=res?occDe(res):{adultos:1,criancas:{},adics:adicionaisAtivos().filter(a=>a.padrao==='sim').map(a=>a.id)};
+  WZ={res,modo,pousada:res?res.pousada:UI.pousada,quartoId:res?res.quarto_id:quartoId,entrada:res?res.entrada:(quartoId&&entrada&&entrada>=hojeISO()?entrada:null),saida:res?res.saida:null,
+    adultos:o.adultos,criancas:{...o.criancas},adics:[...o.adics],passo:res?6:(quartoId?2:1),descTipo:'v',descVal:res?Number(res.desconto)||0:0,
+    pago:res?res.pago==='sim':false,forma:(res&&res.forma_pgto)||formaPadrao(),f:resF(res),mes:null,filtro:'livres',aviso:'',erro:''};
+  WZ.mes=(WZ.entrada||hojeISO()).slice(0,7); wzDraw();
 }
 function calcWZ(){
   const q=quartoDe(WZ.quartoId); if(!q) return {erro:'Escolha um quarto.'};
   if(!tipoDe(q.tipo)) return {erro:'Este quarto está sem tipo. Defina o tipo em Gerir quartos.'};
+  if(!WZ.entrada||!WZ.saida) return {erro:'Escolha as datas de entrada e saída.'};
   const ent=WZ.entrada, sai=WZ.saida, ign=WZ.res&&WZ.res.id;
   if(!(sai>ent)) return {erro:'O check-out deve ser depois do check-in.'};
   const lim=maxSaida(q.id,ent,ign); if(lim&&sai>lim) return {erro:'Este quarto fica indisponível a partir de '+fmtBR(lim)+'. Check-out no máximo nessa data.',lim};
@@ -678,102 +698,144 @@ function calcWZ(){
   const n=calcNoites(WZ.pousada,q,ent,sai,WZ.res,occAtual()), sub=arred(n.reduce((s,x)=>s+x.preco,0));
   let dv=WZ.descVal||0; if(WZ.descTipo==='p') dv=sub*Math.min(dv,100)/100; else if(WZ.descTipo==='d') dv=dv*n.length;
   dv=Math.max(0,Math.min(arred(dv),sub));
-  return {n,sub,desc:dv,total:arred(sub-dv),lim,sai,q};
+  return {n,nn:n.length,sub,desc:dv,total:arred(sub-dv),lim,sai,q};
 }
-const WZROT=['Qual quarto?','Quem vai ficar e quanto fica?','Quem é o titular?','Confirme e finalize'];
-const resF = r => ({nome:(r&&r.nome)||'',tel:(r&&r.telefone)||'',placa:(r&&r.placa)||'',rg:(r&&r.rg)||'',cpf:(r&&r.cpf)||'',nasc:(r&&r.nasc)||'',vei:(r&&r.veiculo)||'',email:(r&&r.email)||'',cid:(r&&r.cidade)||'',obs:(r&&r.obs)||''});
-function renderWZ(){ if(WZ.passo>1&&!WZ.quartoId) WZ.passo=1; ({1:renderPasso1,2:renderPasso2,3:renderPasso3,4:renderPasso4})[WZ.passo](); }
+/* ---- moldura: cabeçalho fixo, miolo que rola, rodapé fixo ---- */
+function wzDraw(){
+  if(WZ.passo>1&&!WZ.quartoId) WZ.passo=1;
+  const d=$('#dlgForm'), b=wzBox(); b.className=WZBOX;
+  b.innerHTML=`<div id="wzCab" class="shrink-0 px-4 pt-4 @md:px-6 @md:pt-5">${wzCab()}</div><div id="wzCorpo" class="min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-3 @md:px-6">${wzCorpo()}</div><div id="wzRod" class="shrink-0 border-t border-neutral-100 bg-white px-4 py-3 @md:px-6">${wzRod()}</div>`;
+  if(!d.open) d.showModal();
+}
+const renderWZ = wzDraw;
+function wzUpd(){ const c=$('#wzCorpo'); const y=c.scrollTop; c.innerHTML=wzCorpo(); c.scrollTop=y; $('#wzRod').innerHTML=wzRod(); $('#wzCab').innerHTML=wzCab(); }
 const wzTitulo = () => WZ.res?(WZ.modo==='checkin'?'Check-in':'Editar reserva'):'Nova reserva';
-const wzCab = n => `<div class="flex items-start justify-between gap-3"><div class="min-w-0"><h3 class="font-serif text-xl font-extrabold sm:text-2xl">${wzTitulo()}</h3><p class="truncate text-xs text-neutral-500">${esc(nomeP(WZ.pousada))}</p></div>${fechaX}</div>
-  <div class="mt-3"><div class="flex gap-1">${[1,2,3,4].map(i=>`<span class="h-1.5 flex-1 rounded-full ${i<=n?'bg-brand':'bg-neutral-200'}"></span>`).join('')}</div><p class="mt-1.5 text-sm font-bold text-brand-dark">Etapa ${n} de 4 · ${WZROT[n-1]}</p></div>`;
-const secT = t => `<b class="text-[11px] font-bold uppercase tracking-[.18em] text-brand">${t}</b>`;
-const faixaRot = f => { const r=/\d/.test(f.nome)?f.nome:f.nome+' ('+f.idade_min+' a '+f.idade_max+' anos)'; return /rian/i.test(r)?r:'Criança · '+r; };
-function rodape(n,btn){
-  const ic=(act,i,tit)=>`<button type="button" data-act="${act}" data-p="${act==='wzIr'?1:''}" class="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-neutral-200 text-neutral-600 hover:border-brand hover:text-brand" aria-label="${tit}" title="${tit}"><i class="fa-solid ${i}"></i></button>`;
-  return `<div class="sticky bottom-0 -mx-4 -mb-4 mt-4 flex items-center gap-2 border-t border-neutral-100 bg-white px-4 py-3 sm:-mx-7 sm:-mb-7 sm:px-7"><div class="min-w-0 flex-1"><div id="wzBarInfo" class="truncate text-[11px] font-semibold text-neutral-500"></div><b id="wzBarTotal" class="font-serif text-2xl leading-tight text-brand-dark">—</b></div>
-    ${n>=3?ic('wzVoltar','fa-arrow-left','Voltar'):''}${hospedadoWZ()?'':ic('wzIr','fa-door-open','Trocar quarto')}${btn}</div>`;
+function wzCab(){
+  const q=WZ.quartoId&&quartoDe(WZ.quartoId), t=q&&tipoDe(q.tipo), n=WZ.passo;
+  return `<div class="flex items-start justify-between gap-3"><div class="min-w-0"><h3 class="font-serif text-xl font-extrabold @md:text-2xl">${wzTitulo()}</h3><p class="truncate text-xs text-neutral-500">${esc(nomeP(WZ.pousada))}</p></div>${fechaX}</div>
+  <div class="mt-3 flex gap-1">${WZROT.map((_,i)=>`<span class="h-1.5 flex-1 rounded-full ${i<n?'bg-brand':'bg-neutral-200'}"></span>`).join('')}</div>
+  <p class="mt-1.5 text-sm font-bold text-brand-dark">Etapa ${n} de ${WZROT.length} · ${WZROT[n-1]}</p>
+  ${q&&n>1?`<div class="mt-2 flex items-center justify-between gap-2 rounded-xl bg-brand-cream px-3 py-2"><span class="min-w-0 truncate text-sm"><b>Apto ${esc(q.numero)}</b> <span class="text-neutral-500">· ${esc(t?t.nome:'sem tipo')}</span></span>${hospedadoWZ()?'':`<button type="button" data-act="wzIr" data-p="1" class="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-neutral-300 bg-white px-3 py-1 text-xs font-semibold text-brand-dark hover:border-brand">${wzIc('door-open','text-[11px]')} Trocar quarto</button>`}</div>`:''}`;
 }
-const btnAv = `<button type="button" id="wzAvancar" data-act="wzAvancar" class="${BTN} !px-5 sm:!px-6">Avançar <i class="fa-solid fa-arrow-right"></i></button>`;
-function atualizarBarra(){
-  const t=wz$('wzBarTotal'); if(!t) return; const c=calcWZ(), q=quartoDe(WZ.quartoId), i=wz$('wzBarInfo');
-  t.textContent=c.erro?'—':money(c.total);
-  if(i) i.textContent=q?('Apto '+q.numero+(c.erro?'':' · '+c.n.length+' noite'+(c.n.length>1?'s':''))):'';
-  const bt=wz$('wzAvancar'); if(bt&&WZ.passo===2) bt.disabled=!!c.erro;
+function wzRod(){
+  if(WZ.passo===1) return `<p class="py-2 text-center text-sm text-neutral-500">Toque em um quarto para continuar</p>`;
+  const c=calcWZ(), q=quartoDe(WZ.quartoId), ult=WZ.passo===6, h=hojeISO();
+  const info=q?('Apto '+q.numero+(c.erro?'':' · '+c.nn+' noite'+(c.nn>1?'s':''))):'';
+  const ok=WZ.passo===2?!!(WZ.entrada&&WZ.saida&&!c.erro):true;
+  const lbl=ult?(WZ.modo==='checkin'?'<i class="fa-solid fa-key"></i> Confirmar check-in':(WZ.res?'<i class="fa-solid fa-floppy-disk"></i> Salvar':(WZ.entrada===h?'<i class="fa-solid fa-key"></i> Check-in agora':'<i class="fa-solid fa-calendar-check"></i> Reservar'))):'Continuar <i class="fa-solid fa-chevron-right text-xs"></i>';
+  return `<div class="flex items-center gap-2"><div class="min-w-0 flex-1"><div class="truncate text-[11px] font-semibold text-neutral-500">${esc(info)}</div><b class="font-serif text-2xl leading-tight text-brand-dark">${c.erro?'—':money(c.total)}</b></div>
+   <button type="button" data-act="wzVoltar" class="${BTNI}" aria-label="Voltar">${wzIc('arrow-left')}</button>
+   <button type="button" id="${ult?'wzSalvar':'wzAvancar'}" data-act="${ult?'wzSalvar':'wzAvancar'}" class="${BTNW} !px-5 @md:!px-6" ${ok?'':'disabled'}>${lbl}</button></div>`;
 }
-/* ---- etapa 1: quarto ---- */
-function renderPasso1(){
-  const p=WZ.pousada, ent=WZ.entrada, h=hojeISO(), hosp=hospedadoWZ(), ign=WZ.res&&WZ.res.id, th=totalHosp(), occ=occAtual(), nn=diffDias(ent,WZ.saida);
-  const todos=quartosDe(p), ok=q=>(!ign||q.id===WZ.quartoId||estadoQ(q,ent)===0)&&estadoQ(q,ent)===0&&capQ(q)>=th&&livre(q.id,ent,WZ.saida,ign);
-  const qs=todos.filter(q=>ok(q)||(ign&&q.id===WZ.quartoId&&capQ(q)>=th&&livre(q.id,ent,WZ.saida,ign)));
-  const ind=todos.filter(q=>!qs.includes(q)&&capQ(q)>=th).map(q=>{ const r=ocupacao(q,ent); return q.numero+(r?(r.status==='hospedado'?' (ocupado)':' (reservado)'):(bloqueioEm(q,ent)?' (bloqueado)':'')); });
-  const item=q=>{ const t=tipoDe(q.tipo), pn=precoNoite(p,q.tipo,ent,occ), sel=q.id===WZ.quartoId;
-    const sub=!t?'':(pn.especial?'<i class="fa-solid fa-star text-brand"></i> '+esc(pn.motivo||'preço especial'):(t.modo==='ocupacao'&&th===1?'a partir de · 1 pessoa':'diária'));
-    return `<button type="button" data-act="wzPick" data-q="${q.id}" class="flex w-full items-center gap-3 rounded-2xl border-2 ${sel?'border-brand bg-brand-soft':'border-neutral-200 bg-white'} px-3 py-2.5 text-left transition hover:border-brand active:scale-[.99]">
+function wzCorpo(){ return [wz1,wz2,wz3,wz4,wz5,wz6][WZ.passo-1](); }
+/* ---- 1: quarto ---- */
+function wz1(){
+  const p=WZ.pousada, h=hojeISO(), th=totalHosp(), ign=wzIgn(), temDatas=!!(WZ.entrada&&WZ.saida), ref=WZ.entrada||h;
+  const todos=quartosDe(p);
+  const livreOk=q=>!!tipoDe(q.tipo)&&capQ(q)>=th&&(temDatas?livre(q.id,WZ.entrada,WZ.saida,ign):(!ocupacao(q,h)&&!bloqueioEm(q,h)));
+  const nLiv=todos.filter(livreOk).length, qs=WZ.filtro==='livres'?todos.filter(q=>livreOk(q)||q.id===WZ.quartoId):todos;
+  const rotLiv=temDatas?'Livres '+fmtCurto(WZ.entrada)+' → '+fmtCurto(WZ.saida):'Livres hoje';
+  return `${WZ.aviso?`<p class="mb-3 rounded-xl bg-brand-soft px-3 py-2 text-sm font-medium text-brand-dark">${WZ.aviso}</p>`:''}
+  <div class="mb-3 inline-flex max-w-full overflow-hidden rounded-full border border-neutral-200 text-xs font-semibold">
+    <button type="button" data-act="wzFiltro" data-v="livres" class="truncate px-4 py-2 ${WZ.filtro==='livres'?'bg-brand text-white':'text-neutral-600'}">${rotLiv} (${nLiv})</button>
+    <button type="button" data-act="wzFiltro" data-v="todos" class="px-4 py-2 ${WZ.filtro==='todos'?'bg-brand text-white':'text-neutral-600'}">Todos (${todos.length})</button></div>
+  <div class="grid gap-2 @md:grid-cols-2">${qs.map(q=>{ const t=tipoDe(q.tipo), st=wzStatus(q), sel=q.id===WZ.quartoId, pn=t?precoNoite(p,q.tipo,ref,OCC1,true):null;
+    return `<button type="button" ${t?`data-act="wzPick" data-q="${q.id}"`:'disabled'} class="flex w-full items-center gap-3 rounded-2xl border-2 ${sel?'border-brand bg-brand-soft':'border-neutral-200 bg-white'} px-3 py-2.5 text-left transition ${t?'hover:border-brand active:scale-[.99]':'opacity-60'}">
       <span class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand-cream font-serif text-xl font-extrabold">${esc(q.numero)}</span>
-      <span class="min-w-0 flex-1"><b class="block truncate text-sm">${esc(t?t.nome:'Sem tipo')}</b><span class="text-[11px] text-neutral-500">${t?'até '+capQ(q)+' hóspede'+(capQ(q)>1?'s':''):'defina o tipo em Gerir quartos'}</span></span>
-      <span class="shrink-0 text-right">${t?`<b class="block font-serif text-lg font-extrabold leading-tight text-brand-dark">${money(pn.preco)}</b><span class="text-[11px] text-neutral-500">${sub}</span>`:''}</span><i class="fa-solid fa-chevron-right text-xs text-neutral-300"></i></button>`; };
-  abrirDialogo(`${wzCab(1)}
-  <div class="mt-4"><div class="${LBL}">Entrada</div>${hosp?`<div class="rounded-xl bg-brand-cream px-4 py-2.5 font-semibold">${rotuloData(ent)}</div>`:dateNavHTML('wz',ent,h)}</div>
-  <div class="mt-3 flex flex-wrap items-center gap-2" id="wzChips"><span class="${LBL} !mb-0 mr-1">Noites</span>${[1,2,3,5,7].map(n=>`<button type="button" data-act="wzNoites" data-n="${n}" class="h-9 min-w-[2.5rem] rounded-full border px-3 text-xs font-semibold hover:border-brand hover:text-brand ${nn===n?'border-brand bg-brand-soft text-brand-dark':'border-neutral-200 text-neutral-600'}">${n}</button>`).join('')}</div>
-  <div class="mt-4 flex items-center justify-between">${secT('Quartos livres')}<span class="text-xs text-neutral-500">${qs.length} · ${fmtCurto(ent)} → ${fmtCurto(WZ.saida)}</span></div>
-  <div class="mt-2 grid gap-2 sm:grid-cols-2">${qs.map(item).join('')||`<p class="col-span-full rounded-2xl bg-brand-soft px-4 py-3 text-sm font-medium text-brand-dark">Nenhum quarto disponível neste período. Tente outras datas.</p>`}</div>
-  ${ind.length?`<p class="mt-3 text-xs text-neutral-500">Indisponíveis neste período: ${ind.join(', ')}.</p>`:''}`);
+      <span class="min-w-0 flex-1"><b class="block truncate text-sm">${esc(t?t.nome:'Sem tipo')}</b><span class="text-[11px] text-neutral-500">${t?'até '+capQ(q)+' hóspede'+(capQ(q)>1?'s':''):'defina o tipo em Gerir quartos'}</span><span class="mt-0.5 block"><span class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${st.livre?'bg-leaf-soft text-leaf':'bg-neutral-100 text-neutral-500'}">${esc(st.txt)}</span></span></span>
+      <span class="shrink-0 text-right">${pn?`<span class="block text-[10px] text-neutral-500">a partir de</span><b class="font-serif text-lg font-extrabold leading-tight text-brand-dark">${money(pn.preco)}</b>`:''}</span></button>`; }).join('')||'<p class="col-span-full rounded-2xl bg-brand-soft px-4 py-3 text-sm font-medium text-brand-dark">Nenhum quarto livre. Toque em "Todos" para ver todos os quartos.</p>'}</div>`;
 }
-const stepper=(k,rot,sub,val,min,mais)=>`<div class="flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 px-3 py-2"><div class="min-w-0"><div class="text-sm font-semibold">${rot}</div>${sub?`<div class="text-[11px] text-neutral-500">${sub}</div>`:''}</div><div class="flex items-center gap-1"><button type="button" data-act="wzQtd" data-k="${k}" data-d="-1" ${val<=min?'disabled':''} class="grid h-9 w-9 place-items-center rounded-full border-2 border-brand text-lg text-brand hover:bg-brand hover:text-white disabled:opacity-30">−</button><output class="w-7 text-center font-serif text-xl font-extrabold">${val}</output><button type="button" data-act="wzQtd" data-k="${k}" data-d="1" ${mais?'':'disabled'} class="grid h-9 w-9 place-items-center rounded-full border-2 border-brand text-lg text-brand hover:bg-brand hover:text-white disabled:opacity-30">+</button></div></div>`;
-/* ---- etapa 2: hóspedes e valor ---- */
-function renderPasso2(){
-  const ent=WZ.entrada, h=hojeISO(), hosp=hospedadoWZ(), th=totalHosp(), mc=maxCap(), nn=diffDias(ent,WZ.saida);
-  const fx=faixasAtivas(), ads=adicionaisAtivos(), mais=th<mc, qd=quartoDe(WZ.quartoId), td=qd&&tipoDe(qd.tipo);
-  const per=WZ.edData?`<div class="rounded-2xl border border-neutral-200 p-3"><div class="grid gap-3"><div><div class="${LBL}">Entrada</div>${hosp?`<div class="rounded-xl bg-brand-cream px-4 py-2.5 font-semibold">${rotuloData(ent)}</div>`:dateNavHTML('wz',ent,h)}</div><div><label class="${LBL}" for="wzS">Saída</label><input id="wzS" type="date" data-chg="wzSaida" value="${WZ.saida}" min="${addDias(ent,1)}" class="${INP}"></div></div>
-      <div id="wzChips" class="mt-2 flex flex-wrap gap-2">${[1,2,3,5,7].map(n=>`<button type="button" data-act="wzNoites" data-n="${n}" class="rounded-full border px-3.5 py-1.5 text-xs font-semibold hover:border-brand hover:text-brand disabled:opacity-30 ${nn===n?'border-brand bg-brand-soft text-brand-dark':'border-neutral-200 text-neutral-600'}">${n} noite${n>1?'s':''}</button>`).join('')}<button type="button" data-act="wzEdData" class="ml-auto rounded-full bg-brand px-4 py-1.5 text-xs font-semibold text-white">Pronto</button></div></div>`
-    :`<div class="flex items-center justify-between gap-3 rounded-2xl bg-brand-cream px-4 py-3"><div class="min-w-0"><div class="font-semibold">${diaSem(ent)} ${fmtCurto(ent)} → ${diaSem(WZ.saida)} ${fmtCurto(WZ.saida)}</div><div class="text-xs text-neutral-600">${nn} noite${nn>1?'s':''} · Apto ${esc(qd?qd.numero:'')}${td?' · '+esc(td.nome):''}</div></div><button type="button" data-act="wzEdData" class="${BTNG} shrink-0 !py-1.5 text-xs">Alterar datas</button></div>`;
-  abrirDialogo(`${wzCab(2)}
-  <div class="mt-4">${per}</div>
-  <div class="mt-4"><div class="mb-2 flex items-center justify-between">${secT('Hóspedes')}<span class="text-xs font-semibold ${th>=mc?'text-brand-dark':'text-neutral-500'}">${th} de ${mc}</span></div>
-    <div class="grid gap-2 sm:grid-cols-2">${stepper('ad','Adultos','',WZ.adultos,1,mais)}${fx.map(f=>stepper(f.id,esc(faixaRot(f)),regraTxt(f),WZ.criancas[f.id]||0,0,mais)).join('')}</div>${th>=mc?'<p class="mt-1.5 text-xs text-neutral-500">Capacidade máxima do quarto. Para mais hóspedes, troque o quarto.</p>':''}</div>
-  ${ads.length?`<details class="mt-3 rounded-2xl border border-neutral-200" ${(WZ.adOpen||WZ.adics.length)?'open':''} ontoggle="WZ.adOpen=this.open"><summary class="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-semibold"><span>Adicionais${WZ.adics.length?' <span class="ml-1 rounded-full bg-brand px-2 py-0.5 text-[11px] text-white">'+WZ.adics.length+'</span>':''}</span><i class="fa-solid fa-chevron-down text-xs text-neutral-400"></i></summary><div class="grid gap-2 px-3 pb-3 sm:grid-cols-2">${ads.map(a=>`<label class="flex cursor-pointer items-center justify-between gap-3 rounded-2xl border-2 border-neutral-200 px-3 py-2.5 has-[:checked]:border-brand has-[:checked]:bg-brand-soft"><span class="min-w-0"><b class="block text-sm">${esc(a.nome)}</b><span class="text-[11px] text-neutral-500">${adTxt(a)}</span></span><input type="checkbox" data-chg="wzAd" data-id="${a.id}" ${WZ.adics.includes(a.id)?'checked':''} class="h-5 w-5 shrink-0 accent-[#F47B20]"></label>`).join('')}</div></details>`:''}
-  <p id="wzAviso" class="mt-3 hidden rounded-2xl bg-[#FDECEC] px-4 py-2.5 text-sm font-medium text-[#D64545]"></p>
-  <div id="wzValores" class="mt-3"></div>
-  ${rodape(2,btnAv)}`);
-  atualizarTotais();
+/* ---- 2: datas ---- */
+function wz2(){
+  const q=WZ.quartoId, tipo=quartoDe(q).tipo, h=hojeISO(), hosp=hospedadoWZ(), [ano,mes]=WZ.mes.split('-').map(Number);
+  const off=new Date(Date.UTC(ano,mes-1,1,12)).getUTCDay(), dias=new Date(ano,mes,0).getDate();
+  const ent=WZ.entrada, sai=WZ.saida, escolhendoSai=!!(ent&&!sai)||hosp, lim=ent&&!wzOcup(q,ent)?wzLivreAte(q,ent):(hosp?wzLivreAte(q,ent):null);
+  const cel=[]; for(let i=0;i<off;i++) cel.push('<span></span>');
+  for(let d=1;d<=dias;d++){
+    const iso=WZ.mes+'-'+String(d).padStart(2,'0'), pas=iso<h, oc=wzOcup(q,iso), esp=especialEm(WZ.pousada,tipo,iso);
+    let ok=!pas&&!oc;
+    if(hosp) ok=iso>ent&&iso>=h&&iso<=lim;
+    else if(escolhendoSai&&iso>ent&&!pas) ok=iso<=lim;
+    const ini=iso===ent, fim=iso===sai, mid=ent&&sai&&iso>ent&&iso<sai;
+    const cls=ini||fim?'bg-brand text-white font-bold':(mid?'bg-brand-soft text-brand-dark':(ok?'text-ink hover:bg-brand-soft':(oc&&!pas?'bg-neutral-100 text-neutral-400 line-through':'text-neutral-300')));
+    cel.push(`<button type="button" data-act="wzDia" data-d="${iso}" ${ok?'':'disabled'} class="relative grid h-9 place-items-center rounded-lg text-[13px] transition ${cls} ${iso===h&&!ini&&!fim?'ring-1 ring-brand':''}" aria-label="${fmtBR(iso)}">${d}${esp?`<span class="absolute bottom-0.5 h-1 w-1 rounded-full ${ini||fim?'bg-white':'bg-brand'}"></span>`:''}</button>`);
+  }
+  const minMes=(hosp?ent:h).slice(0,7), mesAnt=WZ.mes>minMes;
+  const chip=on=>`rounded-full border px-3 py-1 text-xs font-semibold disabled:opacity-30 ${on?'border-brand bg-brand-soft text-brand-dark':'border-neutral-200 hover:border-brand hover:text-brand'}`;
+  const nn=sai&&ent?diffDias(ent,sai):0;
+  return `<div class="mx-auto grid max-w-md gap-3 @md:max-w-none @md:grid-cols-2 @md:items-start @md:gap-8"><div>
+  <div class="grid grid-cols-2 gap-2">
+    <div class="rounded-xl border-2 ${!ent||sai?'border-brand':'border-neutral-200'} px-3 py-1.5"><div class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Entrada${hosp?' (fixa)':''}</div><div class="text-sm font-semibold">${ent?diaSem(ent)+' '+fmtCurto(ent):'<span class="text-neutral-400">Escolha</span>'}</div></div>
+    <div class="rounded-xl border-2 ${(ent&&!sai)||hosp?'border-brand':'border-neutral-200'} px-3 py-1.5"><div class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Saída</div><div class="text-sm font-semibold">${sai?diaSem(sai)+' '+fmtCurto(sai):'<span class="text-neutral-400">Escolha</span>'}</div></div></div>
+  ${WZ.erro?`<p class="mt-2 rounded-lg bg-[#FDECEC] px-3 py-1.5 text-sm font-medium text-[#D64545]">${WZ.erro}</p>`:`<p class="mt-1.5 text-xs text-neutral-600">${!ent?'Toque no dia de entrada.':(!sai?'Agora toque no dia de saída.':'<b>'+nn+' noite'+(nn>1?'s':'')+'</b> · toque em outro dia para mudar.')}</p>`}
+  ${hosp?'':`<div class="mt-2 flex flex-wrap items-center gap-1.5"><span class="w-14 text-[10px] font-bold uppercase tracking-wider text-neutral-500">Entrada</span><button type="button" data-act="wzAtalho" data-v="hoje" class="${chip(ent===h)}">Hoje</button><button type="button" data-act="wzAtalho" data-v="amanha" class="${chip(ent===addDias(h,1))}">Amanhã</button></div>`}
+  ${ent?`<div class="mt-1.5 flex flex-wrap items-center gap-1.5"><span class="w-14 text-[10px] font-bold uppercase tracking-wider text-neutral-500">Noites</span>${[1,2,3,5,7].map(n=>{ const s=addDias(ent,n), ok=!!lim&&s<=lim; return `<button type="button" data-act="wzNoites" data-n="${n}" ${ok?'':'disabled'} class="min-w-9 ${chip(sai===s)}">${n}</button>`; }).join('')}</div>`:''}
+  </div>
+  <div class="mx-auto w-full max-w-xs"><div class="flex items-center justify-between"><button type="button" data-act="wzMes" data-n="-1" ${mesAnt?'':'disabled'} class="grid h-8 w-8 place-items-center rounded-full border border-neutral-200 text-brand disabled:opacity-30" aria-label="Mês anterior">${wzIc('chevron-left','text-xs')}</button><b class="font-serif text-base capitalize">${WZMES[mes-1]} ${ano}</b><button type="button" data-act="wzMes" data-n="1" class="grid h-8 w-8 place-items-center rounded-full border border-neutral-200 text-brand" aria-label="Próximo mês">${wzIc('chevron-right','text-xs')}</button></div>
+  <div class="mt-1 grid grid-cols-7 gap-0.5 text-center text-[10px] font-semibold uppercase text-neutral-400">${DIAS.map(d=>`<span>${d}</span>`).join('')}</div>
+  <div class="mt-0.5 grid grid-cols-7 gap-0.5">${cel.join('')}</div>
+  <div class="mt-1.5 flex flex-wrap gap-x-3 text-[10px] text-neutral-500"><span><i class="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-brand"></i>data especial</span><span><i class="mr-1 inline-block h-2 w-2 rounded bg-neutral-200"></i>ocupado</span></div></div></div>`;
 }
-function atualizarTotais(){
-  atualizarBarra();
-  const c=calcWZ(), ign=WZ.res&&WZ.res.id;
-  const v4=wz$('wzVal4'); if(v4) v4.innerHTML=c.erro?'':valores4(c);
-  const box=wz$('wzValores'); if(!box) return;
-  const av=wz$('wzAviso'); av.classList.toggle('hidden',!c.erro); if(c.erro) av.textContent=c.erro;
-  const lim=WZ.quartoId?maxSaida(WZ.quartoId,WZ.entrada,ign):null;
-  wzBox().querySelectorAll('#wzChips [data-n]').forEach(b=>{ b.disabled=!!(lim&&addDias(WZ.entrada,+b.dataset.n)>lim); });
-  if(c.erro){ box.innerHTML=''; return; }
-  const nn=c.n.length, pr=precoNoite(WZ.pousada,c.q.tipo,c.n[0].data,occAtual(),true);
-  box.innerHTML=`<div class="rounded-2xl bg-brand-cream p-4"><div class="flex items-center justify-between gap-3"><div><div class="text-sm font-semibold">${nn} diária${nn>1?'s':''}${c.desc>0?' · desconto '+money(c.desc):''}</div><button type="button" data-act="wzDet" class="text-xs font-semibold text-brand-dark underline">${WZ.det?'Ocultar':'Ver'} detalhes</button></div><b class="font-serif text-3xl text-brand-dark">${money(c.total)}</b></div>
-    ${WZ.det?`<div class="mt-3 text-sm"><div class="${LBL}">Composição da 1ª diária</div>${pr.partes.map(x=>`<div class="flex justify-between gap-2"><span>${esc(x.t)}</span><span>${money(x.v)}</span></div>`).join('')}
-      <div class="mt-2 flex flex-wrap gap-1.5">${c.n.map(x=>`<span class="rounded-full bg-white px-2.5 py-1 text-xs shadow-sm">${fmtCurto(x.data)} · ${money(x.preco)}${x.especial?' <i class="fa-solid fa-star text-brand" title="'+esc(x.motivo||'preço especial')+'"></i>':''}${x.fixo?' <i class="fa-solid fa-lock text-neutral-400" title="preço gravado na entrada"></i>':''}</span>`).join('')}</div>
-      <div class="mt-2 text-xs text-neutral-600">O valor fica gravado nesta reserva; mudanças futuras de preço não a alteram.</div></div>`:''}</div>`;
+/* ---- 3: pessoas e adicionais ---- */
+const wzStepper=(k,rot,sub,val,min,mais)=>`<div class="flex items-center justify-between gap-2 rounded-xl border border-neutral-200 px-3 py-2.5 @md:py-1.5"><div class="min-w-0"><div class="text-sm font-semibold">${rot}</div>${sub?`<div class="text-[11px] text-neutral-500">${sub}</div>`:''}</div><div class="flex items-center gap-1"><button type="button" data-act="wzQtd" data-k="${k}" data-d="-1" ${val<=min?'disabled':''} class="grid h-10 w-10 place-items-center rounded-full border-2 border-brand text-xl text-brand hover:bg-brand hover:text-white disabled:opacity-30 @md:h-8 @md:w-8 @md:text-lg" aria-label="Menos">−</button><output class="w-7 text-center font-serif text-xl font-extrabold">${val}</output><button type="button" data-act="wzQtd" data-k="${k}" data-d="1" ${mais?'':'disabled'} class="grid h-10 w-10 place-items-center rounded-full border-2 border-brand text-xl text-brand hover:bg-brand hover:text-white disabled:opacity-30 @md:h-8 @md:w-8 @md:text-lg" aria-label="Mais">+</button></div></div>`;
+function wz3(){
+  const cap=maxCap(), th=totalHosp(), mais=th<cap, fx=faixasAtivas(), ads=adicionaisAtivos();
+  return `<div class="grid gap-5 @md:grid-cols-2 @md:gap-6"><div><div class="mb-2 flex items-center justify-between">${wzSec('Hóspedes')}<span class="text-xs font-semibold ${th>=cap?'text-brand-dark':'text-neutral-500'}">${th} de ${cap}</span></div>
+  <div class="grid gap-2">${wzStepper('ad','Adultos','',WZ.adultos,1,mais)}${fx.map(f=>wzStepper(f.id,esc(faixaRot(f)),esc(regraTxt(f)),WZ.criancas[f.id]||0,0,mais)).join('')}</div>
+  ${th>=cap?'<p class="mt-2 text-xs text-neutral-500">Capacidade máxima do quarto. Para mais hóspedes, troque o quarto.</p>':''}</div>
+  ${ads.length?`<div><div class="mb-2">${wzSec('Adicionais')}</div><div class="grid gap-2">${ads.map(a=>`<label class="flex cursor-pointer items-center justify-between gap-3 rounded-xl border-2 px-3 py-3 @md:py-2 ${WZ.adics.includes(a.id)?'border-brand bg-brand-soft':'border-neutral-200'}"><span class="min-w-0"><b class="block text-sm">${esc(a.nome)}</b><span class="text-[11px] text-neutral-500">${esc(adTxt(a))}</span></span><input type="checkbox" data-chg="wzAd" data-id="${a.id}" ${WZ.adics.includes(a.id)?'checked':''} class="h-5 w-5 shrink-0 accent-[#F47B20]"></label>`).join('')}</div></div>`:''}</div>`;
 }
-ACOES.wzQtd=d=>{
-  const dl=+d.d, nv=totalHosp()+dl;
-  if(dl>0&&nv>maxCap()) return;
-  if(d.k==='ad'){ if(WZ.adultos+dl<1) return; WZ.adultos+=dl; } else { const q=(WZ.criancas[d.k]||0)+dl; if(q<0) return; WZ.criancas[d.k]=q; }
-  renderWZ();
-};
-ACOES.wzAd=(d,b)=>{ const i=WZ.adics.indexOf(d.id); if(b.checked&&i<0) WZ.adics.push(d.id); if(!b.checked&&i>=0) WZ.adics.splice(i,1); renderWZ(); };
-ACOES.wzSaida=(d,b)=>{ if(b.value&&b.value>WZ.entrada) WZ.saida=b.value; renderWZ(); };
-ACOES.wzNoites=d=>{ WZ.saida=addDias(WZ.entrada,+d.n); renderWZ(); };
-ACOES.wzEdData=()=>{ WZ.edData=!WZ.edData; renderWZ(); };
-ACOES.wzPick=d=>{ WZ.quartoId=d.q; WZ.passo=2; renderWZ(); };
-ACOES.wzDet=()=>{ WZ.det=!WZ.det; atualizarTotais(); };
-ACOES.wzDesc=()=>{ wz$('wzDescBox').classList.toggle('hidden'); const i=wz$('wzDV'); if(!wz$('wzDescBox').classList.contains('hidden')) i.focus(); };
-ACOES.wzDescIn=(d,b)=>{ WZ.descVal=+b.value||0; atualizarTotais(); };
-ACOES.wzDescTp=(d,b)=>{ WZ.descTipo=b.value; atualizarTotais(); };
-ACOES.wzPagoChg=(d,b)=>{ WZ.pago=b.checked; wz$('wzFormaBox').classList.toggle('hidden',!b.checked); if(b.checked) wz$('wzForma').focus(); };
-ACOES.wzFormaIn=(d,b)=>{ WZ.forma=b.value; };
-function capturar(){
-  if(!wz$('fNome')) return; const g=id=>wz$(id).value;
-  WZ.f={nome:g('fNome'),tel:g('fTel'),placa:g('fPla'),rg:g('fRg'),cpf:g('fCpf'),nasc:g('fNasc'),vei:g('fVei'),email:g('fEmail'),cid:g('fCid'),obs:g('fObs')};
+/* ---- 4: desconto e pagamento ---- */
+function linhasValor(c){
+  const mapa=new Map();
+  c.n.forEach(x=>(x.partes||[{t:'Diária (valor gravado)',v:x.preco}]).forEach(p=>{ const k=p.t+'|'+p.v+'|'+(p.tag||''); if(!mapa.has(k)) mapa.set(k,{t:p.t,v:p.v,tag:p.tag||'',un:p.un||'',datas:[]}); mapa.get(k).datas.push(x.data); }));
+  return [...mapa.values()];
 }
-const erroWZ = m => { const e=wz$('fErro'); if(!e) return; e.textContent=m; e.classList.remove('hidden'); };
+function rotDatas(ds,total){
+  if(ds.length===total) return '';
+  if(ds.length===1) return fmtCurto(ds[0]);
+  const seq=ds.every((d,i)=>i===0||diffDias(ds[i-1],d)===1);
+  return seq?fmtCurto(ds[0])+' a '+fmtCurto(ds[ds.length-1]):ds.map(fmtCurto).join(', ');
+}
+function blocoValor(c){
+  const row=l=>{ const q=l.datas.length, dt=rotDatas(l.datas,c.nn), un=l.un==='estadia'?'estadia':'diária'+(q>1?'s':'');
+    return `<div class="flex items-start justify-between gap-3 border-t border-dashed border-neutral-200 px-3 py-1.5 first:border-0"><div class="min-w-0"><div class="text-[13px] font-semibold leading-snug">${esc(l.t)}${l.tag?` <span class="ml-1 rounded-full bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold text-brand-dark"><i class="fa-solid fa-star text-[8px]"></i> ${esc(l.tag)}</span>`:''}</div><div class="text-[11px] text-neutral-500">${q} ${un} × ${money(l.v)}${dt?' · '+dt:''}</div></div><b class="shrink-0 text-[13px] tabular-nums">${money(arred(l.v*q))}</b></div>`; };
+  return `<div class="overflow-hidden rounded-2xl border border-neutral-200 bg-white"><div class="bg-neutral-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-500">Valores · ${c.nn} diária${c.nn>1?'s':''}</div>
+   ${linhasValor(c).map(row).join('')}
+   ${c.desc>0?`<div class="flex justify-between border-t border-neutral-200 px-3 py-1.5 text-[13px]"><span class="text-neutral-600">Subtotal</span><span class="tabular-nums">${money(c.sub)}</span></div><div class="flex justify-between px-3 pb-1.5 text-[13px] font-semibold text-[#D64545]"><span>Desconto</span><span class="tabular-nums">− ${money(c.desc)}</span></div>`:''}
+   <div class="flex items-baseline justify-between bg-brand-cream px-3 py-2"><b class="text-sm">Total</b><b class="font-serif text-2xl text-brand-dark">${money(c.total)}</b></div></div>`;
+}
+function wz4(){
+  const c=calcWZ(), pode=podeDesconto(), formas=formasLista(), outra=WZ.forma&&!formas.includes(WZ.forma);
+  return `<div class="grid gap-5 @md:grid-cols-2 @md:gap-6"><div id="wzVal4">${blocoValor(c)}</div>
+  <div>${pode?`<div class="mb-2">${wzSec('Desconto')}</div>
+  <div class="grid grid-cols-3 gap-1 rounded-xl bg-neutral-100 p-1" role="group" aria-label="Tipo de desconto">${[['v','R$ no total'],['d','R$ por diária'],['p','% no total']].map(([v,t])=>`<button type="button" data-act="wzDescTp" data-v="${v}" class="h-9 rounded-lg px-1 text-xs font-semibold transition ${WZ.descTipo===v?'bg-white text-brand-dark shadow-sm ring-1 ring-brand':'text-neutral-600 hover:text-brand'}">${t}</button>`).join('')}</div>
+  <div class="relative mt-2"><span class="pointer-events-none absolute inset-y-0 left-3 grid place-items-center text-sm font-semibold text-neutral-500">${WZ.descTipo==='p'?'%':'R$'}</span><input data-inp="wzDescIn" type="number" inputmode="decimal" min="0" step="0.01" value="${WZ.descVal||''}" placeholder="0,00" aria-label="Valor do desconto" class="${INPS} !pl-9"></div>`
+   :(WZ.descVal>0?`<div class="mb-2">${wzSec('Desconto')}</div><p class="rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-600">Desconto já aplicado nesta reserva. Alterar exige permissão.</p>`:'')}
+  <div class="mb-2 ${pode||WZ.descVal>0?'mt-4':''}">${wzSec('Pagamento')}</div>
+  <div class="grid grid-cols-2 gap-2"><button type="button" data-act="wzPago" data-v="0" class="h-11 rounded-xl border-2 text-sm font-semibold @md:h-9 ${!WZ.pago?'border-brand bg-brand-soft text-brand-dark':'border-neutral-200 text-neutral-600'}">Em aberto</button><button type="button" data-act="wzPago" data-v="1" class="h-11 rounded-xl border-2 text-sm font-semibold @md:h-9 ${WZ.pago?'border-leaf bg-leaf-soft text-leaf':'border-neutral-200 text-neutral-600'}">Já pago</button></div>
+  ${WZ.pago?`<div class="mt-3"><div class="${LBLW}">Forma de pagamento <span class="font-normal normal-case">(opcional)</span></div><div class="flex flex-wrap gap-1.5">${formas.map(f=>`<button type="button" data-act="wzForma" data-v="${esc(f)}" class="h-9 rounded-full border px-4 text-sm font-semibold @md:h-8 ${WZ.forma===f?'border-brand bg-brand-soft text-brand-dark':'border-neutral-200 text-neutral-600'}">${esc(f)}</button>`).join('')}</div>
+   <input data-inp="wzFormaIn" value="${outra?esc(WZ.forma):''}" placeholder="Outra forma…" aria-label="Outra forma de pagamento" class="${INPS} mt-2"></div>`:''}</div></div>`;
+}
+/* ---- 5: dados pessoais ---- */
+const wzFld=(k,rot,extra='',cls='',obr=false)=>`<div class="min-w-0 ${cls}"><label class="${LBLW}" for="f_${k}">${rot} ${obr?OBR:''}</label><input id="f_${k}" data-inp="wzField" data-k="${k}" value="${esc(WZ.f[k])}" ${extra} class="${INPS}"></div>`;
+function wz5(){
+  return `<div class="grid grid-cols-2 gap-x-3 gap-y-2 @md:grid-cols-12">
+    <div class="col-span-2 @md:col-span-12">${wzSec('Titular da reserva')}</div>
+    ${wzFld('nome','Nome','autocomplete="off"','col-span-2 @md:col-span-6',true)}
+    ${wzFld('tel','Telefone','data-mask="tel" inputmode="tel" maxlength="15" placeholder="(00) 00000-0000"','@md:col-span-3',true)}
+    ${wzFld('placa','Placa','data-mask="placa" maxlength="8" placeholder="ABC1D23" autocapitalize="characters"','@md:col-span-3',true)}
+    <div class="col-span-2 mt-2 flex items-baseline justify-between @md:col-span-12">${wzSec('Ficha de cadastro')}<span class="text-xs text-neutral-500">opcional</span></div>
+    ${wzFld('cpf','CPF','data-mask="cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"','@md:col-span-3')}
+    ${wzFld('rg','RG','data-mask="rg" maxlength="16" placeholder="00.000.000-0"','@md:col-span-3')}
+    ${wzFld('nasc','Nascimento','type="date"','@md:col-span-3')}
+    ${wzFld('cid','Cidade','','@md:col-span-3')}
+    ${wzFld('email','E-mail','type="email" inputmode="email" autocapitalize="off" placeholder="nome@exemplo.com"','col-span-2 @md:col-span-6')}
+    ${wzFld('vei','Veículo','placeholder="Modelo e cor"','col-span-2 @md:col-span-6')}
+    <div class="col-span-2 min-w-0 @md:col-span-12"><label class="${LBLW}" for="f_obs">Observações</label><textarea id="f_obs" data-inp="wzField" data-k="obs" rows="2" class="${INPS}">${esc(WZ.f.obs)}</textarea></div>
+  </div>
+  ${WZ.erro?`<p id="wzErro5" class="mt-3 rounded-lg bg-[#FDECEC] px-3 py-2 text-sm font-medium text-[#D64545]">${WZ.erro}</p>`:''}`;
+}
 function validaTitular(F){
   const nome=(F.nome||'').trim(), tel=(F.tel||'').trim(), placa=(F.placa||'').trim().toUpperCase();
   if(!nome||!tel||!placa) return 'Preencha os campos obrigatórios: nome, telefone e placa.';
@@ -783,72 +845,65 @@ function validaTitular(F){
   if(F.email&&!/^\S+@\S+\.\S+$/.test(F.email)) return 'E-mail inválido.';
   return '';
 }
-ACOES.wzAvancar=()=>{
-  if(WZ.passo===2){ const c=calcWZ(); if(c.erro) return; WZ.passo=3; return renderWZ(); }
-  if(WZ.passo===3){ capturar(); const m=validaTitular(WZ.f); if(m) return erroWZ(m); WZ.passo=4; return renderWZ(); }
+/* ---- 6: confirmação ---- */
+function wz6(){
+  const c=calcWZ(); if(c.erro){ return '<p class="rounded-xl bg-[#FDECEC] px-3 py-2 text-sm font-medium text-[#D64545]">'+esc(c.erro)+'</p><button type="button" data-act="wzIr" data-p="2" class="mt-3 text-sm font-semibold text-brand-dark underline">Ajustar datas</button>'; }
+  const q=c.q, t=tipoDe(q.tipo), F=WZ.f;
+  const ads=WZ.adics.map(id=>(DB.adicionais.find(a=>a.id===id)||{}).nome).filter(Boolean).join(', ');
+  const hosp=detalheOcc({adultos:WZ.adultos,criancas:WZ.criancas,adics:[]});
+  const lin=(rot,v,p,pode=true)=>`<div class="flex items-start justify-between gap-3 py-2"><div class="min-w-0"><div class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">${rot}</div><div class="break-words text-sm font-semibold">${v}</div></div>${pode?`<button type="button" data-act="wzIr" data-p="${p}" class="shrink-0 text-xs font-semibold text-brand-dark underline">Alterar</button>`:''}</div>`;
+  return `<div class="grid gap-4 @md:grid-cols-2 @md:gap-6"><div class="divide-y divide-neutral-100 rounded-2xl border border-neutral-200 px-3">
+    ${lin('Quarto','Apto '+esc(q.numero)+' · '+esc(t.nome),1,!hospedadoWZ())}
+    ${lin('Período',diaSem(WZ.entrada)+' '+fmtBR(WZ.entrada)+' → '+diaSem(WZ.saida)+' '+fmtBR(WZ.saida)+'<span class="font-normal text-neutral-600"> · '+c.nn+' noite'+(c.nn>1?'s':'')+'</span>',2)}
+    ${lin('Hóspedes',esc(hosp)+(ads?'<span class="block font-normal text-neutral-600">+ '+esc(ads)+'</span>':''),3)}
+    ${lin('Pagamento',WZ.pago?'Já pago'+(WZ.forma?' · '+esc(WZ.forma):''):'Em aberto',4)}
+    ${lin('Titular',esc(F.nome)+'<span class="block font-normal text-neutral-600">'+esc(F.tel)+' · '+esc((F.placa||'').toUpperCase())+'</span>',5)}
+  </div><div>${blocoValor(c)}<p id="fErro" class="mt-3 hidden rounded-lg bg-[#FDECEC] px-3 py-2 text-sm font-medium text-[#D64545]"></p></div></div>`;
+}
+const erroWZ = m => { const e=wz$('fErro'); if(!e) return; e.textContent=m; e.classList.remove('hidden'); };
+/* ---- ações ---- */
+ACOES.wzFiltro=d=>{ WZ.filtro=d.v; wzUpd(); };
+ACOES.wzPick=d=>{
+  WZ.quartoId=d.q; WZ.aviso=''; WZ.erro='';
+  if(WZ.entrada&&WZ.saida&&(wzOcup(d.q,WZ.entrada)||WZ.saida>wzLivreAte(d.q,WZ.entrada))){ WZ.entrada=null; WZ.saida=null; WZ.aviso='As datas escolhidas não estão livres neste quarto. Escolha as datas novamente.'; }
+  const cap=capQ(quartoDe(d.q)); while(totalHosp()>cap){ const k=Object.keys(WZ.criancas).find(x=>WZ.criancas[x]>0); if(k) WZ.criancas[k]--; else WZ.adultos--; WZ.aviso=(WZ.aviso?WZ.aviso+' ':'')+'Hóspedes ajustados à capacidade do quarto.'; }
+  WZ.passo=2; WZ.mes=(WZ.entrada||hojeISO()).slice(0,7); wzDraw();
 };
-ACOES.wzIr=d=>{ capturar(); WZ.passo=+d.p||1; renderWZ(); };
-ACOES.wzVoltar=()=>{ capturar(); WZ.passo=Math.max(1,WZ.passo-1); renderWZ(); };
-/* ---- etapa 3: titular ---- */
-function renderPasso3(){
-  const c=calcWZ(); if(c.erro){ WZ.passo=2; return renderPasso2(); }
-  const F=WZ.f||resF(WZ.res), val=k=>esc(F[k]), valM=(k,m)=>esc(MASKS[m](F[k]||''));
-  const maisTem=['rg','cpf','nasc','vei','email','cid','obs'].some(k=>F[k]);
-  abrirDialogo(`${wzCab(3)}
-  <div class="mt-4 grid grid-cols-2 gap-3">
-    ${campo('Nome '+OBR,`<input id="fNome" value="${val('nome')}" autocomplete="off" class="${INP}">`,'col-span-2')}
-    ${campo('Telefone '+OBR,`<input id="fTel" data-mask="tel" value="${valM('tel','tel')}" inputmode="tel" maxlength="15" placeholder="(00) 00000-0000" class="${INP}">`,'col-span-2 sm:col-span-1')}
-    ${campo('Placa '+OBR,`<input id="fPla" data-mask="placa" value="${valM('placa','placa')}" maxlength="8" placeholder="ABC-1234 ou ABC1D23" autocapitalize="characters" class="${INP} uppercase">`,'col-span-2 sm:col-span-1')}
-  </div>
-  <details class="mt-3 rounded-2xl border border-neutral-200" ${(WZ.maisOpen||maisTem)?'open':''} ontoggle="WZ.maisOpen=this.open"><summary class="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-semibold"><span>Mais dados <span class="font-normal text-neutral-500">(CPF, RG, cidade… para a ficha)</span></span><i class="fa-solid fa-chevron-down text-xs text-neutral-400"></i></summary>
-    <div class="grid grid-cols-2 gap-3 px-3 pb-3">
-      ${campo('CPF',`<input id="fCpf" data-mask="cpf" value="${valM('cpf','cpf')}" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" class="${INP}">`)}
-      ${campo('RG',`<input id="fRg" data-mask="rg" value="${valM('rg','rg')}" maxlength="16" placeholder="00.000.000-0" class="${INP}">`)}
-      ${campo('Nascimento',`<input id="fNasc" type="date" value="${val('nasc')}" class="${INP}">`)}
-      ${campo('Cidade',`<input id="fCid" value="${val('cid')}" class="${INP}">`)}
-      ${campo('E-mail',`<input id="fEmail" type="email" value="${val('email')}" inputmode="email" autocapitalize="off" placeholder="nome@exemplo.com" class="${INP}">`,'col-span-2')}
-      ${campo('Veículo',`<input id="fVei" value="${val('vei')}" class="${INP}">`,'col-span-2')}
-      ${campo('Observações',`<textarea id="fObs" rows="2" class="${INP}">${val('obs')}</textarea>`,'col-span-2')}
-    </div></details>
-  <p id="fErro" class="mt-3 hidden rounded-2xl bg-[#FDECEC] px-4 py-3 text-sm font-medium text-[#D64545]"></p>
-  ${rodape(3,btnAv)}`);
-  atualizarBarra(); setTimeout(()=>{ if(!wz$('fNome').value) wz$('fNome').focus(); },60);
-}
-/* ---- etapa 4: confirmar ---- */
-function valores4(c){
-  const nn=c.n.length, iguais=c.n.every(x=>x.preco===c.n[0].preco);
-  const l=(a,b,cl='')=>`<div class="flex items-baseline justify-between gap-3 py-1 text-sm ${cl}"><span>${a}</span><span>${b}</span></div>`;
-  return `<div class="rounded-2xl bg-brand-cream px-4 py-3">${l(nn+' diária'+(nn>1?'s':'')+(iguais?' × '+money(c.n[0].preco):''),money(c.sub))}${c.desc>0?l('Desconto','− '+money(c.desc),'text-[#D64545]'):''}<div class="mt-1 flex items-baseline justify-between border-t border-brand/20 pt-2"><b>Total</b><b class="font-serif text-2xl text-brand-dark">${money(c.total)}</b></div></div>`;
-}
-function renderPasso4(){
-  const c=calcWZ(); if(c.erro){ WZ.passo=2; return renderPasso2(); }
-  const q=c.q, t=tipoDe(q.tipo), F=WZ.f||resF(WZ.res), h=hojeISO(), r=WZ.res, nn=c.n.length;
-  const lin=(rot,v,p,pode=true)=>`<div class="flex items-start justify-between gap-3 py-2.5"><div class="min-w-0"><div class="text-[11px] font-bold uppercase tracking-wider text-neutral-500">${rot}</div><div class="break-words text-sm font-semibold">${v}</div></div>${pode?`<button type="button" data-act="wzIr" data-p="${p}" class="shrink-0 text-xs font-semibold text-brand-dark underline">Alterar</button>`:''}</div>`;
-  const dsc=podeDesconto();
-  abrirDialogo(`${wzCab(4)}
-  <div class="mt-3 divide-y divide-neutral-100 rounded-2xl border border-neutral-200 px-4">
-    ${lin('Quarto','Apto '+esc(q.numero)+' · '+esc(t?t.nome:''),1,!hospedadoWZ())}
-    ${lin('Período',diaSem(WZ.entrada)+' '+fmtBR(WZ.entrada)+' → '+diaSem(WZ.saida)+' '+fmtBR(WZ.saida)+' · '+nn+' noite'+(nn>1?'s':''),2)}
-    ${lin('Hóspedes',esc(detalheOcc(occAtual())),2)}
-    ${lin('Titular',esc(F.nome)+'<span class="block font-normal text-neutral-600">'+esc(MASKS.tel(F.tel||''))+' · '+esc((F.placa||'').toUpperCase())+'</span>',3)}
-  </div>
-  <div id="wzVal4" class="mt-3">${valores4(c)}</div>
-  <div class="mt-3 rounded-2xl border border-neutral-200 px-4 py-3">
-    <label class="flex cursor-pointer items-center gap-2 text-sm font-semibold"><input id="wzPago" data-chg="wzPagoChg" type="checkbox" class="h-4 w-4 accent-[#F47B20]" ${WZ.pago?'checked':''}> Pagamento já recebido</label>
-    <div id="wzFormaBox" class="${WZ.pago?'':'hidden'} mt-2"><input id="wzForma" data-inp="wzFormaIn" list="dlFormas" value="${esc(WZ.forma)}" placeholder="Forma de pagamento (opcional): Pix, dinheiro, cartão…" aria-label="Forma de pagamento" class="${INP}">${dlFormas()}</div>
-    ${dsc||WZ.descVal>0?`<div class="mt-2 border-t border-neutral-100 pt-2"><button type="button" data-act="wzDesc" class="${dsc?'':'hidden'} text-xs font-semibold text-brand-dark underline"><i class="fa-solid fa-tag"></i> ${WZ.descVal>0?'Alterar desconto':'Dar desconto'}</button>
-      <div id="wzDescBox" class="${WZ.descVal>0&&dsc?'':'hidden'} mt-2 flex items-center gap-2"><select id="wzDT" data-chg="wzDescTp" class="${INP} !w-44 !px-2" ${dsc?'':'disabled'}><option value="v" ${WZ.descTipo==='v'?'selected':''}>R$ no total</option><option value="d" ${WZ.descTipo==='d'?'selected':''}>R$ por diária</option><option value="p" ${WZ.descTipo==='p'?'selected':''}>% no total</option></select><input id="wzDV" data-inp="wzDescIn" type="number" min="0" step="0.01" value="${WZ.descVal||''}" placeholder="0" class="${INP} !w-32" ${dsc?'':'disabled'}></div></div>`:''}
-  </div>
-  <p id="fErro" class="mt-3 hidden rounded-2xl bg-[#FDECEC] px-4 py-3 text-sm font-medium text-[#D64545]"></p>
-  ${rodape(4,`<button type="button" id="wzSalvar" data-act="wzSalvar" class="${BTN} !px-4 sm:!px-6"></button>`)}`);
-  wz$('wzSalvar').innerHTML=WZ.modo==='checkin'?'<i class="fa-solid fa-key"></i> Confirmar check-in':(r?'<i class="fa-solid fa-floppy-disk"></i> Salvar':(WZ.entrada===h?'<i class="fa-solid fa-key"></i> Check-in agora':'<i class="fa-solid fa-calendar-check"></i> Reservar'));
-  atualizarBarra();
-}
+ACOES.wzIr=d=>{ capturarWZ(); WZ.passo=+d.p; WZ.erro=''; if(WZ.passo===2) WZ.mes=(WZ.entrada||hojeISO()).slice(0,7); wzDraw(); };
+ACOES.wzVoltar=()=>{ capturarWZ(); WZ.passo=Math.max(1,WZ.passo-1); WZ.erro=''; wzDraw(); };
+ACOES.wzMes=d=>{ const [a,m]=WZ.mes.split('-').map(Number), x=new Date(a,m-1+ +d.n,1), n=x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0'); if(n>=((hospedadoWZ()?WZ.entrada:hojeISO()).slice(0,7))){ WZ.mes=n; wzUpd(); } };
+ACOES.wzDia=d=>{
+  const iso=d.d, q=WZ.quartoId; WZ.erro='';
+  if(hospedadoWZ()){ if(iso>WZ.entrada&&iso<=wzLivreAte(q,WZ.entrada)) WZ.saida=iso; return wzUpd(); }
+  if(!WZ.entrada||WZ.saida||iso<=WZ.entrada){ if(wzOcup(q,iso)||iso<hojeISO()) return; WZ.entrada=iso; WZ.saida=null; }
+  else if(iso<=wzLivreAte(q,WZ.entrada)) WZ.saida=iso; else WZ.erro='Há dias ocupados entre essas datas.';
+  wzUpd();
+};
+ACOES.wzAtalho=d=>{ const iso=d.v==='hoje'?hojeISO():addDias(hojeISO(),1); if(wzOcup(WZ.quartoId,iso)){ WZ.erro='Este quarto está ocupado nessa data.'; WZ.entrada=null; WZ.saida=null; } else { WZ.entrada=iso; WZ.saida=null; WZ.erro=''; WZ.mes=iso.slice(0,7); } wzUpd(); };
+ACOES.wzNoites=d=>{ WZ.saida=addDias(WZ.entrada,+d.n); WZ.erro=''; wzUpd(); };
+ACOES.wzQtd=d=>{
+  const dl=+d.d; if(dl>0&&totalHosp()+dl>maxCap()) return;
+  if(d.k==='ad'){ if(WZ.adultos+dl<1) return; WZ.adultos+=dl; } else { const q=(WZ.criancas[d.k]||0)+dl; if(q<0) return; WZ.criancas[d.k]=q; }
+  wzUpd();
+};
+ACOES.wzAd=(d,b)=>{ const i=WZ.adics.indexOf(d.id); if(b.checked&&i<0) WZ.adics.push(d.id); if(!b.checked&&i>=0) WZ.adics.splice(i,1); wzUpd(); };
+ACOES.wzDescTp=d=>{ WZ.descTipo=d.v; wzUpd(); };
+ACOES.wzDescIn=(d,b)=>{ WZ.descVal=+b.value||0; const v=wz$('wzVal4'), c=calcWZ(); if(v&&!c.erro) v.innerHTML=blocoValor(c); $('#wzRod').innerHTML=wzRod(); };
+ACOES.wzPago=d=>{ WZ.pago=d.v==='1'; wzUpd(); };
+ACOES.wzForma=d=>{ WZ.forma=WZ.forma===d.v?'':d.v; wzUpd(); };
+ACOES.wzFormaIn=(d,b)=>{ WZ.forma=b.value.trim(); };
+ACOES.wzField=(d,b)=>{ WZ.f[d.k]=b.value; };
+function capturarWZ(){ /* campos já são gravados em WZ.f a cada digitação */ }
+ACOES.wzAvancar=()=>{
+  if(WZ.passo===5){ const m=validaTitular(WZ.f); if(m){ WZ.erro=m; wzUpd(); const e=wz$('wzErro5'); if(e) e.scrollIntoView({block:'center'}); return; } WZ.erro=''; }
+  if(WZ.passo===2){ const c=calcWZ(); if(c.erro) return; }
+  WZ.passo++; wzDraw();
+};
 ACOES.wzSalvar=async()=>{
   if(SALVANDO) return;
   const erro=erroWZ, F=WZ.f||resF(WZ.res), g=k=>String(F[k]||'').trim(), h=hojeISO(), r=WZ.res;
   const nome=g('nome'), tel=g('tel'), placa=g('placa').toUpperCase();
-  const mv=validaTitular(F); if(mv) return erro(mv);
+  const mv=validaTitular(F); if(mv){ WZ.erro=mv; WZ.passo=5; return wzDraw(); }
   const c=calcWZ(); if(c.erro) return erro(c.erro);
   const ent=WZ.entrada, sai=WZ.saida;
   if((!r||ent!==r.entrada)&&ent<h) return erro('Reservas só podem começar de hoje em diante.');
