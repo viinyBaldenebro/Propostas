@@ -88,7 +88,7 @@ dialog[open]{animation:pop .25s cubic-bezier(.2,.7,.2,1)}
           <div class="min-w-0"><b id="uNome" class="block truncate text-sm text-ink"></b><span id="uPerfil"></span></div>
         </div>
         <button data-act="sair" class="mt-3 w-full rounded-full border border-neutral-200 py-2 font-semibold text-neutral-600 hover:border-brand hover:text-brand"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
-        <div class="mt-2 text-center text-[10px] text-neutral-400">Versão 26/11 · reserva em 6 etapas</div>
+        <div class="mt-2 text-center text-[10px] text-neutral-400">Versão 27/11 · reserva em 6 etapas (desktop ajustado)</div>
       </div>
     </aside>
     <div class="min-w-0 flex-1">
@@ -192,7 +192,7 @@ const BTN='shine relative inline-flex items-center justify-center gap-2 overflow
 const BTN2='inline-flex items-center justify-center gap-2 rounded-full border-2 border-brand px-5 py-2.5 text-sm font-semibold text-brand transition hover:bg-brand hover:text-white';
 const BTNG='inline-flex items-center justify-center gap-2 rounded-full border border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-600 transition hover:border-brand hover:text-brand';
 const DLGBOX='max-h-[94vh] w-[min(96vw,760px)] overflow-y-auto overflow-x-hidden rounded-3xl bg-white p-4 shadow-2xl sm:p-7';
-const WZBOX='@container flex h-[min(94dvh,700px)] w-[min(96vw,760px)] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl';
+const WZBOX='@container flex h-[min(94dvh,700px)] w-[min(96vw,760px)] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl sm:h-auto sm:max-h-[94dvh] sm:min-h-[min(34rem,94dvh)]';
 const INP='w-full rounded-xl border-2 border-neutral-200 bg-neutral-50 px-4 py-2.5 outline-none transition focus:border-brand';
 const LBL='mb-1 block text-xs font-semibold uppercase tracking-wider text-neutral-500';
 const CARD='rounded-3xl border border-orange-100 bg-white shadow-sm';
@@ -749,44 +749,58 @@ function wz1(){
       <span class="shrink-0 text-right">${pn?`<span class="block text-[10px] text-neutral-500">a partir de</span><b class="font-serif text-lg font-extrabold leading-tight text-brand-dark">${money(pn.preco)}</b>`:''}</span></button>`; }).join('')||'<p class="col-span-full rounded-2xl bg-brand-soft px-4 py-3 text-sm font-medium text-brand-dark">Nenhum quarto livre. Toque em "Todos" para ver todos os quartos.</p>'}</div>`;
 }
 /* ---- 2: datas ---- */
-function wz2(){
-  const q=WZ.quartoId, tipo=quartoDe(q).tipo, h=hojeISO(), hosp=hospedadoWZ(), [ano,mes]=WZ.mes.split('-').map(Number);
+function wzCalMes(ym,ctx){
+  const {q,tipo,h,hosp,ent,sai,escolhendoSai,lim}=ctx, [ano,mes]=ym.split('-').map(Number);
   const off=new Date(Date.UTC(ano,mes-1,1,12)).getUTCDay(), dias=new Date(ano,mes,0).getDate();
-  const ent=WZ.entrada, sai=WZ.saida, escolhendoSai=!!(ent&&!sai)||hosp, lim=ent&&!wzOcup(q,ent)?wzLivreAte(q,ent):(hosp?wzLivreAte(q,ent):null);
   const cel=[]; for(let i=0;i<off;i++) cel.push('<span></span>');
   for(let d=1;d<=dias;d++){
-    const iso=WZ.mes+'-'+String(d).padStart(2,'0'), pas=iso<h, oc=wzOcup(q,iso), esp=especialEm(WZ.pousada,tipo,iso);
+    const iso=ym+'-'+String(d).padStart(2,'0'), pas=iso<h, oc=wzOcup(q,iso), esp=especialEm(WZ.pousada,tipo,iso);
     let ok=!pas&&!oc;
     if(hosp) ok=iso>ent&&iso>=h&&iso<=lim;
     else if(escolhendoSai&&iso>ent&&!pas) ok=iso<=lim;
     const ini=iso===ent, fim=iso===sai, mid=ent&&sai&&iso>ent&&iso<sai;
     const cls=ini||fim?'bg-brand text-white font-bold':(mid?'bg-brand-soft text-brand-dark':(ok?'text-ink hover:bg-brand-soft':(oc&&!pas?'bg-neutral-100 text-neutral-400 line-through':'text-neutral-300')));
-    cel.push(`<button type="button" data-act="wzDia" data-d="${iso}" ${ok?'':'disabled'} class="relative grid h-9 place-items-center rounded-lg text-[13px] transition ${cls} ${iso===h&&!ini&&!fim?'ring-1 ring-brand':''}" aria-label="${fmtBR(iso)}">${d}${esp?`<span class="absolute bottom-0.5 h-1 w-1 rounded-full ${ini||fim?'bg-white':'bg-brand'}"></span>`:''}</button>`);
+    cel.push(`<button type="button" data-act="wzDia" data-d="${iso}" ${ok?'':'disabled'} class="relative grid h-9 place-items-center rounded-lg text-[13px] transition @md:h-8 ${cls} ${iso===h&&!ini&&!fim?'ring-1 ring-brand':''}" aria-label="${fmtBR(iso)}">${d}${esp?`<span class="absolute bottom-0.5 h-1 w-1 rounded-full ${ini||fim?'bg-white':'bg-brand'}"></span>`:''}</button>`);
   }
+  return {ano,mes,cel};
+}
+function wz2(){
+  const q=WZ.quartoId, tipo=quartoDe(q).tipo, h=hojeISO(), hosp=hospedadoWZ();
+  const ent=WZ.entrada, sai=WZ.saida, escolhendoSai=!!(ent&&!sai)||hosp, lim=ent&&!wzOcup(q,ent)?wzLivreAte(q,ent):(hosp?wzLivreAte(q,ent):null);
+  const ctx={q,tipo,h,hosp,ent,sai,escolhendoSai,lim};
+  const [a1,m1]=WZ.mes.split('-').map(Number), x2=new Date(a1,m1,1), ym2=x2.getFullYear()+'-'+String(x2.getMonth()+1).padStart(2,'0');
   const minMes=(hosp?ent:h).slice(0,7), mesAnt=WZ.mes>minMes;
   const chip=on=>`rounded-full border px-3 py-1 text-xs font-semibold disabled:opacity-30 ${on?'border-brand bg-brand-soft text-brand-dark':'border-neutral-200 hover:border-brand hover:text-brand'}`;
   const nn=sai&&ent?diffDias(ent,sai):0;
-  return `<div class="mx-auto grid max-w-md gap-3 @md:max-w-none @md:grid-cols-2 @md:items-start @md:gap-8"><div>
-  <div class="grid grid-cols-2 gap-2">
+  const seta=(n,dis,icn,cls='')=>`<button type="button" data-act="wzMes" data-n="${n}" ${dis?'disabled':''} class="grid h-8 w-8 place-items-center rounded-full border border-neutral-200 text-brand disabled:opacity-30 ${cls}" aria-label="${n<0?'Mês anterior':'Próximo mês'}">${wzIc(icn,'text-xs')}</button>`;
+  const vazio='<span class="hidden h-8 w-8 @md:block"></span>';
+  const bloco=(ym,ladoE,ladoD,cls='')=>{ const m=wzCalMes(ym,ctx); return `<div class="${cls}"><div class="flex items-center justify-between">${ladoE}<b class="font-serif text-base capitalize">${WZMES[m.mes-1]} ${m.ano}</b>${ladoD}</div>
+    <div class="mt-1 grid grid-cols-7 gap-0.5 text-center text-[10px] font-semibold uppercase text-neutral-400">${DIAS.map(d=>`<span>${d}</span>`).join('')}</div>
+    <div class="mt-0.5 grid grid-cols-7 gap-0.5">${m.cel.join('')}</div></div>`; };
+  return `<div class="mx-auto grid max-w-md gap-3 @md:max-w-none @md:gap-4">
+  <div class="@md:grid @md:grid-cols-[22rem_1fr] @md:items-center @md:gap-x-8">
+   <div class="grid grid-cols-2 gap-2">
     <div class="rounded-xl border-2 ${!ent||sai?'border-brand':'border-neutral-200'} px-3 py-1.5"><div class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Entrada${hosp?' (fixa)':''}</div><div class="text-sm font-semibold">${ent?diaSem(ent)+' '+fmtCurto(ent):'<span class="text-neutral-400">Escolha</span>'}</div></div>
     <div class="rounded-xl border-2 ${(ent&&!sai)||hosp?'border-brand':'border-neutral-200'} px-3 py-1.5"><div class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Saída</div><div class="text-sm font-semibold">${sai?diaSem(sai)+' '+fmtCurto(sai):'<span class="text-neutral-400">Escolha</span>'}</div></div></div>
-  ${WZ.erro?`<p class="mt-2 rounded-lg bg-[#FDECEC] px-3 py-1.5 text-sm font-medium text-[#D64545]">${WZ.erro}</p>`:`<p class="mt-1.5 text-xs text-neutral-600">${!ent?'Toque no dia de entrada.':(!sai?'Agora toque no dia de saída.':'<b>'+nn+' noite'+(nn>1?'s':'')+'</b> · toque em outro dia para mudar.')}</p>`}
-  ${hosp?'':`<div class="mt-2 flex flex-wrap items-center gap-1.5"><span class="w-14 text-[10px] font-bold uppercase tracking-wider text-neutral-500">Entrada</span><button type="button" data-act="wzAtalho" data-v="hoje" class="${chip(ent===h)}">Hoje</button><button type="button" data-act="wzAtalho" data-v="amanha" class="${chip(ent===addDias(h,1))}">Amanhã</button></div>`}
-  ${ent?`<div class="mt-1.5 flex flex-wrap items-center gap-1.5"><span class="w-14 text-[10px] font-bold uppercase tracking-wider text-neutral-500">Noites</span>${[1,2,3,5,7].map(n=>{ const s=addDias(ent,n), ok=!!lim&&s<=lim; return `<button type="button" data-act="wzNoites" data-n="${n}" ${ok?'':'disabled'} class="min-w-9 ${chip(sai===s)}">${n}</button>`; }).join('')}</div>`:''}
-  </div>
-  <div class="mx-auto w-full max-w-xs"><div class="flex items-center justify-between"><button type="button" data-act="wzMes" data-n="-1" ${mesAnt?'':'disabled'} class="grid h-8 w-8 place-items-center rounded-full border border-neutral-200 text-brand disabled:opacity-30" aria-label="Mês anterior">${wzIc('chevron-left','text-xs')}</button><b class="font-serif text-base capitalize">${WZMES[mes-1]} ${ano}</b><button type="button" data-act="wzMes" data-n="1" class="grid h-8 w-8 place-items-center rounded-full border border-neutral-200 text-brand" aria-label="Próximo mês">${wzIc('chevron-right','text-xs')}</button></div>
-  <div class="mt-1 grid grid-cols-7 gap-0.5 text-center text-[10px] font-semibold uppercase text-neutral-400">${DIAS.map(d=>`<span>${d}</span>`).join('')}</div>
-  <div class="mt-0.5 grid grid-cols-7 gap-0.5">${cel.join('')}</div>
-  <div class="mt-1.5 flex flex-wrap gap-x-3 text-[10px] text-neutral-500"><span><i class="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-brand"></i>data especial</span><span><i class="mr-1 inline-block h-2 w-2 rounded bg-neutral-200"></i>ocupado</span></div></div></div>`;
+   ${WZ.erro?`<p class="mt-2 rounded-lg bg-[#FDECEC] px-3 py-1.5 text-sm font-medium text-[#D64545] @md:mt-1.5">${WZ.erro}</p>`:`<p class="mt-1.5 text-xs text-neutral-600 @md:mt-1.5">${!ent?'Toque no dia de entrada.':(!sai?'Agora toque no dia de saída.':'<b>'+nn+' noite'+(nn>1?'s':'')+'</b> · toque em outro dia para mudar.')}</p>`}
+   <div class="@md:col-start-2 @md:row-span-2 @md:row-start-1">
+    ${hosp?'':`<div class="mt-2 flex flex-wrap items-center gap-1.5 @md:mt-0"><span class="w-14 text-[10px] font-bold uppercase tracking-wider text-neutral-500">Entrada</span><button type="button" data-act="wzAtalho" data-v="hoje" class="${chip(ent===h)}">Hoje</button><button type="button" data-act="wzAtalho" data-v="amanha" class="${chip(ent===addDias(h,1))}">Amanhã</button></div>`}
+    ${ent?`<div class="mt-1.5 flex flex-wrap items-center gap-1.5 ${hosp?'@md:mt-0':''}"><span class="w-14 text-[10px] font-bold uppercase tracking-wider text-neutral-500">Noites</span>${[1,2,3,5,7].map(n=>{ const s=addDias(ent,n), ok=!!lim&&s<=lim; return `<button type="button" data-act="wzNoites" data-n="${n}" ${ok?'':'disabled'} class="min-w-9 ${chip(sai===s)}">${n}</button>`; }).join('')}</div>`:''}
+   </div></div>
+  <div class="mx-auto w-full max-w-xs @md:max-w-none"><div class="grid gap-6 @md:grid-cols-2 @md:gap-x-10">
+    ${bloco(WZ.mes,seta(-1,!mesAnt,'chevron-left'),seta(1,false,'chevron-right','@md:hidden')+vazio)}
+    ${bloco(ym2,'<span class="h-8 w-8"></span>',seta(1,false,'chevron-right'),'hidden @md:block')}
+   </div>
+   <div class="mt-1.5 flex flex-wrap gap-x-3 text-[10px] text-neutral-500"><span><i class="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-brand"></i>data especial</span><span><i class="mr-1 inline-block h-2 w-2 rounded bg-neutral-200"></i>ocupado</span></div></div></div>`;
 }
 /* ---- 3: pessoas e adicionais ---- */
 const wzStepper=(k,rot,sub,val,min,mais)=>`<div class="flex items-center justify-between gap-2 rounded-xl border border-neutral-200 px-3 py-2.5 @md:py-1.5"><div class="min-w-0"><div class="text-sm font-semibold">${rot}</div>${sub?`<div class="text-[11px] text-neutral-500">${sub}</div>`:''}</div><div class="flex items-center gap-1"><button type="button" data-act="wzQtd" data-k="${k}" data-d="-1" ${val<=min?'disabled':''} class="grid h-10 w-10 place-items-center rounded-full border-2 border-brand text-xl text-brand hover:bg-brand hover:text-white disabled:opacity-30 @md:h-8 @md:w-8 @md:text-lg" aria-label="Menos">−</button><output class="w-7 text-center font-serif text-xl font-extrabold">${val}</output><button type="button" data-act="wzQtd" data-k="${k}" data-d="1" ${mais?'':'disabled'} class="grid h-10 w-10 place-items-center rounded-full border-2 border-brand text-xl text-brand hover:bg-brand hover:text-white disabled:opacity-30 @md:h-8 @md:w-8 @md:text-lg" aria-label="Mais">+</button></div></div>`;
 function wz3(){
   const cap=maxCap(), th=totalHosp(), mais=th<cap, fx=faixasAtivas(), ads=adicionaisAtivos();
-  return `<div class="grid gap-5 @md:grid-cols-2 @md:gap-6"><div><div class="mb-2 flex items-center justify-between">${wzSec('Hóspedes')}<span class="text-xs font-semibold ${th>=cap?'text-brand-dark':'text-neutral-500'}">${th} de ${cap}</span></div>
+  return `<div class="grid gap-5 @md:grid-cols-2 @md:items-stretch @md:gap-5"><div class="@md:rounded-2xl @md:border @md:border-neutral-200 @md:bg-neutral-50/70 @md:p-4"><div class="mb-2 flex items-center justify-between">${wzSec('Hóspedes')}<span class="text-xs font-semibold ${th>=cap?'text-brand-dark':'text-neutral-500'}">${th} de ${cap}</span></div>
   <div class="grid gap-2">${wzStepper('ad','Adultos','',WZ.adultos,1,mais)}${fx.map(f=>wzStepper(f.id,esc(faixaRot(f)),esc(regraTxt(f)),WZ.criancas[f.id]||0,0,mais)).join('')}</div>
   ${th>=cap?'<p class="mt-2 text-xs text-neutral-500">Capacidade máxima do quarto. Para mais hóspedes, troque o quarto.</p>':''}</div>
-  ${ads.length?`<div><div class="mb-2">${wzSec('Adicionais')}</div><div class="grid gap-2">${ads.map(a=>`<label class="flex cursor-pointer items-center justify-between gap-3 rounded-xl border-2 px-3 py-3 @md:py-2 ${WZ.adics.includes(a.id)?'border-brand bg-brand-soft':'border-neutral-200'}"><span class="min-w-0"><b class="block text-sm">${esc(a.nome)}</b><span class="text-[11px] text-neutral-500">${esc(adTxt(a))}</span></span><input type="checkbox" data-chg="wzAd" data-id="${a.id}" ${WZ.adics.includes(a.id)?'checked':''} class="h-5 w-5 shrink-0 accent-[#F47B20]"></label>`).join('')}</div></div>`:''}</div>`;
+  ${ads.length?`<div class="@md:rounded-2xl @md:border @md:border-neutral-200 @md:bg-neutral-50/70 @md:p-4"><div class="mb-2">${wzSec('Adicionais')}</div><div class="grid gap-2">${ads.map(a=>`<label class="flex cursor-pointer items-center justify-between gap-3 rounded-xl border-2 px-3 py-3 @md:py-2 ${WZ.adics.includes(a.id)?'border-brand bg-brand-soft':'border-neutral-200'}"><span class="min-w-0"><b class="block text-sm">${esc(a.nome)}</b><span class="text-[11px] text-neutral-500">${esc(adTxt(a))}</span></span><input type="checkbox" data-chg="wzAd" data-id="${a.id}" ${WZ.adics.includes(a.id)?'checked':''} class="h-5 w-5 shrink-0 accent-[#F47B20]"></label>`).join('')}</div></div>`:''}</div>`;
 }
 /* ---- 4: desconto e pagamento ---- */
 function linhasValor(c){
@@ -803,15 +817,15 @@ function rotDatas(ds,total){
 function blocoValor(c){
   const row=l=>{ const q=l.datas.length, dt=rotDatas(l.datas,c.nn), un=l.un==='estadia'?'estadia':'diária'+(q>1?'s':'');
     return `<div class="flex items-start justify-between gap-3 border-t border-dashed border-neutral-200 px-3 py-1.5 first:border-0"><div class="min-w-0"><div class="text-[13px] font-semibold leading-snug">${esc(l.t)}${l.tag?` <span class="ml-1 rounded-full bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold text-brand-dark"><i class="fa-solid fa-star text-[8px]"></i> ${esc(l.tag)}</span>`:''}</div><div class="text-[11px] text-neutral-500">${q} ${un} × ${money(l.v)}${dt?' · '+dt:''}</div></div><b class="shrink-0 text-[13px] tabular-nums">${money(arred(l.v*q))}</b></div>`; };
-  return `<div class="overflow-hidden rounded-2xl border border-neutral-200 bg-white"><div class="bg-neutral-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-500">Valores · ${c.nn} diária${c.nn>1?'s':''}</div>
-   ${linhasValor(c).map(row).join('')}
+  return `<div class="overflow-hidden rounded-2xl border border-neutral-200 bg-white @md:flex @md:h-full @md:flex-col"><div class="bg-neutral-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-500">Valores · ${c.nn} diária${c.nn>1?'s':''}</div>
+   <div class="@md:flex-1">${linhasValor(c).map(row).join('')}</div>
    ${c.desc>0?`<div class="flex justify-between border-t border-neutral-200 px-3 py-1.5 text-[13px]"><span class="text-neutral-600">Subtotal</span><span class="tabular-nums">${money(c.sub)}</span></div><div class="flex justify-between px-3 pb-1.5 text-[13px] font-semibold text-[#D64545]"><span>Desconto</span><span class="tabular-nums">− ${money(c.desc)}</span></div>`:''}
    <div class="flex items-baseline justify-between bg-brand-cream px-3 py-2"><b class="text-sm">Total</b><b class="font-serif text-2xl text-brand-dark">${money(c.total)}</b></div></div>`;
 }
 function wz4(){
   const c=calcWZ(), pode=podeDesconto(), formas=formasLista(), outra=WZ.forma&&!formas.includes(WZ.forma);
-  return `<div class="grid gap-5 @md:grid-cols-2 @md:gap-6"><div id="wzVal4">${blocoValor(c)}</div>
-  <div>${pode?`<div class="mb-2">${wzSec('Desconto')}</div>
+  return `<div class="grid gap-5 @md:grid-cols-2 @md:items-stretch @md:gap-5"><div id="wzVal4" class="@md:h-full">${blocoValor(c)}</div>
+  <div class="@md:rounded-2xl @md:border @md:border-neutral-200 @md:bg-neutral-50/70 @md:p-4">${pode?`<div class="mb-2">${wzSec('Desconto')}</div>
   <div class="grid grid-cols-3 gap-1 rounded-xl bg-neutral-100 p-1" role="group" aria-label="Tipo de desconto">${[['v','R$ no total'],['d','R$ por diária'],['p','% no total']].map(([v,t])=>`<button type="button" data-act="wzDescTp" data-v="${v}" class="h-9 rounded-lg px-1 text-xs font-semibold transition ${WZ.descTipo===v?'bg-white text-brand-dark shadow-sm ring-1 ring-brand':'text-neutral-600 hover:text-brand'}">${t}</button>`).join('')}</div>
   <div class="relative mt-2"><span class="pointer-events-none absolute inset-y-0 left-3 grid place-items-center text-sm font-semibold text-neutral-500">${WZ.descTipo==='p'?'%':'R$'}</span><input data-inp="wzDescIn" type="number" inputmode="decimal" min="0" step="0.01" value="${WZ.descVal||''}" placeholder="0,00" aria-label="Valor do desconto" class="${INPS} !pl-9"></div>`
    :(WZ.descVal>0?`<div class="mb-2">${wzSec('Desconto')}</div><p class="rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-600">Desconto já aplicado nesta reserva. Alterar exige permissão.</p>`:'')}
@@ -854,14 +868,14 @@ function wz6(){
   const q=c.q, t=tipoDe(q.tipo), F=WZ.f;
   const ads=WZ.adics.map(id=>(DB.adicionais.find(a=>a.id===id)||{}).nome).filter(Boolean).join(', ');
   const hosp=detalheOcc({adultos:WZ.adultos,criancas:WZ.criancas,adics:[]});
-  const lin=(rot,v,p,pode=true)=>`<div class="flex items-start justify-between gap-3 py-2"><div class="min-w-0"><div class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">${rot}</div><div class="break-words text-sm font-semibold">${v}</div></div>${pode?`<button type="button" data-act="wzIr" data-p="${p}" class="shrink-0 text-xs font-semibold text-brand-dark underline">Alterar</button>`:''}</div>`;
-  return `<div class="grid gap-4 @md:grid-cols-2 @md:gap-6"><div class="divide-y divide-neutral-100 rounded-2xl border border-neutral-200 px-3">
+  const lin=(rot,v,p,pode=true)=>`<div class="flex items-start justify-between gap-3 py-2 @md:flex-1 @md:items-center"><div class="min-w-0"><div class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">${rot}</div><div class="break-words text-sm font-semibold">${v}</div></div>${pode?`<button type="button" data-act="wzIr" data-p="${p}" class="shrink-0 text-xs font-semibold text-brand-dark underline">Alterar</button>`:''}</div>`;
+  return `<div class="grid gap-4 @md:grid-cols-2 @md:items-stretch @md:gap-5"><div class="divide-y divide-neutral-100 rounded-2xl border border-neutral-200 px-3 @md:flex @md:flex-col">
     ${lin('Quarto','Apto '+esc(q.numero)+' · '+esc(t.nome),1,!hospedadoWZ())}
     ${lin('Período',diaSem(WZ.entrada)+' '+fmtBR(WZ.entrada)+' → '+diaSem(WZ.saida)+' '+fmtBR(WZ.saida)+'<span class="font-normal text-neutral-600"> · '+c.nn+' noite'+(c.nn>1?'s':'')+'</span>',2)}
     ${lin('Hóspedes',esc(hosp)+(ads?'<span class="block font-normal text-neutral-600">+ '+esc(ads)+'</span>':''),3)}
     ${lin('Pagamento',WZ.pago?'Já pago'+(WZ.forma?' · '+esc(WZ.forma):''):'Em aberto',4)}
     ${lin('Titular',esc(F.nome)+'<span class="block font-normal text-neutral-600">'+esc(F.tel)+' · '+esc((F.placa||'').toUpperCase())+'</span>',5)}
-  </div><div>${blocoValor(c)}<p id="fErro" class="mt-3 hidden rounded-lg bg-[#FDECEC] px-3 py-2 text-sm font-medium text-[#D64545]"></p></div></div>`;
+  </div><div class="@md:flex @md:flex-col"><div class="@md:min-h-0 @md:flex-1">${blocoValor(c)}</div><p id="fErro" class="mt-3 hidden rounded-lg bg-[#FDECEC] px-3 py-2 text-sm font-medium text-[#D64545]"></p></div></div>`;
 }
 const erroWZ = m => { const e=wz$('fErro'); if(!e) return; e.textContent=m; e.classList.remove('hidden'); };
 /* ---- ações ---- */
